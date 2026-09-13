@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<style>
+
+
+.cardDash{
+
+border-radius:10px;
+padding:20px;
+color:white;
+margin:10px;
+text-align:center;
+
+}
+
+
+
+.verde{
+
+background:#01592F;
+
+}
+
+
+.azul{
+
+background:#173E56;
+
+}
+
+
+.dorado{
+
+background:#C9A227;
+
+}
+
+
+
+</style>
+
+
+</head>
+
+
+<body>
+
+
+<div class="container-fluid">
+
+
+<h3 class="text-center">
+
+📊 DASHBOARD DE NOVEDADES
+
+</h3>
+
+
+
+<div class="row">
+
+
+<div class="col-md-4">
+
+<div class="cardDash verde">
+
+<h2 id="total">
+
+0
+
+</h2>
+
+Total novedades
+
+</div>
+
+
+</div>
+
+
+
+
+<div class="col-md-4">
+
+<div class="cardDash azul">
+
+<h2 id="turnoA">
+
+0
+
+</h2>
+
+Turno A
+
+</div>
+
+
+</div>
+
+
+
+
+<div class="col-md-4">
+
+<div class="cardDash dorado">
+
+<h2 id="turnoB">
+
+0
+
+</h2>
+
+Turno B
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+<div class="row">
+
+
+<div class="col-md-6">
+
+
+<canvas id="graficoTurnos"></canvas>
+
+
+</div>
+
+
+
+<div class="col-md-6">
+
+
+<canvas id="graficoTipos"></canvas>
+
+
+</div>
+
+
+
+</div>
+
+
+
+</div>
+
+
+
+
+<script>
+
+
+
+function cargarDashboard(){
+
+
+
+google.script.run
+.withSuccessHandler(function(data){
+
+
+
+document.getElementById(
+"total"
+).innerHTML=data.total;
+
+
+
+document.getElementById(
+"turnoA"
+).innerHTML=data.turnos.A;
+
+
+
+document.getElementById(
+"turnoB"
+).innerHTML=data.turnos.B;
+
+
+
+
+new Chart(
+
+document
+.getElementById(
+"graficoTurnos"
+),
+
+{
+
+
+type:"bar",
+
+
+data:{
+
+
+labels:[
+"A",
+"B",
+"C"
+],
+
+
+datasets:[{
+
+
+label:
+"Novedades por turno",
+
+
+data:[
+
+data.turnos.A,
+
+data.turnos.B,
+
+data.turnos.C
+
+]
+
+
+}]
+
+
+}
+
+
+}
+
+);
+
+
+
+})
+.obtenerDashboard();
+
+
+
+}
+
+
+
+
+
+cargarDashboard();
+
+
+</script>
+
+
+
+</body>
+
+
+</html>
