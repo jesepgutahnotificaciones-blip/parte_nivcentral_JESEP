@@ -87,7 +87,24 @@ const ENCABEZADOS_NOVEDADES = [
    3. DOGET
    ===================================================== */
 
-function doGet() {
+function doGet(e) {
+
+  /*
+   * Si viene "accion" y "callback" en la URL, es una
+   * llamada de API/JSONP desde el frontend externo
+   * (GitHub Pages), no una carga de la página HTML.
+   */
+  if (
+    e &&
+    e.parameter &&
+    e.parameter.accion &&
+    e.parameter.callback
+  ) {
+
+    return manejarLlamadaAPI_(e);
+
+  }
+
 
   return HtmlService
     .createTemplateFromFile('Index')
@@ -97,6 +114,163 @@ function doGet() {
     )
     .setXFrameOptionsMode(
       HtmlService.XFrameOptionsMode.ALLOWALL
+    );
+
+}
+
+
+/* =====================================================
+   3B. API EXTERNA (JSONP) PARA GITHUB PAGES
+   ===================================================== */
+
+/*
+ * Lista blanca de funciones que pueden invocarse desde
+ * el frontend externo. Cualquier nombre que no esté
+ * aquí se rechaza, aunque exista como función en el
+ * proyecto — esto evita exponer funciones internas
+ * (las que terminan en "_") o funciones de
+ * administración no pensadas para llamarse así.
+ */
+function obtenerAccionesPermitidas_() {
+
+  return {
+
+    validarUsuario: validarUsuario,
+    cerrarSesionCliente: cerrarSesionCliente,
+    obtenerDatosSesion: obtenerDatosSesion,
+
+    buscarFuncionario: buscarFuncionario,
+    obtenerFichaFuncionario: obtenerFichaFuncionario,
+    obtenerHistorialFuncionario: obtenerHistorialFuncionario,
+
+    registrarNovedad: registrarNovedad,
+
+    consultarPorTurno: consultarPorTurno,
+    consultarTurno: consultarTurno,
+
+    previsualizarReporteTurno: previsualizarReporteTurno,
+    listarReportes: listarReportes,
+
+    listarUsuarios: listarUsuarios,
+    crearUsuario: crearUsuario,
+    cambiarEstadoUsuario: cambiarEstadoUsuario
+
+  };
+
+}
+
+
+function manejarLlamadaAPI_(e) {
+
+  const callbackCrudo =
+    texto_(e.parameter.callback);
+
+
+  /*
+   * El nombre de callback se inserta directamente en
+   * la respuesta JavaScript, así que se valida de forma
+   * estricta para evitar inyección de código.
+   */
+  const callback =
+    /^[a-zA-Z0-9_]+$/.test(callbackCrudo)
+      ? callbackCrudo
+      : '';
+
+  if (!callback) {
+
+    return ContentService
+      .createTextOutput(
+        'console.error("Callback inválido.");'
+      )
+      .setMimeType(
+        ContentService.MimeType.JAVASCRIPT
+      );
+
+  }
+
+
+  let resultado;
+
+  try {
+
+    const accion =
+      texto_(e.parameter.accion);
+
+    const funciones =
+      obtenerAccionesPermitidas_();
+
+    const funcion =
+      funciones[accion];
+
+    if (!funcion) {
+
+      throw new Error(
+        'Acción no permitida: ' + accion
+      );
+
+    }
+
+
+    let argumentos = [];
+
+    if (e.parameter.args) {
+
+      try {
+
+        argumentos =
+          JSON.parse(e.parameter.args);
+
+      } catch (errorParseo) {
+
+        throw new Error(
+          'Argumentos inválidos.'
+        );
+
+      }
+
+    }
+
+    if (!Array.isArray(argumentos)) {
+      argumentos = [];
+    }
+
+
+    resultado =
+      funcion.apply(null, argumentos);
+
+    if (resultado === undefined) {
+      resultado = null;
+    }
+
+  } catch (error) {
+
+    resultado = {
+
+      __jsonp_error: true,
+
+      estado: false,
+
+      mensaje:
+        error && error.message
+          ? error.message
+          : 'Se presentó un error.'
+
+    };
+
+  }
+
+
+  const cuerpo =
+    callback +
+    '(' +
+    JSON.stringify(resultado) +
+    ');';
+
+
+  return ContentService
+    .createTextOutput(cuerpo)
+    .setMimeType(
+      ContentService.MimeType.JAVASCRIPT
     );
 
 }
