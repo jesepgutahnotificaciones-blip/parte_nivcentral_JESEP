@@ -4902,107 +4902,66 @@ function construirRegistroTurno_(
  * consultarPorTurno(token, 'GURIN')
  * consultarPorTurno(token, 'NO APLICA')
  */
-function consultarPorTurno(
-  token,
-  filtro
-) {
 
-  /*
-   * 1. Validar sesión.
-   */
-  const sesion =
-    validarSesion_(token);
+function consultarPorTurno(token, filtro) {
 
+  const sesion = validarSesion_(token);
 
-  /*
-   * 2. Normalizar filtro.
-   */
   const filtroNormalizado =
-    normalizarFiltroTurno_(
-      filtro
-    );
-
+    normalizarFiltroTurno_(filtro);
 
   if (!filtroNormalizado) {
-
     return respuestaError_(
       'Filtro de turno no válido. ' +
       'Los filtros permitidos son: A, B, C, SEPRI, GURIN y NO APLICA.'
     );
   }
 
-
-  /*
-   * 3. Obtener hoja LISTADO_BASE.
-   */
-  const hoja =
+  const hojaBase =
     obtenerHoja_(HOJA_BASE);
 
-
-  if (!hoja) {
-
-    return respuestaError_(
-      'No existe la hoja "' +
-      HOJA_BASE +
-      '".'
-    );
-  }
-
-
   const ultimaFila =
-    hoja.getLastRow();
-
+    hojaBase.getLastRow();
 
   const ultimaColumna =
-    hoja.getLastColumn();
+    hojaBase.getLastColumn();
 
-
-  if (
-    ultimaFila < 2 ||
-    ultimaColumna < 1
-  ) {
+  if (ultimaFila < 2) {
 
     return respuestaOK_(
-      'No existen funcionarios registrados en LISTADO_BASE.',
+      'No existen funcionarios registrados.',
       {
         filtro: filtroNormalizado,
         funcionarios: [],
         total: 0
       }
     );
+
   }
 
+  // =====================================================
+  // 1. LEER LISTADO_BASE UNA SOLA VEZ
+  // =====================================================
 
-  /*
-   * 4. Encabezados dinámicos.
-   */
   const encabezados =
     obtenerEncabezadosBase_();
 
-
-  /*
-   * 5. Buscar columna TURNO.
-   */
   const indiceTurno =
     obtenerIndiceColumna_(
       encabezados,
       'TURNO'
     );
 
-
   if (indiceTurno < 0) {
 
     return respuestaError_(
       'No se encontró la columna TURNO en LISTADO_BASE.'
     );
+
   }
 
-
-  /*
-   * 6. Leer datos.
-   */
-  const datos =
-    hoja
+  const datosBase =
+    hojaBase
       .getRange(
         2,
         1,
@@ -5012,178 +4971,289 @@ function consultarPorTurno(
       .getValues();
 
 
-  const resultados = [];
+  // =====================================================
+  // 2. PRIMERO FILTRAR FUNCIONARIOS
+  // =====================================================
+
+  const funcionarios = [];
+
+  datosBase.forEach(function(fila, indice) {
+
+    const turno =
+      fila[indiceTurno];
+
+    if (
+      !turnoCoincideFiltro_(
+        turno,
+        filtroNormalizado
+      )
+    ) {
+      return;
+    }
+
+    const funcionario =
+      construirFuncionario_(
+        encabezados,
+        fila,
+        indice + 2
+      );
+
+    if (
+      !usuarioPuedeConsultarFuncionario_(
+        sesion,
+        funcionario
+      )
+    ) {
+      return;
+    }
+
+    funcionarios.push(
+      funcionario
+    );
+
+  });
 
 
-  /*
-   * 7. Recorrer LISTADO_BASE.
-   */
-  datos.forEach(
-    function(fila, indice) {
+  // =====================================================
+  // 3. LEER NOVEDADES UNA SOLA VEZ
+  // =====================================================
 
-      const turno =
-        indiceTurno >= 0
-          ? fila[indiceTurno]
-          : '';
+  const hojaNovedades =
+    obtenerHoja_(HOJA_NOVEDADES);
+
+  const ultimaFilaNovedades =
+    hojaNovedades.getLastRow();
+
+  const ultimaColumnaNovedades =
+    hojaNovedades.getLastColumn();
+
+  const novedadesPorCedula = {};
 
 
-      /*
-       * Aplicar filtro.
-       */
-      if (
-        !turnoCoincideFiltro_(
-          turno,
-          filtroNormalizado
+  if (
+    ultimaFilaNovedades >= 2 &&
+    ultimaColumnaNovedades >= 1
+  ) {
+
+    const encabezadosNovedades =
+      obtenerEncabezadosNovedades_();
+
+    const indiceCC =
+      obtenerIndiceColumnaNovedades_(
+        encabezadosNovedades,
+        'CC'
+      );
+
+    const datosNovedades =
+      hojaNovedades
+        .getRange(
+          2,
+          1,
+          ultimaFilaNovedades - 1,
+          ultimaColumnaNovedades
         )
-      ) {
+        .getValues();
 
-        return;
+
+    datosNovedades.forEach(
+      function(fila, indice) {
+
+        const cedula =
+          normalizarCedula_(
+            fila[indiceCC]
+          );
+
+        if (!cedula) {
+          return;
+        }
+
+        if (
+          !novedadesPorCedula[cedula]
+        ) {
+          novedadesPorCedula[cedula] = [];
+        }
+
+        const registro = {};
+
+        encabezadosNovedades.forEach(
+          function(encabezado, columna) {
+
+            registro[encabezado] =
+              fila[columna];
+
+          }
+        );
+
+        registro.fila =
+          indice + 2;
+
+        novedadesPorCedula[cedula]
+          .push(registro);
+
       }
+    );
+
+  }
 
 
-      /*
-       * Construir funcionario completo.
-       */
-      const funcionario =
-        construirRegistroTurno_(
-          encabezados,
-          fila,
-          indice + 2
+  // =====================================================
+  // 4. ASOCIAR NOVEDADES EN MEMORIA
+  // =====================================================
+
+  funcionarios.forEach(
+    function(funcionario) {
+
+      const historial =
+        novedadesPorCedula[
+          funcionario.cedula
+        ] || [];
+
+      historial.sort(
+        function(a, b) {
+
+          const fechaA =
+            a['Fecha INICIAL'] instanceof Date
+              ? a['Fecha INICIAL'].getTime()
+              : 0;
+
+          const fechaB =
+            b['Fecha INICIAL'] instanceof Date
+              ? b['Fecha INICIAL'].getTime()
+              : 0;
+
+          return fechaB - fechaA;
+
+        }
+      );
+
+
+      const activas =
+        historial.filter(
+          function(registro) {
+
+            return novedadEstaActiva_(
+              registro['Fecha PRESENTACION']
+            );
+
+          }
         );
 
 
-      /*
-       * Validar permisos.
-       */
-      if (
-        !usuarioPuedeConsultarFuncionario_(
-          sesion,
-          funcionario
-        )
-      ) {
+      funcionario.historialNovedades =
+        historial;
 
-        return;
-      }
+      funcionario.novedadesActivas =
+        activas;
 
+      funcionario.totalNovedades =
+        historial.length;
 
-      resultados.push(
-        funcionario
-      );
+      funcionario.totalNovedadesActivas =
+        activas.length;
+
+      funcionario.tieneNovedadActiva =
+        activas.length > 0;
+
     }
   );
 
 
-  /*
-   * 8. Ordenar alfabéticamente por funcionario.
-   */
-  resultados.sort(
+  // =====================================================
+  // 5. ORDENAR
+  // =====================================================
+
+  funcionarios.sort(
     function(a, b) {
 
-      const nombreA =
-        normalizarNombre_(
-          a.funcionario
-        );
-
-
-      const nombreB =
-        normalizarNombre_(
-          b.funcionario
-        );
-
-
-      return nombreA.localeCompare(
-        nombreB,
+      return normalizarNombre_(
+        a.funcionario
+      ).localeCompare(
+        normalizarNombre_(b.funcionario),
         'es',
         {
           sensitivity: 'base'
         }
       );
+
     }
   );
 
 
-  /*
-   * 9. Crear estadísticas.
-   */
+  // =====================================================
+  // 6. ESTADÍSTICAS
+  // =====================================================
+
   const estadisticas = {
 
-    total: resultados.length,
+    total:
+      funcionarios.length,
 
     conNovedadActiva:
-      resultados.filter(
+      funcionarios.filter(
         function(item) {
           return item.tieneNovedadActiva === true;
         }
       ).length,
 
     sinNovedadActiva:
-      resultados.filter(
+      funcionarios.filter(
         function(item) {
           return item.tieneNovedadActiva !== true;
         }
       ).length
+
   };
 
 
-  /*
-   * 10. Auditoría.
-   */
+  // =====================================================
+  // 7. AUDITORÍA
+  // =====================================================
+
   registrarAuditoria_(
     sesion.usuario,
     'CONSULTA_POR_TURNO',
     '',
     'Filtro: ' +
-    filtroNormalizado +
-    ' | Registros: ' +
-    resultados.length
+      filtroNormalizado +
+      ' | Registros: ' +
+      funcionarios.length
   );
 
 
-  /*
-   * 11. Respuesta.
-   */
+  // =====================================================
+  // 8. RESPUESTA
+  // =====================================================
+
   return respuestaOK_(
-    resultados.length > 0
+    funcionarios.length > 0
       ? 'Consulta por turno realizada correctamente.'
       : 'No se encontraron funcionarios para el filtro "' +
         filtroNormalizado +
         '".',
+
     {
-      filtro: filtroNormalizado,
 
-      funcionarios: resultados,
+      filtro:
+        filtroNormalizado,
 
-      total: resultados.length,
+      funcionarios:
+        funcionarios,
 
-      estadisticas: estadisticas,
+      total:
+        funcionarios.length,
+
+      estadisticas:
+        estadisticas,
 
       fechaConsulta:
         formatearFechaHora_(
           new Date()
         )
+
     }
+
   );
-}
 
-
-/**
- * Alias para el frontend.
- *
- * Permite utilizar:
- * consultarTurno(...)
- *
- * o:
- * consultarPorTurno(...)
- */
-function consultarTurno(
-  token,
-  filtro
-) {
-
-  return consultarPorTurno(
-    token,
-    filtro
-  );
 }
 
 
