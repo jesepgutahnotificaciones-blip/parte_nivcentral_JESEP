@@ -4903,19 +4903,411 @@ function construirRegistroTurno_(
  * consultarPorTurno(token, 'NO APLICA')
  */
 
+
 function consultarPorTurno(token, filtro) {
+
+  // ============================================================
+  // VALIDAR SESIÓN
+  // ============================================================
 
   const sesion = validarSesion_(token);
 
-  const filtroNormalizado =
-    normalizarFiltroTurno_(filtro);
+  // ============================================================
+  // NORMALIZAR FILTRO
+  // ============================================================
+
+  const filtroNormalizado = normalizarFiltroTurno_(filtro);
 
   if (!filtroNormalizado) {
     return respuestaError_(
-      'Filtro de turno no válido. ' +
-      'Los filtros permitidos son: A, B, C, SEPRI, GURIN y NO APLICA.'
+      'Filtro de turno no válido. Los filtros permitidos son: A, B, C, SEPRI, GURIN y NO APLICA.'
     );
   }
+
+  // ============================================================
+  // HOJA LISTADO_BASE
+  // ============================================================
+
+  const hojaBase = obtenerHoja_(HOJA_BASE);
+
+  const ultimaFilaBase = hojaBase.getLastRow();
+  const ultimaColumnaBase = hojaBase.getLastColumn();
+
+  if (ultimaFilaBase < 2) {
+    return respuestaOK_(
+      'No se encontró información para el turno consultado.',
+      {
+        filtro: filtroNormalizado,
+        funcionarios: [],
+        total: 0,
+        estadisticas: {
+          total: 0,
+          conNovedadActiva: 0,
+          sinNovedadActiva: 0
+        },
+        fechaConsulta: formatearFechaHora_(new Date())
+      }
+    );
+  }
+
+  // ============================================================
+  // LEER LISTADO_BASE UNA SOLA VEZ
+  // ============================================================
+
+  const encabezadosBase = obtenerEncabezadosBase_();
+
+  const indiceTurno =
+    obtenerIndiceColumna_(
+      encabezadosBase,
+      'TURNO'
+    );
+
+  if (indiceTurno < 0) {
+    return respuestaError_(
+      'No se encontró la columna TURNO en la hoja LISTADO_BASE.'
+    );
+  }
+
+  const datosBase =
+    hojaBase
+      .getRange(
+        2,
+        1,
+        ultimaFilaBase - 1,
+        ultimaColumnaBase
+      )
+      .getValues();
+
+  // ============================================================
+  // PRIMER PASO:
+  // FILTRAR FUNCIONARIOS POR TURNO
+  // ============================================================
+
+  const funcionarios = [];
+
+  datosBase.forEach(function(fila, indice) {
+
+    const turno =
+      indiceTurno >= 0
+        ? fila[indiceTurno]
+        : '';
+
+    if (
+      !turnoCoincideFiltro_(
+        turno,
+        filtroNormalizado
+      )
+    ) {
+      return;
+    }
+
+    const funcionario =
+      construirFuncionario_(
+        encabezadosBase,
+        fila,
+        indice + 2
+      );
+
+    // ----------------------------------------------------------
+    // VALIDAR PERMISOS DEL USUARIO
+    // ----------------------------------------------------------
+
+    if (
+      !usuarioPuedeConsultarFuncionario_(
+        sesion,
+        funcionario
+      )
+    ) {
+      return;
+    }
+
+    funcionarios.push(funcionario);
+  });
+
+  // ============================================================
+  // SI NO HAY FUNCIONARIOS
+  // ============================================================
+
+  if (funcionarios.length === 0) {
+
+    registrarAuditoria_(
+      sesion,
+      'CONSULTAR_TURNO',
+      'Sin resultados para turno: ' +
+        filtroNormalizado
+    );
+
+    return respuestaOK_(
+      'No se encontró información para el turno consultado.',
+      {
+        filtro: filtroNormalizado,
+        funcionarios: [],
+        total: 0,
+        estadisticas: {
+          total: 0,
+          conNovedadActiva: 0,
+          sinNovedadActiva: 0
+        },
+        fechaConsulta: formatearFechaHora_(new Date())
+      }
+    );
+  }
+
+  // ============================================================
+  // OBTENER CÉDULAS DE LOS FUNCIONARIOS
+  // ============================================================
+
+  const cedulas = {};
+
+  funcionarios.forEach(function(funcionario) {
+
+    const cedula =
+      normalizarCedula_(
+        funcionario.cedula
+      );
+
+    if (cedula) {
+      cedulas[cedula] = true;
+    }
+  });
+
+  // ============================================================
+  // LEER NOVEDADES UNA SOLA VEZ
+  // ============================================================
+
+  const hojaNovedades =
+    obtenerHoja_(HOJA_NOVEDADES);
+
+  const ultimaFilaNovedades =
+    hojaNovedades.getLastRow();
+
+  const ultimaColumnaNovedades =
+    hojaNovedades.getLastColumn();
+
+  const novedadesPorCedula = {};
+
+  if (
+    ultimaFilaNovedades >= 2 &&
+    ultimaColumnaNovedades >= 1
+  ) {
+
+    const encabezadosNovedades =
+      obtenerEncabezadosNovedades_();
+
+    const indiceCC =
+      obtenerIndiceColumnaNovedades_(
+        encabezadosNovedades,
+        'CC'
+      );
+
+    if (indiceCC >= 0) {
+
+      const datosNovedades =
+        hojaNovedades
+          .getRange(
+            2,
+            1,
+            ultimaFilaNovedades - 1,
+            ultimaColumnaNovedades
+          )
+          .getValues();
+
+      // --------------------------------------------------------
+      // INDEXAR NOVEDADES POR CÉDULA
+      // --------------------------------------------------------
+
+      datosNovedades.forEach(
+        function(fila, indice) {
+
+          const cedulaFila =
+            normalizarCedula_(
+              fila[indiceCC]
+            );
+
+          if (!cedulaFila) {
+            return;
+          }
+
+          // Solo procesar funcionarios del turno
+          if (!cedulas[cedulaFila]) {
+            return;
+          }
+
+          let registro;
+
+          try {
+
+            registro =
+              construirRegistroNovedad_(
+                encabezadosNovedades,
+                fila,
+                indice + 2
+              );
+
+          } catch (error) {
+
+            console.error(
+              'Error construyendo novedad fila ' +
+                (indice + 2) +
+                ': ' +
+                error.message
+            );
+
+            return;
+          }
+
+          if (!novedadesPorCedula[cedulaFila]) {
+            novedadesPorCedula[cedulaFila] = [];
+          }
+
+          novedadesPorCedula[cedulaFila]
+            .push(registro);
+        }
+      );
+    }
+  }
+
+  // ============================================================
+  // ASOCIAR NOVEDADES A CADA FUNCIONARIO
+  // ============================================================
+
+  funcionarios.forEach(
+    function(funcionario) {
+
+      const cedula =
+        normalizarCedula_(
+          funcionario.cedula
+        );
+
+      const historial =
+        cedula &&
+        novedadesPorCedula[cedula]
+          ? novedadesPorCedula[cedula]
+          : [];
+
+      // --------------------------------------------------------
+      // FILTRAR NOVEDADES ACTIVAS
+      // --------------------------------------------------------
+
+      const activas =
+        historial.filter(
+          function(registro) {
+
+            return novedadEstaActiva_(
+              registro['Fecha PRESENTACION']
+            );
+          }
+        );
+
+      funcionario.historialNovedades =
+        historial;
+
+      funcionario.novedadesActivas =
+        activas;
+
+      funcionario.totalNovedades =
+        historial.length;
+
+      funcionario.totalNovedadesActivas =
+        activas.length;
+
+      funcionario.tieneNovedadActiva =
+        activas.length > 0;
+    }
+  );
+
+  // ============================================================
+  // ORDENAR RESULTADOS
+  // ============================================================
+
+  funcionarios.sort(
+    function(a, b) {
+
+      const nombreA =
+        String(
+          a.funcionario || ''
+        ).toUpperCase();
+
+      const nombreB =
+        String(
+          b.funcionario || ''
+        ).toUpperCase();
+
+      return nombreA.localeCompare(
+        nombreB,
+        'es'
+      );
+    }
+  );
+
+  // ============================================================
+  // ESTADÍSTICAS
+  // ============================================================
+
+  const estadisticas = {
+
+    total:
+      funcionarios.length,
+
+    conNovedadActiva:
+      funcionarios.filter(
+        function(funcionario) {
+          return funcionario.tieneNovedadActiva;
+        }
+      ).length,
+
+    sinNovedadActiva:
+      funcionarios.filter(
+        function(funcionario) {
+          return !funcionario.tieneNovedadActiva;
+        }
+      ).length
+  };
+
+  // ============================================================
+  // AUDITORÍA
+  // ============================================================
+
+  registrarAuditoria_(
+    sesion,
+    'CONSULTAR_TURNO',
+    'Consulta turno: ' +
+      filtroNormalizado +
+      ' | Total: ' +
+      funcionarios.length
+  );
+
+  // ============================================================
+  // RESPUESTA
+  // ============================================================
+
+  return respuestaOK_(
+    'Consulta realizada correctamente.',
+    {
+      filtro:
+        filtroNormalizado,
+
+      funcionarios:
+        funcionarios,
+
+      total:
+        funcionarios.length,
+
+      estadisticas:
+        estadisticas,
+
+      fechaConsulta:
+        formatearFechaHora_(
+          new Date()
+        )
+    }
+  );
+}
+
+function consultarTurno(token, filtro) {
+  return consultarPorTurno(token, filtro);
+}
+
 
   const hojaBase =
     obtenerHoja_(HOJA_BASE);
@@ -5359,6 +5751,7 @@ function listarFuncionariosPorTurno(
  * No utiliza TURNOS_VALIDOS porque SEPRI,
  * GURIN y NO APLICA tienen reglas especiales.
  */
+
 function obtenerConteosTurnos(
   token
 ) {
@@ -5366,13 +5759,10 @@ function obtenerConteosTurnos(
   const sesion =
     validarSesion_(token);
 
-
   const hoja =
     obtenerHoja_(HOJA_BASE);
 
-
   if (!hoja) {
-
     return respuestaError_(
       'No existe la hoja "' +
       HOJA_BASE +
@@ -5380,14 +5770,11 @@ function obtenerConteosTurnos(
     );
   }
 
-
   const ultimaFila =
     hoja.getLastRow();
 
-
   const ultimaColumna =
     hoja.getLastColumn();
-
 
   if (
     ultimaFila < 2
@@ -5406,8 +5793,7 @@ function obtenerConteosTurnos(
     );
   }
 
-
-  const encabezados =
+   const encabezados =
     obtenerEncabezadosBase_();
 
 
