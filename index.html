@@ -1255,6 +1255,267 @@
 
 
 /* =====================================================
+   PUENTE API (GITHUB PAGES -> APPS SCRIPT)
+   =====================================================
+
+ * Este archivo ya NO se sirve desde dentro de Apps
+ * Script, así que "google.script.run" no existe de
+ * forma nativa (solo funciona dentro del sandbox de
+ * HtmlService).
+ *
+ * Este bloque crea un reemplazo ("shim") que imita
+ * exactamente la misma forma de uso:
+ *
+ *   google.script.run
+ *     .withSuccessHandler(fn)
+ *     .withFailureHandler(fn)
+ *     .nombreDeFuncion(arg1, arg2, ...);
+ *
+ * pero por debajo llama al Web App de Apps Script
+ * mediante JSONP (una etiqueta <script>), que es la
+ * única forma de evitar el bloqueo de CORS al llamar
+ * desde un dominio distinto (github.io) hacia
+ * script.google.com.
+ *
+ * IMPORTANTE: cambia esta URL si vuelves a implementar
+ * (Deploy) el proyecto de Apps Script y se genera una
+ * URL /exec nueva.
+ */
+
+const APPS_SCRIPT_API_URL =
+  'https://script.google.com/macros/s/AKfycbxmcDq5FGD0FzrS0YzFWP_i8daNj5f-c8X7KP7wBu3J-aOVOJoPtnUk2R5BBxOhmfWR/exec';
+
+
+(function configurarPuenteAPI() {
+
+  const TIMEOUT_MS = 30000;
+
+
+  function llamarAPI_(accion, argumentos, alExito, alFallar) {
+
+    const nombreCallback =
+      '__cb_' +
+      accion.replace(/[^a-zA-Z0-9_]/g, '') +
+      '_' +
+      Date.now() +
+      '_' +
+      Math.floor(Math.random() * 1000000);
+
+    let finalizado = false;
+
+
+    function limpiar() {
+
+      delete window[nombreCallback];
+
+      if (elementoScript.parentNode) {
+        elementoScript.parentNode.removeChild(elementoScript);
+      }
+
+      clearTimeout(idTimeout);
+
+    }
+
+
+    window[nombreCallback] = function(respuesta) {
+
+      if (finalizado) {
+        return;
+      }
+
+      finalizado = true;
+
+      limpiar();
+
+
+      if (
+        respuesta &&
+        respuesta.__jsonp_error === true
+      ) {
+
+        if (alFallar) {
+          alFallar({
+            message:
+              respuesta.mensaje ||
+              'Se presentó un error en el servidor.'
+          });
+        }
+
+        return;
+
+      }
+
+
+      if (alExito) {
+        alExito(respuesta);
+      }
+
+    };
+
+
+    const idTimeout = setTimeout(function() {
+
+      if (finalizado) {
+        return;
+      }
+
+      finalizado = true;
+
+      limpiar();
+
+      if (alFallar) {
+        alFallar({
+          message:
+            'Tiempo de espera agotado contactando el servidor. ' +
+            'Verifica tu conexión e inténtalo de nuevo.'
+        });
+      }
+
+    }, TIMEOUT_MS);
+
+
+    const parametros =
+      new URLSearchParams();
+
+    parametros.set('accion', accion);
+    parametros.set('callback', nombreCallback);
+
+    try {
+
+      parametros.set(
+        'args',
+        JSON.stringify(argumentos || [])
+      );
+
+    } catch (errorSerializacion) {
+
+      finalizado = true;
+
+      clearTimeout(idTimeout);
+
+      if (alFallar) {
+        alFallar({
+          message: 'No fue posible preparar la solicitud.'
+        });
+      }
+
+      return;
+
+    }
+
+
+    const elementoScript =
+      document.createElement('script');
+
+    elementoScript.src =
+      APPS_SCRIPT_API_URL +
+      '?' +
+      parametros.toString();
+
+    elementoScript.onerror = function() {
+
+      if (finalizado) {
+        return;
+      }
+
+      finalizado = true;
+
+      limpiar();
+
+      if (alFallar) {
+        alFallar({
+          message:
+            'No se pudo contactar el servidor. ' +
+            'Verifica la URL del backend o tu conexión.'
+        });
+      }
+
+    };
+
+
+    document.head.appendChild(elementoScript);
+
+  }
+
+
+  function crearEjecutor_() {
+
+    let manejadorExito = null;
+
+    let manejadorFallo = null;
+
+
+    const base = {
+
+      withSuccessHandler: function(fn) {
+        manejadorExito = fn;
+        return proxyEjecutor;
+      },
+
+      withFailureHandler: function(fn) {
+        manejadorFallo = fn;
+        return proxyEjecutor;
+      },
+
+      withUserObject: function() {
+        return proxyEjecutor;
+      }
+
+    };
+
+
+    const proxyEjecutor = new Proxy(base, {
+
+      get: function(objetivo, propiedad) {
+
+        if (propiedad in objetivo) {
+          return objetivo[propiedad];
+        }
+
+        return function() {
+
+          const argumentos =
+            Array.prototype.slice.call(
+              arguments
+            );
+
+          llamarAPI_(
+            propiedad,
+            argumentos,
+            manejadorExito,
+            manejadorFallo
+          );
+
+        };
+
+      }
+
+    });
+
+
+    return proxyEjecutor;
+
+  }
+
+
+  window.google = window.google || {};
+
+  window.google.script =
+    window.google.script || {};
+
+  Object.defineProperty(
+    window.google.script,
+    'run',
+    {
+      get: crearEjecutor_,
+      configurable: true
+    }
+  );
+
+})();
+
+
+/* =====================================================
    VARIABLES GLOBALES
    ===================================================== */
 
@@ -3997,4 +4258,3 @@ function formatearValor(
 
 </body>
 </html>
-
