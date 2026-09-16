@@ -386,7 +386,8 @@
 
     }
 
-  </style>
+  .grupo-grado td{background:#e9ecef;font-weight:700;border-top:2px solid #6c757d;padding:6px;}
+</style>
 
 </head>
 
@@ -609,7 +610,7 @@
                 type="text"
                 id="buscarValor"
                 class="form-control"
-                placeholder="Digite cédula o nombre del funcionario"
+                placeholder="Digite cédula, nombre, grado, nivel o dependencia"
                 onkeydown="
                   if(event.key === 'Enter'){
                     buscarFuncionario();
@@ -1283,7 +1284,7 @@
  */
 
 const APPS_SCRIPT_API_URL =
-  'https://script.google.com/macros/s/AKfycby-bXSKvOhOGKBk7ckF3M9YyWPNKutDtgcH6jTqtm9vg3JeVd8TSrkqKPr6u-xO2f9f/exec';
+  'https://script.google.com/macros/s/AKfycbwwa4ZCdDSdrEkBKUnDqYxGFUhk999QkUBOiW1W0Y3K2YL477Z2LMqcJfybw95hgLkm/exec';
 
 
 (function configurarPuenteAPI() {
@@ -2064,7 +2065,7 @@ function buscarFuncionario() {
 
     contenedor.innerHTML =
       '<div class="empty">' +
-      'Ingrese una cédula o nombre.' +
+      'Ingrese cédula, nombre, grado, nivel o dependencia.' +
       '</div>';
 
     return;
@@ -2988,366 +2989,80 @@ function cargarTurno(
 function renderTurno(
   respuesta
 ) {
-
-  const contenedor =
-    document.getElementById(
-      'resultadoTurno'
-    );
-
-
-  const datos =
-    respuesta.datos || {};
-
-
-  const funcionarios =
-    datos.funcionarios ||
-    respuesta.funcionarios ||
-    [];
-
-
-  const filtro =
-    datos.filtro ||
-    respuesta.filtro ||
-    ultimoTurnoConsultado ||
-    '';
-
+  const contenedor = document.getElementById('resultadoTurno');
+  const datos = respuesta.datos || {};
+  let funcionarios = datos.funcionarios || respuesta.funcionarios || [];
+  const filtro = datos.filtro || respuesta.filtro || ultimoTurnoConsultado || '';
 
   if (!funcionarios.length) {
-
-    contenedor.innerHTML =
-      '<div class="card">' +
-      '<div class="card-body">' +
-      '<div class="empty">' +
-      'No hay funcionarios registrados para ' +
-      esc(filtro) +
-      ' en la dependencia autorizada.' +
-      '</div>' +
-      '</div>' +
-      '</div>';
-
+    contenedor.innerHTML = '<div class="card"><div class="card-body"><div class="empty">No hay funcionarios registrados para ' + esc(filtro) + ' en la dependencia autorizada.</div></div></div>';
     return;
-
   }
 
+  // Refuerzo del orden: solo por grado y conservando el orden original dentro de cada grado.
+  const ORDEN_GRADOS_TURNO = ['BG','CR','TC','MY','CT','TE','ST','CM','SC','IJ','IT','SI','PT','PP','AXP','NO'];
+  const posicionGrado = {};
+  ORDEN_GRADOS_TURNO.forEach(function(g, i) { posicionGrado[g] = i; });
+  funcionarios = funcionarios.slice().sort(function(a, b) {
+    const ga = String(a.grado || a.GR || '').trim().toUpperCase();
+    const gb = String(b.grado || b.GR || '').trim().toUpperCase();
+    const pa = Object.prototype.hasOwnProperty.call(posicionGrado, ga) ? posicionGrado[ga] : 999;
+    const pb = Object.prototype.hasOwnProperty.call(posicionGrado, gb) ? posicionGrado[gb] : 999;
+    return pa - pb;
+  });
 
-  const estadisticas =
-    datos.estadisticas || {};
+  const resumen = { OF:0, 'NIV. EJE':0, PT:0, PP:0, AXP:0, 'NO UNI':0 };
+  const oficiales = { BG:true, CR:true, TC:true, MY:true, CT:true, TE:true, ST:true, CM:true };
+  const nivelEje = { SC:true, IJ:true, IT:true, SI:true };
+  funcionarios.forEach(function(f) {
+    const grado = String(f.grado || f.GR || '').trim().toUpperCase();
+    const nivel = String(f.nivel || f.NIV || '').trim().toUpperCase();
+    if (oficiales[grado] || nivel.indexOf('OFICIAL') !== -1) resumen.OF++;
+    else if (grado === 'PT' || nivel === 'PT') resumen.PT++;
+    else if (grado === 'PP' || nivel === 'PP') resumen.PP++;
+    else if (grado === 'AXP' || nivel.indexOf('AXP') !== -1 || nivel.indexOf('AUXILIAR') !== -1) resumen.AXP++;
+    else if (nivel.indexOf('NO UNI') !== -1 || nivel.indexOf('NO UNIFORM') !== -1 || nivel === 'NO UNIFORMADO' || nivel === 'NO UNIFORMADOS') resumen['NO UNI']++;
+    else if (nivelEje[grado] || nivel.indexOf('EJECUTIVO') !== -1) resumen['NIV. EJE']++;
+    else resumen['NO UNI']++;
+  });
 
+  let html = '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><span>📋 Listado ' + esc(filtro) + '</span><div class="no-print"><button type="button" class="btn btn-sm btn-secondary me-1" onclick="imprimirTurno()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="previsualizarTurnoActual()">📄 Reporte</button></div></div></div><div class="card-body">';
 
-  let html =
-    '<div class="card">' +
+  html += '<div class="row g-2 mb-3">';
+  html += crearEstadistica('OF', resumen.OF);
+  html += crearEstadistica('NIV. EJE', resumen['NIV. EJE']);
+  html += crearEstadistica('PT', resumen.PT);
+  html += crearEstadistica('PP', resumen.PP);
+  html += crearEstadistica('AXP', resumen.AXP);
+  html += crearEstadistica('NO UNI', resumen['NO UNI']);
+  html += '</div>';
 
-    '<div class="card-header">' +
+  html += '<div class="table-wrapper"><table id="tablaTurno" class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>NIV</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
-    '<div class="d-flex ' +
-    'justify-content-between ' +
-    'align-items-center ' +
-    'flex-wrap gap-2">' +
-
-    '<span>' +
-    '📋 Listado ' +
-    esc(filtro) +
-    '</span>' +
-
-    '<div class="no-print">' +
-
-    '<button ' +
-    'type="button" ' +
-    'class="btn btn-sm btn-secondary me-1" ' +
-    'onclick="imprimirTurno()">' +
-    '🖨 Imprimir' +
-    '</button>' +
-
-    '<button ' +
-    'type="button" ' +
-    'class="btn btn-sm btn-pol" ' +
-    'onclick="previsualizarTurnoActual()">' +
-    '📄 Reporte' +
-    '</button>' +
-
-    '</div>' +
-
-    '</div>' +
-
-    '</div>' +
-
-
-    '<div class="card-body">';
-
-
-  html +=
-    '<div class="row g-2 mb-3">';
-
-
-  html +=
-    crearEstadistica(
-      'Funcionarios',
-      funcionarios.length
-    );
-
-
-  if (
-    estadisticas
-  ) {
-
-    if (
-      estadisticas.totalConNovedad !==
-      undefined
-    ) {
-
-      html +=
-        crearEstadistica(
-          'Con novedad',
-          estadisticas.totalConNovedad
-        );
-
+  let ultimoGrado = null;
+  funcionarios.forEach(function(f, indice) {
+    const grado = String(f.grado || f.GR || '').trim().toUpperCase() || 'SIN GRADO';
+    if (grado !== ultimoGrado) {
+      html += '<tr class="grupo-grado"><td colspan="8"><strong>GRADO: ' + esc(grado) + '</strong></td></tr>';
+      ultimoGrado = grado;
     }
 
-
-    if (
-      estadisticas.totalSinNovedad !==
-      undefined
-    ) {
-
-      html +=
-        crearEstadistica(
-          'Sin novedad',
-          estadisticas.totalSinNovedad
-        );
-
+    const novedades = f.historialNovedades || [];
+    let novedadesHtml = '';
+    if (novedades.length) {
+      novedadesHtml = novedades.slice(0,5).map(function(n) {
+        return '<span class="badge-novedad">' + esc(n.NOVEDAD || n.novedad || '') + '</span>';
+      }).join('');
+      if (novedades.length > 5) novedadesHtml += '<span class="badge-novedad">+' + (novedades.length - 5) + '</span>';
+    } else {
+      novedadesHtml = '<span class="text-muted">Sin novedades</span>';
     }
 
-  }
+    html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+  });
 
-
-  html +=
-    '</div>';
-
-
-  html +=
-    '<div class="table-wrapper">' +
-
-    '<table ' +
-    'id="tablaTurno" ' +
-    'class="table table-bordered table-hover">' +
-
-    '<thead>' +
-
-    '<tr>' +
-
-    '<th>#</th>' +
-    '<th>CÉDULA</th>' +
-    '<th>NIV</th>' +
-    '<th>GRADO</th>' +
-    '<th>FUNCIONARIO</th>' +
-    '<th>DEPENDENCIA</th>' +
-    '<th>TURNO</th>' +
-    '<th>PLACA / CHIP</th>' +
-    '<th>NOVEDADES</th>' +
-    '<th>ACTIVA</th>' +
-
-    '</tr>' +
-
-    '</thead>' +
-
-    '<tbody>';
-
-
-  let ultimoGradoRender = null;
-
-  funcionarios.forEach(
-    function(f, indice) {
-
-      const gradoGrupo = String(
-        f.grado ||
-        f.GR ||
-        ''
-      ).trim().toUpperCase();
-
-      if (gradoGrupo !== ultimoGradoRender) {
-        html +=
-          '<tr class="grupo-grado-pantalla">' +
-          '<td colspan="10" style="background:#e9ecef;font-weight:700;text-align:left;padding:8px;border:1px solid #adb5bd;">' +
-          'GRADO: ' +
-          esc(gradoGrupo || 'SIN GRADO') +
-          '</td>' +
-          '</tr>';
-
-        ultimoGradoRender = gradoGrupo;
-      }
-
-      const cedula =
-        f.cedula ||
-        f.CEDULA ||
-        '';
-
-      const nivel =
-        f.nivel ||
-        f.NIV ||
-        '';
-
-      const grado =
-        f.grado ||
-        f.GR ||
-        '';
-
-      const nombre =
-        f.funcionario ||
-        f.FUNCIONARIO ||
-        '';
-
-      const dependencia =
-        f.dependencia ||
-        f.DEPENDENCIA ||
-        '';
-
-      const turno =
-        f.turno ||
-        f.TURNO ||
-        '';
-
-      const placa =
-        f.placaChip ||
-        f.Placa_Chip ||
-        f['Placa_Chip'] ||
-        '';
-
-
-      const novedades =
-        f.historialNovedades ||
-        [];
-
-      const activas =
-        f.novedadesActivas ||
-        [];
-
-
-      let novedadesHtml =
-        '';
-
-
-      if (
-        novedades.length
-      ) {
-
-        novedadesHtml =
-          novedades
-            .slice(0, 5)
-            .map(
-              function(n) {
-
-                return (
-                  '<span class="badge-novedad">' +
-                  esc(
-                    n.NOVEDAD ||
-                    n.novedad ||
-                    ''
-                  ) +
-                  '</span>'
-                );
-
-              }
-            )
-            .join('');
-
-        if (
-          novedades.length > 5
-        ) {
-
-          novedadesHtml +=
-            '<span class="badge-novedad">' +
-            '+' +
-            (
-              novedades.length - 5
-            ) +
-            '</span>';
-
-        }
-
-      } else {
-
-        novedadesHtml =
-          '<span class="text-muted">' +
-          'Sin novedades' +
-          '</span>';
-
-      }
-
-
-      let activaHtml =
-        activas.length
-          ? '<span class="badge-activa">' +
-            'SÍ (' +
-            activas.length +
-            ')' +
-            '</span>'
-          : '<span class="text-muted">' +
-            'NO' +
-            '</span>';
-
-
-      html +=
-        '<tr>' +
-
-        '<td>' +
-        (indice + 1) +
-        '</td>' +
-
-        '<td>' +
-        esc(cedula) +
-        '</td>' +
-
-        '<td>' +
-        esc(nivel) +
-        '</td>' +
-
-        '<td>' +
-        esc(grado) +
-        '</td>' +
-
-        '<td>' +
-        '<strong>' +
-        esc(nombre) +
-        '</strong>' +
-        '</td>' +
-
-        '<td>' +
-        esc(dependencia) +
-        '</td>' +
-
-        '<td>' +
-        esc(turno) +
-        '</td>' +
-
-        '<td>' +
-        esc(placa) +
-        '</td>' +
-
-        '<td>' +
-        novedadesHtml +
-        '</td>' +
-
-        '<td>' +
-        activaHtml +
-        '</td>' +
-
-        '</tr>';
-
-    }
-  );
-
-
-  html +=
-    '</tbody>' +
-    '</table>' +
-    '</div>' +
-    '</div>' +
-    '</div>';
-
-
-  contenedor.innerHTML =
-    html;
-
+  html += '</tbody></table></div></div></div>';
+  contenedor.innerHTML = html;
 }
 
 
