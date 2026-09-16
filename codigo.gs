@@ -6813,6 +6813,73 @@ function previsualizarReporteTurno(
     !filtroNormalizado
   ) {
 
+
+// ============================================================
+// ORDENAMIENTO POR GRADO SEGÚN COLUMNA C DE LISTADO_BASE
+// ============================================================
+
+const ORDEN_GRADOS = {
+  'BG': 1,
+  'CR': 2,
+  'TC': 3,
+  'MY': 4,
+  'CT': 5,
+  'TE': 6,
+  'ST': 7,
+  'CM': 8,
+  'SC': 9,
+  'IJ': 10,
+  'IT': 11,
+  'SI': 12,
+  'PT': 13,
+  'PP': 14,
+  'AXP': 15
+};
+
+resultados.sort(function(a, b) {
+
+  const gradoA = String(a.grado || '').trim().toUpperCase();
+  const gradoB = String(b.grado || '').trim().toUpperCase();
+
+  const ordenA = ORDEN_GRADOS.hasOwnProperty(gradoA)
+    ? ORDEN_GRADOS[gradoA]
+    : 999;
+
+  const ordenB = ORDEN_GRADOS.hasOwnProperty(gradoB)
+    ? ORDEN_GRADOS[gradoB]
+    : 999;
+
+  // Primero: orden jerárquico del grado
+  if (ordenA !== ordenB) {
+    return ordenA - ordenB;
+  }
+
+  // Segundo: nombre del funcionario
+  const nombreA = String(
+    a.apellidosNombres ||
+    a.funcionario ||
+    a.nombre ||
+    ''
+  ).trim();
+
+  const nombreB = String(
+    b.apellidosNombres ||
+    b.funcionario ||
+    b.nombre ||
+    ''
+  ).trim();
+
+  return nombreA.localeCompare(
+    nombreB,
+    'es',
+    {
+      sensitivity: 'base'
+    }
+  );
+  
+});
+
+
     return respuestaError_(
       'Filtro de turno no válido.'
     );
