@@ -3153,8 +3153,28 @@ function renderTurno(
     '<tbody>';
 
 
+  let ultimoGradoRender = null;
+
   funcionarios.forEach(
     function(f, indice) {
+
+      const gradoGrupo = String(
+        f.grado ||
+        f.GR ||
+        ''
+      ).trim().toUpperCase();
+
+      if (gradoGrupo !== ultimoGradoRender) {
+        html +=
+          '<tr class="grupo-grado-pantalla">' +
+          '<td colspan="10" style="background:#e9ecef;font-weight:700;text-align:left;padding:8px;border:1px solid #adb5bd;">' +
+          'GRADO: ' +
+          esc(gradoGrupo || 'SIN GRADO') +
+          '</td>' +
+          '</tr>';
+
+        ultimoGradoRender = gradoGrupo;
+      }
 
       const cedula =
         f.cedula ||
