@@ -1311,7 +1311,6 @@ const APPS_SCRIPT_API_URL =
   'https://script.google.com/macros/s/AKfycbz7-L_F16kYtzxVbyadgAkMtJQedSNmrbj2JdWKWC9ONgu5603QwloHCKVnQtRMJw0/exec';
 
 
-
 (function configurarPuenteAPI() {
 
   const TIMEOUT_MS = 90000;
@@ -1845,6 +1844,18 @@ function iniciarSesion() {
    ===================================================== */
 
 function cerrarSesionCliente() {
+
+  cerrarAvisoCumpleanios_();
+
+  const botonCumple =
+    document.getElementById('botonCumpleanios');
+
+  if (botonCumple && botonCumple.parentNode) {
+    botonCumple.parentNode.removeChild(botonCumple);
+  }
+
+  cumpleaniosSesion = null;
+
 
   if (!tokenSesion) {
 
@@ -4501,16 +4512,17 @@ function descargarArchivoBase64_(base64, nombre, mime) {
    ===================================================== */
 
 /**
- * Muestra el aviso de cumpleaños al iniciar sesión.
+ * Muestra la tarjeta flotante de cumpleaños del día.
+ *
+ * Se llama automáticamente al iniciar sesión y también
+ * desde el botón 🎂 de la cabecera.
+ *
+ * Por cada integrante muestra:
+ *   GRADO · NOMBRE · EDAD · DEPENDENCIA · TURNO
  */
 function mostrarCumpleaniosHoy_(info) {
 
-  const anterior =
-    document.getElementById('avisoCumpleanios');
-
-  if (anterior && anterior.parentNode) {
-    anterior.parentNode.removeChild(anterior);
-  }
+  cerrarAvisoCumpleanios_();
 
   if (
     !info ||
@@ -4520,74 +4532,232 @@ function mostrarCumpleaniosHoy_(info) {
     return;
   }
 
+  const total = info.lista.length;
+
+
+  /*
+   * Estilos propios de la tarjeta.
+   * Se inyectan una sola vez.
+   */
+  if (!document.getElementById('estilosCumpleanios')) {
+
+    const estilos = document.createElement('style');
+
+    estilos.id = 'estilosCumpleanios';
+
+    estilos.textContent =
+      '@keyframes cumpleEntra{' +
+      'from{opacity:0;transform:translateY(-18px) scale(.96);}' +
+      'to{opacity:1;transform:translateY(0) scale(1);}}' +
+
+      '#avisoCumpleanios{position:fixed;inset:0;z-index:3000;' +
+      'display:flex;align-items:center;justify-content:center;' +
+      'padding:18px;background:rgba(1,61,33,.55);' +
+      'font-family:Arial,Helvetica,sans-serif;}' +
+
+      '#avisoCumpleanios .cumple-caja{width:100%;max-width:560px;' +
+      'max-height:88vh;display:flex;flex-direction:column;' +
+      'background:#fff;border-radius:14px;overflow:hidden;' +
+      'box-shadow:0 18px 50px rgba(0,0,0,.35);' +
+      'animation:cumpleEntra .28s ease-out;}' +
+
+      '#avisoCumpleanios .cumple-cabecera{background:#01592F;' +
+      'color:#fff;padding:16px 20px;display:flex;' +
+      'align-items:center;justify-content:space-between;gap:12px;' +
+      'border-bottom:5px solid #C9A227;}' +
+
+      '#avisoCumpleanios .cumple-cabecera h3{margin:0;font-size:18px;}' +
+      '#avisoCumpleanios .cumple-cabecera small{opacity:.85;}' +
+
+      '#avisoCumpleanios .cumple-cerrar{background:transparent;' +
+      'border:0;color:#fff;font-size:26px;line-height:1;' +
+      'cursor:pointer;padding:0 4px;}' +
+
+      '#avisoCumpleanios .cumple-lista{padding:14px 20px;' +
+      'overflow:auto;}' +
+
+      '#avisoCumpleanios .cumple-item{border:1px solid #E3E8EA;' +
+      'border-left:5px solid #C9A227;border-radius:10px;' +
+      'padding:12px 14px;margin-bottom:10px;background:#FCFDFC;}' +
+
+      '#avisoCumpleanios .cumple-nombre{font-size:15px;' +
+      'font-weight:bold;color:#01592F;}' +
+
+      '#avisoCumpleanios .cumple-grado{display:inline-block;' +
+      'background:#01592F;color:#fff;border-radius:5px;' +
+      'padding:2px 8px;font-size:12px;font-weight:bold;' +
+      'margin-right:8px;}' +
+
+      '#avisoCumpleanios .cumple-edad{display:inline-block;' +
+      'background:#C9A227;color:#3a2f00;border-radius:20px;' +
+      'padding:2px 10px;font-size:12px;font-weight:bold;' +
+      'margin-top:8px;}' +
+
+      '#avisoCumpleanios .cumple-datos{margin-top:8px;' +
+      'display:flex;flex-wrap:wrap;gap:6px 18px;' +
+      'font-size:12px;color:#546E7A;}' +
+
+      '#avisoCumpleanios .cumple-datos span b{color:#263238;}' +
+
+      '#avisoCumpleanios .cumple-pie{padding:12px 20px;' +
+      'background:#F4F6F7;border-top:1px solid #E3E8EA;' +
+      'display:flex;justify-content:flex-end;gap:8px;}' +
+
+      '#botonCumpleanios{position:fixed;right:18px;bottom:18px;' +
+      'z-index:2500;background:#C9A227;color:#3a2f00;border:0;' +
+      'border-radius:30px;padding:10px 16px;font-weight:bold;' +
+      'cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);}';
+
+    document.head.appendChild(estilos);
+  }
+
+
   const aviso = document.createElement('div');
 
   aviso.id = 'avisoCumpleanios';
 
-  aviso.style.cssText =
-    'position:fixed;top:16px;right:16px;z-index:2000;' +
-    'width:340px;max-width:calc(100vw - 32px);' +
-    'max-height:70vh;overflow:auto;' +
-    'background:#ffffff;border-radius:10px;' +
-    'border-top:6px solid #C9A227;' +
-    'box-shadow:0 8px 24px rgba(0,0,0,.25);' +
-    'font-family:Arial,Helvetica,sans-serif;';
 
   let html = '';
 
   html +=
-    '<div style="background:#01592F;color:#fff;padding:10px 14px;' +
-    'display:flex;align-items:center;justify-content:space-between;">' +
-    '<strong>🎂 Cumpleaños de hoy</strong>' +
-    '<button type="button" onclick="cerrarAvisoCumpleanios_()" ' +
-    'style="background:transparent;border:0;color:#fff;font-size:20px;' +
-    'line-height:1;cursor:pointer;">&times;</button>' +
-    '</div>';
+    '<div class="cumple-caja" role="dialog" aria-modal="true">';
 
   html +=
-    '<div style="padding:10px 14px;font-size:13px;color:#546E7A;">' +
-    esc(info.fecha || '') + ' — ' +
-    info.lista.length + ' integrante(s)' +
+    '<div class="cumple-cabecera">' +
+    '<div>' +
+    '<h3>🎂 Cumpleaños de hoy</h3>' +
+    '<small>' +
+    esc(info.fecha || '') +
+    ' — ' + total + ' integrante' + (total === 1 ? '' : 's') +
+    '</small>' +
+    '</div>' +
+    '<button type="button" class="cumple-cerrar" ' +
+    'onclick="cerrarAvisoCumpleanios_()" ' +
+    'aria-label="Cerrar">&times;</button>' +
     '</div>';
 
-  html += '<ul style="list-style:none;margin:0;padding:0 14px 12px;">';
+  html += '<div class="cumple-lista">';
 
   info.lista.forEach(function(persona) {
 
+    html += '<div class="cumple-item">';
+
+    html += '<div class="cumple-nombre">';
+
+    if (persona.grado) {
+      html +=
+        '<span class="cumple-grado">' +
+        esc(persona.grado) +
+        '</span>';
+    }
+
+    html += esc(persona.nombre || '(sin nombre)');
+    html += '</div>';
+
+    if (persona.edad) {
+      html +=
+        '<div><span class="cumple-edad">Cumple ' +
+        persona.edad +
+        ' años</span></div>';
+    }
+
+    html += '<div class="cumple-datos">';
+
     html +=
-      '<li style="padding:8px 0;border-top:1px solid #ECEFF1;">' +
-      '<div style="font-weight:bold;color:#01592F;">' +
-      esc(
-        (persona.grado ? persona.grado + ' ' : '') +
-        (persona.nombre || '')
-      ) +
-      '</div>' +
-      '<div style="font-size:12px;color:#607D8B;">' +
-      (persona.edad
-        ? 'Cumple ' + persona.edad + ' años · '
-        : '') +
-      esc(persona.fechaNacimiento || '') +
-      (persona.dependencia
-        ? ' · ' + esc(persona.dependencia)
-        : '') +
-      (persona.turno
-        ? ' · Turno ' + esc(persona.turno)
-        : '') +
-      '</div>' +
-      '</li>';
+      '<span><b>Dependencia:</b> ' +
+      esc(persona.dependencia || 'No registrada') +
+      '</span>';
+
+    html +=
+      '<span><b>Turno:</b> ' +
+      esc(persona.turno || 'No registrado') +
+      '</span>';
+
+    if (persona.cedula) {
+      html +=
+        '<span><b>Cédula:</b> ' +
+        esc(persona.cedula) +
+        '</span>';
+    }
+
+    if (persona.fechaNacimiento) {
+      html +=
+        '<span><b>Nacimiento:</b> ' +
+        esc(persona.fechaNacimiento) +
+        '</span>';
+    }
+
+    html += '</div>';
+    html += '</div>';
   });
 
-  html += '</ul>';
+  html += '</div>';
+
+  html +=
+    '<div class="cumple-pie">' +
+    '<button type="button" class="btn btn-success btn-sm" ' +
+    'onclick="cerrarAvisoCumpleanios_()">Entendido</button>' +
+    '</div>';
+
+  html += '</div>';
 
   aviso.innerHTML = html;
 
+
+  /*
+   * Cerrar al hacer clic por fuera de la tarjeta.
+   */
+  aviso.addEventListener('click', function(evento) {
+    if (evento.target === aviso) {
+      cerrarAvisoCumpleanios_();
+    }
+  });
+
   document.body.appendChild(aviso);
 
-  mostrarToast(
-    '🎂 Hoy cumplen años ' +
-    info.lista.length +
-    ' integrante(s).'
+  document.addEventListener(
+    'keydown',
+    cerrarCumpleaniosConEscape_
   );
+
+  crearBotonCumpleanios_(total);
+
+  mostrarToast(
+    '🎂 Hoy cumplen años ' + total + ' integrante(s).'
+  );
+}
+
+
+function cerrarCumpleaniosConEscape_(evento) {
+
+  if (evento.key === 'Escape') {
+    cerrarAvisoCumpleanios_();
+  }
+}
+
+
+/**
+ * Botón flotante para volver a abrir la tarjeta
+ * durante la sesión.
+ */
+function crearBotonCumpleanios_(total) {
+
+  if (document.getElementById('botonCumpleanios')) {
+    return;
+  }
+
+  const boton = document.createElement('button');
+
+  boton.id = 'botonCumpleanios';
+  boton.type = 'button';
+  boton.textContent = '🎂 ' + total;
+  boton.title = 'Ver los cumpleaños de hoy';
+
+  boton.onclick = function() {
+    mostrarCumpleaniosHoy_(cumpleaniosSesion);
+  };
+
+  document.body.appendChild(boton);
 }
 
 
@@ -4599,6 +4769,11 @@ function cerrarAvisoCumpleanios_() {
   if (aviso && aviso.parentNode) {
     aviso.parentNode.removeChild(aviso);
   }
+
+  document.removeEventListener(
+    'keydown',
+    cerrarCumpleaniosConEscape_
+  );
 }
 
 
