@@ -1798,11 +1798,8 @@ function iniciarSesion() {
         /*
          * BARRIDO DE CUMPLEAÑOS DEL DÍA.
          */
-        cumpleaniosSesion =
-          respuesta.cumpleanios || null;
-
-        mostrarCumpleaniosHoy_(
-          cumpleaniosSesion
+        iniciarBarridoCumpleanios_(
+          respuesta.cumpleanios
         );
 
       }
@@ -4520,19 +4517,24 @@ function descargarArchivoBase64_(base64, nombre, mime) {
  * Por cada integrante muestra:
  *   GRADO · NOMBRE · EDAD · DEPENDENCIA · TURNO
  */
-function mostrarCumpleaniosHoy_(info) {
+function mostrarCumpleaniosHoy_(info, forzar) {
 
   cerrarAvisoCumpleanios_();
 
-  if (
-    !info ||
-    !info.lista ||
-    info.lista.length === 0
-  ) {
+  const datos = info || {};
+
+  const lista = datos.lista || [];
+
+  const total = lista.length;
+
+  /*
+   * Sin cumpleaños: en el ingreso automático no se
+   * muestra nada, pero si el usuario pulsa el botón 🎂
+   * sí se abre la tarjeta para informarlo.
+   */
+  if (total === 0 && forzar !== true) {
     return;
   }
-
-  const total = info.lista.length;
 
 
   /*
@@ -4603,6 +4605,9 @@ function mostrarCumpleaniosHoy_(info) {
       'background:#F4F6F7;border-top:1px solid #E3E8EA;' +
       'display:flex;justify-content:flex-end;gap:8px;}' +
 
+      '#avisoCumpleanios .cumple-vacio{text-align:center;' +
+      'padding:22px 10px;color:#546E7A;}' +
+
       '#botonCumpleanios{position:fixed;right:18px;bottom:18px;' +
       'z-index:2500;background:#C9A227;color:#3a2f00;border:0;' +
       'border-radius:30px;padding:10px 16px;font-weight:bold;' +
@@ -4627,8 +4632,11 @@ function mostrarCumpleaniosHoy_(info) {
     '<div>' +
     '<h3>🎂 Cumpleaños de hoy</h3>' +
     '<small>' +
-    esc(info.fecha || '') +
-    ' — ' + total + ' integrante' + (total === 1 ? '' : 's') +
+    esc(datos.fecha || '') +
+    ' — ' +
+    (total === 0
+      ? 'sin cumpleaños registrados'
+      : total + ' integrante' + (total === 1 ? '' : 's')) +
     '</small>' +
     '</div>' +
     '<button type="button" class="cumple-cerrar" ' +
@@ -4638,7 +4646,23 @@ function mostrarCumpleaniosHoy_(info) {
 
   html += '<div class="cumple-lista">';
 
-  info.lista.forEach(function(persona) {
+  if (total === 0) {
+
+    html +=
+      '<div class="cumple-vacio">' +
+      '<div style="font-size:34px;">📅</div>' +
+      '<p style="margin:8px 0 0;">' +
+      'Hoy no cumple años ningún integrante de la hoja.' +
+      '</p>' +
+      (datos.error
+        ? '<p style="margin:10px 0 0;color:#B71C1C;font-size:12px;">' +
+          'Aviso del servidor: ' + esc(datos.error) +
+          '</p>'
+        : '') +
+      '</div>';
+  }
+
+  lista.forEach(function(persona) {
 
     html += '<div class="cumple-item">';
 
@@ -4695,6 +4719,16 @@ function mostrarCumpleaniosHoy_(info) {
 
   html +=
     '<div class="cumple-pie">' +
+    '<span style="flex:1;font-size:11px;color:#78909C;' +
+    'align-self:center;">' +
+    'Hoja: ' + esc(datos.hoja || '?') +
+    ' · columna ' + esc(datos.columna || 'M') +
+    (datos.sinFecha
+      ? ' · ' + datos.sinFecha + ' sin fecha válida'
+      : '') +
+    '</span>' +
+    '<button type="button" class="btn btn-outline-secondary btn-sm" ' +
+    'onclick="actualizarCumpleanios()">Actualizar</button>' +
     '<button type="button" class="btn btn-success btn-sm" ' +
     'onclick="cerrarAvisoCumpleanios_()">Entendido</button>' +
     '</div>';
@@ -4722,9 +4756,52 @@ function mostrarCumpleaniosHoy_(info) {
 
   crearBotonCumpleanios_(total);
 
-  mostrarToast(
-    '🎂 Hoy cumplen años ' + total + ' integrante(s).'
-  );
+  if (total > 0) {
+    mostrarToast(
+      '🎂 Hoy cumplen años ' + total + ' integrante(s).'
+    );
+  }
+}
+
+
+/**
+ * PRUEBA VISUAL.
+ *
+ * Abra la consola del navegador (F12) y escriba:
+ *   probarCumpleanios()
+ *
+ * Muestra la tarjeta con datos de ejemplo, sin tocar
+ * la hoja de cálculo. Sirve para verificar el diseño
+ * cualquier día del año.
+ */
+function probarCumpleanios() {
+
+  mostrarCumpleaniosHoy_({
+    fecha: '18/09/2026',
+    hoja: 'PRUEBA',
+    columna: 'M',
+    sinFecha: 0,
+    lista: [
+      {
+        grado: 'TE',
+        nombre: 'PEREZ GOMEZ JUAN CARLOS',
+        edad: 34,
+        dependencia: 'ASJUR',
+        turno: 'A',
+        cedula: '1020304050',
+        fechaNacimiento: '18/09/1992'
+      },
+      {
+        grado: 'PT',
+        nombre: 'ARIAS LOPEZ ANA MARIA',
+        edad: 27,
+        dependencia: 'GUTAH',
+        turno: 'B',
+        cedula: '1098765432',
+        fechaNacimiento: '18/09/1999'
+      }
+    ]
+  }, true);
 }
 
 
@@ -4742,22 +4819,121 @@ function cerrarCumpleaniosConEscape_(evento) {
  */
 function crearBotonCumpleanios_(total) {
 
-  if (document.getElementById('botonCumpleanios')) {
+  let boton =
+    document.getElementById('botonCumpleanios');
+
+  if (!boton) {
+
+    boton = document.createElement('button');
+
+    boton.id = 'botonCumpleanios';
+    boton.type = 'button';
+
+    boton.onclick = function() {
+      mostrarCumpleaniosHoy_(cumpleaniosSesion, true);
+    };
+
+    document.body.appendChild(boton);
+  }
+
+  const cantidad = Number(total) || 0;
+
+  boton.textContent = '🎂 ' + cantidad;
+
+  boton.title =
+    cantidad > 0
+      ? 'Ver los ' + cantidad + ' cumpleaños de hoy'
+      : 'Hoy no hay cumpleaños — pulse para verificar';
+
+  boton.style.background =
+    cantidad > 0 ? '#C9A227' : '#B0BEC5';
+}
+
+
+/**
+ * Arranca el barrido de cumpleaños al iniciar sesión.
+ *
+ * El botón flotante 🎂 SIEMPRE se crea, haya o no
+ * cumpleaños, para que el usuario pueda verificar el
+ * estado del barrido en cualquier momento.
+ *
+ * Si el servidor no envió el dato (por ejemplo, porque
+ * el Código.gs desplegado todavía es el anterior), se
+ * consulta aparte.
+ */
+function iniciarBarridoCumpleanios_(info) {
+
+  if (info) {
+
+    cumpleaniosSesion = info;
+
+    crearBotonCumpleanios_(
+      (info.lista || []).length
+    );
+
+    if (info.error) {
+      mostrarToast(
+        'Cumpleaños: ' + info.error,
+        'error'
+      );
+    }
+
+    mostrarCumpleaniosHoy_(info, false);
+
     return;
   }
 
-  const boton = document.createElement('button');
+  /*
+   * RESPALDO: el login no trajo el barrido.
+   */
+  crearBotonCumpleanios_(0);
 
-  boton.id = 'botonCumpleanios';
-  boton.type = 'button';
-  boton.textContent = '🎂 ' + total;
-  boton.title = 'Ver los cumpleaños de hoy';
+  google.script.run
 
-  boton.onclick = function() {
-    mostrarCumpleaniosHoy_(cumpleaniosSesion);
-  };
+    .withSuccessHandler(function(respuesta) {
 
-  document.body.appendChild(boton);
+      if (!respuesta || respuesta.estado !== true) {
+
+        mostrarToast(
+          respuesta && respuesta.mensaje
+            ? respuesta.mensaje
+            : 'No fue posible consultar los cumpleaños.',
+          'error'
+        );
+
+        return;
+      }
+
+      cumpleaniosSesion = respuesta.datos || null;
+
+      crearBotonCumpleanios_(
+        cumpleaniosSesion &&
+        cumpleaniosSesion.lista
+          ? cumpleaniosSesion.lista.length
+          : 0
+      );
+
+      mostrarCumpleaniosHoy_(cumpleaniosSesion, false);
+
+    })
+
+    .withFailureHandler(function(error) {
+
+      console.error('Cumpleaños:', error);
+
+      mostrarToast(
+        'No fue posible consultar los cumpleaños. ' +
+        'Verifique que el Código.gs esté actualizado y ' +
+        'vuelto a implementar.',
+        'error'
+      );
+
+    })
+
+    .consultarCumpleaniosHoy(
+      tokenSesion,
+      false
+    );
 }
 
 
@@ -4807,16 +4983,14 @@ function actualizarCumpleanios() {
 
       cumpleaniosSesion = respuesta.datos || null;
 
-      if (
-        !cumpleaniosSesion ||
-        !cumpleaniosSesion.lista ||
-        cumpleaniosSesion.lista.length === 0
-      ) {
-        mostrarToast('Hoy no hay cumpleaños registrados.');
-        return;
-      }
+      crearBotonCumpleanios_(
+        cumpleaniosSesion &&
+        cumpleaniosSesion.lista
+          ? cumpleaniosSesion.lista.length
+          : 0
+      );
 
-      mostrarCumpleaniosHoy_(cumpleaniosSesion);
+      mostrarCumpleaniosHoy_(cumpleaniosSesion, true);
 
     })
 
