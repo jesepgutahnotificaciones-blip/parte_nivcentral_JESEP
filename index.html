@@ -1083,6 +1083,24 @@
                 🖨 Imprimir
               </button>
 
+              <button
+                type="button"
+                id="btnGenerarPDF"
+                class="btn btn-danger"
+                onclick="generarArchivoReporte('pdf')"
+              >
+                📄 Generar PDF
+              </button>
+
+              <button
+                type="button"
+                id="btnGenerarExcel"
+                class="btn btn-success"
+                onclick="generarArchivoReporte('excel')"
+              >
+                📊 Generar Excel
+              </button>
+
             </div>
 
           </div>
@@ -1284,7 +1302,7 @@
  */
 
 const APPS_SCRIPT_API_URL =
-  'https://script.google.com/macros/s/AKfycbwZs6oRCGiOHu3LOUmkKLUro0kc6XbArwEET-qZB0z2Uc8cWSP_Yv9l-PZwaB9zTYSf/exec';
+  'https://script.google.com/macros/s/AKfycbzqf5Vadtuh-ckC98XTH5bUQhJoMIMgN7Hn9tDhhaWHsojqpNdLb_jJb_aoj2KS8AB-/exec';
 
 
 (function configurarPuenteAPI() {
@@ -3283,6 +3301,154 @@ function imprimirReporte() {
 
   frame.contentWindow.print();
 
+}
+
+
+/* =====================================================
+   GENERAR ARCHIVOS PDF / EXCEL
+   ===================================================== */
+
+let ultimoReporteArchivos = null;
+
+
+function generarArchivoReporte(
+  formato
+) {
+
+  if (!verificarSesionLocal()) {
+    return;
+  }
+
+  const selector = document.getElementById('filtroReporte');
+  const filtro = selector ? selector.value : '';
+
+  if (!filtro) {
+    mostrarToast(
+      'Seleccione un turno para generar el reporte.',
+      'error'
+    );
+    return;
+  }
+
+  // Evita generar un nuevo consecutivo si ya se generaron
+  // los archivos para el mismo turno durante esta sesión.
+  if (
+    ultimoReporteArchivos &&
+    ultimoReporteArchivos.filtro === filtro
+  ) {
+    abrirArchivoReporte_(formato, ultimoReporteArchivos);
+    return;
+  }
+
+  const btnPDF = document.getElementById('btnGenerarPDF');
+  const btnExcel = document.getElementById('btnGenerarExcel');
+
+  if (btnPDF) btnPDF.disabled = true;
+  if (btnExcel) btnExcel.disabled = true;
+
+  mostrarToast('Generando PDF y Excel. Espere un momento...');
+
+  google.script.run
+    .withSuccessHandler(function(respuesta) {
+
+      if (btnPDF) btnPDF.disabled = false;
+      if (btnExcel) btnExcel.disabled = false;
+
+      if (!respuesta || respuesta.estado !== true) {
+        mostrarToast(
+          respuesta && respuesta.mensaje
+            ? respuesta.mensaje
+            : 'No fue posible generar los archivos.',
+          'error'
+        );
+        return;
+      }
+
+      const datos = respuesta.datos || respuesta;
+
+      ultimoReporteArchivos = {
+        filtro: datos.filtro || filtro,
+        consecutivo: datos.consecutivo || '',
+        archivoPDF: datos.archivoPDF || '',
+        urlPDF: datos.urlPDF || '',
+        archivoExcel: datos.archivoExcel || '',
+        urlExcel: datos.urlExcel || ''
+      };
+
+      mostrarResultadoArchivosReporte_(ultimoReporteArchivos);
+      abrirArchivoReporte_(formato, ultimoReporteArchivos);
+
+    })
+    .withFailureHandler(function(error) {
+
+      if (btnPDF) btnPDF.disabled = false;
+      if (btnExcel) btnExcel.disabled = false;
+
+      console.error('Error generando archivos:', error);
+
+      mostrarToast(
+        error && error.message
+          ? error.message
+          : 'Error generando los archivos.',
+        'error'
+      );
+
+    })
+    .generarReporteTurno(
+      tokenSesion,
+      filtro
+    );
+}
+
+
+function abrirArchivoReporte_(formato, datos) {
+
+  const url = formato === 'pdf'
+    ? datos.urlPDF
+    : datos.urlExcel;
+
+  if (!url) {
+    mostrarToast(
+      formato === 'pdf'
+        ? 'No se obtuvo el enlace del archivo PDF.'
+        : 'No se obtuvo el enlace del archivo Excel.',
+      'error'
+    );
+    return;
+  }
+
+  window.open(url, '_blank', 'noopener');
+}
+
+
+function mostrarResultadoArchivosReporte_(datos) {
+
+  const contenedor = document.getElementById('resultadoReporte');
+
+  if (!contenedor) return;
+
+  const bloque = document.createElement('div');
+  bloque.className = 'alert alert-success mt-3';
+
+  bloque.innerHTML =
+    '<strong>Reporte generado correctamente.</strong>' +
+    (datos.consecutivo
+      ? ' Consecutivo: <strong>' + esc(datos.consecutivo) + '</strong>.'
+      : '') +
+    '<div class="mt-2 d-flex flex-wrap gap-2">' +
+    (datos.urlPDF
+      ? '<a class="btn btn-sm btn-danger" href="' +
+        esc(datos.urlPDF) +
+        '" target="_blank" rel="noopener">📄 Abrir PDF</a>'
+      : '') +
+    (datos.urlExcel
+      ? '<a class="btn btn-sm btn-success" href="' +
+        esc(datos.urlExcel) +
+        '" target="_blank" rel="noopener">📊 Abrir Excel</a>'
+      : '') +
+    '</div>';
+
+  contenedor.prepend(bloque);
 }
 
 
