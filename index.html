@@ -899,6 +899,7 @@
             <button
               type="button"
               class="turn-button"
+              data-turno="A"
               onclick="cargarTurno('A')"
             >
 
@@ -914,6 +915,7 @@
             <button
               type="button"
               class="turn-button"
+              data-turno="B"
               onclick="cargarTurno('B')"
             >
 
@@ -929,6 +931,7 @@
             <button
               type="button"
               class="turn-button"
+              data-turno="C"
               onclick="cargarTurno('C')"
             >
 
@@ -944,6 +947,7 @@
             <button
               type="button"
               class="turn-button"
+              data-turno="SEPRI"
               onclick="cargarTurno('SEPRI')"
             >
 
@@ -959,6 +963,7 @@
             <button
               type="button"
               class="turn-button"
+              data-turno="GURIN"
               onclick="cargarTurno('GURIN')"
             >
 
@@ -974,6 +979,7 @@
             <button
               type="button"
               class="turn-button"
+              data-turno="NO APLICA"
               onclick="cargarTurno('NO APLICA')"
             >
 
@@ -1302,7 +1308,7 @@
  */
 
 const APPS_SCRIPT_API_URL =
-  'https://script.google.com/macros/s/AKfycbyDc5zxYa4Qh2DNQ3bt4VXoRU5xq6VqeEyaBTVOq4xwGm0IN9SGbgWC2CGRXJe98x2G/exec';
+  'https://script.google.com/macros/s/AKfycbygC8zmtXFVDHaSGzh7XRm9CUqADdx2uJsQ5jBIKWuJWylpTjy3sGX6HaJHMvZ4bxHr/exec';
 
 
 (function configurarPuenteAPI() {
@@ -1546,6 +1552,8 @@ let rolSesion = null;
 
 let dependenciaSesion = null;
 
+let turnoAsignadoSesion = null;
+
 let funcionarioSeleccionado = null;
 
 let ultimoTurnoConsultado = null;
@@ -1735,6 +1743,15 @@ function iniciarSesion() {
             : '';
 
 
+        turnoAsignadoSesion =
+          respuesta.turnoAsignado ||
+          (
+            respuesta.usuario &&
+            respuesta.usuario.turnoAsignado
+          ) ||
+          '';
+
+
         document
           .getElementById(
             'pantallaLogin'
@@ -1914,6 +1931,9 @@ function configurarPermisos() {
 
     }
   );
+
+
+  aplicarRestriccionTurnos();
 
 }
 
@@ -2876,6 +2896,132 @@ function limpiarFormularioNovedad() {
       'rvNovedad'
     )
     .value = '';
+
+}
+
+
+/* =====================================================
+   RESTRICCIÓN DE TURNOS SEGÚN USUARIO
+   =====================================================
+
+ * Si el usuario es OPERADOR y tiene un turno asignado
+ * (campo DEPENDENCIA = DISPONIBLE_X en USUARIOS), solo se
+ * muestra el botón de ese turno y el select de reportes
+ * queda limitado a ese mismo turno.
+ *
+ * Los administradores, y los operadores sin turno
+ * asignado, ven todos los botones.
+ */
+
+function aplicarRestriccionTurnos() {
+
+  const limpiar = function(valor) {
+    return String(valor || '')
+      .trim()
+      .toUpperCase();
+  };
+
+
+  const esOperadorRestringido =
+    rolSesion === 'OPERADOR' &&
+    limpiar(turnoAsignadoSesion) !== '';
+
+
+  /*
+   * Botones de la sección Turnos.
+   */
+  const botones =
+    document.querySelectorAll(
+      '.turn-buttons .turn-button'
+    );
+
+
+  botones.forEach(
+    function(boton) {
+
+      if (!esOperadorRestringido) {
+
+        boton.style.display = '';
+        return;
+
+      }
+
+
+      const filtroBoton =
+        limpiar(
+          boton.getAttribute(
+            'data-turno'
+          )
+        );
+
+
+      boton.style.display =
+        filtroBoton ===
+        limpiar(turnoAsignadoSesion)
+          ? ''
+          : 'none';
+
+    }
+  );
+
+
+  /*
+   * Select de turnos de la sección Reportes.
+   */
+  const selector =
+    document.getElementById(
+      'filtroReporte'
+    );
+
+
+  if (selector) {
+
+    const opciones =
+      selector.querySelectorAll(
+        'option'
+      );
+
+
+    opciones.forEach(
+      function(opcion) {
+
+        if (!esOperadorRestringido) {
+
+          opcion.style.display = '';
+          opcion.disabled = false;
+          return;
+
+        }
+
+
+        const coincide =
+          limpiar(
+            opcion.value
+          ) ===
+          limpiar(turnoAsignadoSesion);
+
+
+        opcion.style.display =
+          coincide ? '' : 'none';
+
+        opcion.disabled = !coincide;
+
+
+        if (
+          !coincide &&
+          selector.value ===
+          opcion.value
+        ) {
+
+          selector.value =
+            turnoAsignadoSesion;
+
+        }
+
+      }
+    );
+
+  }
 
 }
 
