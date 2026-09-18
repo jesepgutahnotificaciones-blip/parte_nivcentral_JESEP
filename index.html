@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 
 <head>
@@ -3044,7 +3044,7 @@ function renderTurno(
     else resumen['NO UNI']++;
   });
 
-  let html = '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><span>📋 Listado ' + esc(filtro) + '</span><div class="no-print"><button type="button" class="btn btn-sm btn-secondary me-1" onclick="imprimirTurno()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="previsualizarTurnoActual()">📄 Reporte</button></div></div></div><div class="card-body">';
+  let html = '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><span>📋 Listado ' + esc(filtro) + '</span><div class="no-print"><button type="button" class="btn btn-sm btn-secondary me-1" onclick="imprimirTurno()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
 
   html += '<div class="row g-2 mb-3">';
   html += crearEstadistica('OF', resumen.OF);
@@ -3309,6 +3309,31 @@ function imprimirReporte() {
    ===================================================== */
 
 let ultimoReporteArchivos = null;
+
+
+function generarReporteDesdeTurno() {
+
+  if (!verificarSesionLocal()) {
+    return;
+  }
+
+  if (!ultimoTurnoConsultado) {
+    mostrarToast(
+      'Primero consulte un turno.',
+      'error'
+    );
+    return;
+  }
+
+  const selector = document.getElementById('filtroReporte');
+
+  if (selector) {
+    selector.value = ultimoTurnoConsultado;
+  }
+
+  generarArchivoReporte('pdf');
+
+}
 
 
 function generarArchivoReporte(
