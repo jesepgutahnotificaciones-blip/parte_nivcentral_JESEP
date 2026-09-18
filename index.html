@@ -1102,9 +1102,9 @@
                 type="button"
                 id="btnGenerarExcel"
                 class="btn btn-success"
-                onclick="generarArchivoReporte('excel')"
+                onclick="descargarExcelReporte()"
               >
-                📊 Generar Excel
+                📊 Descargar Excel
               </button>
 
             </div>
@@ -1308,7 +1308,7 @@
  */
 
 const APPS_SCRIPT_API_URL =
-  'https://script.google.com/macros/s/AKfycbyRRkWxKnNzYxtVigfj-Bcv9GCSxaMuZ6AW3iAAr9E-EQUA5QdG9_2UrayyK_stskpd/exec';
+  'https://script.google.com/macros/s/AKfycbz7-L_F16kYtzxVbyadgAkMtJQedSNmrbj2JdWKWC9ONgu5603QwloHCKVnQtRMJw0/exec';
 
 
 (function configurarPuenteAPI() {
@@ -1553,6 +1553,7 @@ let rolSesion = null;
 let dependenciaSesion = null;
 
 let turnoAsignadoSesion = null;
+let cumpleaniosSesion = null;
 
 let funcionarioSeleccionado = null;
 
@@ -1791,6 +1792,17 @@ function iniciarSesion() {
 
         mostrarToast(
           'Sesión iniciada correctamente.'
+        );
+
+
+        /*
+         * BARRIDO DE CUMPLEAÑOS DEL DÍA.
+         */
+        cumpleaniosSesion =
+          respuesta.cumpleanios || null;
+
+        mostrarCumpleaniosHoy_(
+          cumpleaniosSesion
         );
 
       }
@@ -4320,6 +4332,335 @@ function formatearValor(
   return String(valor);
 
 }
+
+
+
+/* =====================================================
+   DESCARGA DIRECTA DEL ARCHIVO EXCEL (.xls)
+
+   El servidor devuelve el archivo en base64 y el
+   navegador lo descarga sin abrir Drive.
+   ===================================================== */
+
+function descargarExcelReporte() {
+
+  if (!verificarSesionLocal()) {
+    return;
+  }
+
+  const selector = document.getElementById('filtroReporte');
+  const filtro = selector ? selector.value : '';
+
+  if (!filtro) {
+    mostrarToast(
+      'Seleccione un turno para generar el reporte.',
+      'error'
+    );
+    return;
+  }
+
+  const boton = document.getElementById('btnGenerarExcel');
+  const textoOriginal = boton ? boton.textContent : '';
+
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = '⏳ Generando...';
+  }
+
+  function restaurar() {
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = textoOriginal || '📊 Descargar Excel';
+    }
+  }
+
+  google.script.run
+
+    .withSuccessHandler(function(respuesta) {
+
+      restaurar();
+
+      if (!respuesta || respuesta.estado !== true) {
+        mostrarToast(
+          respuesta && respuesta.mensaje
+            ? respuesta.mensaje
+            : 'No fue posible generar el archivo Excel.',
+          'error'
+        );
+        return;
+      }
+
+      const datos = respuesta.datos || {};
+
+      if (!datos.contenido) {
+        mostrarToast(
+          'El servidor no devolvió el archivo.',
+          'error'
+        );
+        return;
+      }
+
+      descargarArchivoBase64_(
+        datos.contenido,
+        datos.nombre || 'Listado.xls',
+        datos.mime || 'application/vnd.ms-excel'
+      );
+
+      mostrarToast(
+        'Archivo descargado: ' +
+        (datos.total || 0) +
+        ' funcionario(s).'
+      );
+
+    })
+
+    .withFailureHandler(function(error) {
+
+      restaurar();
+
+      console.error('Error descargando Excel:', error);
+
+      mostrarToast(
+        error && error.message
+          ? error.message
+          : 'Error generando el archivo Excel.',
+        'error'
+      );
+
+    })
+
+    .descargarReporteExcel(
+      tokenSesion,
+      filtro
+    );
+}
+
+
+/**
+ * Convierte el base64 recibido en un archivo y dispara
+ * la descarga en el navegador.
+ */
+function descargarArchivoBase64_(base64, nombre, mime) {
+
+  try {
+
+    const binario = atob(base64);
+
+    const bytes = new Uint8Array(binario.length);
+
+    for (let i = 0; i < binario.length; i++) {
+      bytes[i] = binario.charCodeAt(i);
+    }
+
+    const blob = new Blob([bytes], { type: mime });
+
+    const url = URL.createObjectURL(blob);
+
+    const enlace = document.createElement('a');
+
+    enlace.href = url;
+    enlace.download = nombre;
+    enlace.style.display = 'none';
+
+    document.body.appendChild(enlace);
+    enlace.click();
+
+    setTimeout(function() {
+      document.body.removeChild(enlace);
+      URL.revokeObjectURL(url);
+    }, 2000);
+
+  } catch (error) {
+
+    console.error('Error al descargar el archivo:', error);
+
+    /*
+     * RESPALDO: si el navegador bloquea la descarga
+     * desde el marco de Apps Script, se abre en una
+     * pestaña nueva.
+     */
+    try {
+      window.open(
+        'data:' + mime + ';base64,' + base64,
+        '_blank'
+      );
+    } catch (errorRespaldo) {
+      mostrarToast(
+        'Su navegador bloqueó la descarga. Permita las ' +
+        'descargas para este sitio e intente de nuevo.',
+        'error'
+      );
+    }
+  }
+}
+
+
+/* =====================================================
+   CUMPLEAÑOS DEL DÍA (COLUMNA M)
+   ===================================================== */
+
+/**
+ * Muestra el aviso de cumpleaños al iniciar sesión.
+ */
+function mostrarCumpleaniosHoy_(info) {
+
+  const anterior =
+    document.getElementById('avisoCumpleanios');
+
+  if (anterior && anterior.parentNode) {
+    anterior.parentNode.removeChild(anterior);
+  }
+
+  if (
+    !info ||
+    !info.lista ||
+    info.lista.length === 0
+  ) {
+    return;
+  }
+
+  const aviso = document.createElement('div');
+
+  aviso.id = 'avisoCumpleanios';
+
+  aviso.style.cssText =
+    'position:fixed;top:16px;right:16px;z-index:2000;' +
+    'width:340px;max-width:calc(100vw - 32px);' +
+    'max-height:70vh;overflow:auto;' +
+    'background:#ffffff;border-radius:10px;' +
+    'border-top:6px solid #C9A227;' +
+    'box-shadow:0 8px 24px rgba(0,0,0,.25);' +
+    'font-family:Arial,Helvetica,sans-serif;';
+
+  let html = '';
+
+  html +=
+    '<div style="background:#01592F;color:#fff;padding:10px 14px;' +
+    'display:flex;align-items:center;justify-content:space-between;">' +
+    '<strong>🎂 Cumpleaños de hoy</strong>' +
+    '<button type="button" onclick="cerrarAvisoCumpleanios_()" ' +
+    'style="background:transparent;border:0;color:#fff;font-size:20px;' +
+    'line-height:1;cursor:pointer;">&times;</button>' +
+    '</div>';
+
+  html +=
+    '<div style="padding:10px 14px;font-size:13px;color:#546E7A;">' +
+    esc(info.fecha || '') + ' — ' +
+    info.lista.length + ' integrante(s)' +
+    '</div>';
+
+  html += '<ul style="list-style:none;margin:0;padding:0 14px 12px;">';
+
+  info.lista.forEach(function(persona) {
+
+    html +=
+      '<li style="padding:8px 0;border-top:1px solid #ECEFF1;">' +
+      '<div style="font-weight:bold;color:#01592F;">' +
+      esc(
+        (persona.grado ? persona.grado + ' ' : '') +
+        (persona.nombre || '')
+      ) +
+      '</div>' +
+      '<div style="font-size:12px;color:#607D8B;">' +
+      (persona.edad
+        ? 'Cumple ' + persona.edad + ' años · '
+        : '') +
+      esc(persona.fechaNacimiento || '') +
+      (persona.dependencia
+        ? ' · ' + esc(persona.dependencia)
+        : '') +
+      (persona.turno
+        ? ' · Turno ' + esc(persona.turno)
+        : '') +
+      '</div>' +
+      '</li>';
+  });
+
+  html += '</ul>';
+
+  aviso.innerHTML = html;
+
+  document.body.appendChild(aviso);
+
+  mostrarToast(
+    '🎂 Hoy cumplen años ' +
+    info.lista.length +
+    ' integrante(s).'
+  );
+}
+
+
+function cerrarAvisoCumpleanios_() {
+
+  const aviso =
+    document.getElementById('avisoCumpleanios');
+
+  if (aviso && aviso.parentNode) {
+    aviso.parentNode.removeChild(aviso);
+  }
+}
+
+
+/**
+ * Vuelve a consultar los cumpleaños sin cerrar sesión.
+ *
+ * Puede asociarse a un botón:
+ *   <button onclick="actualizarCumpleanios()">🎂</button>
+ */
+function actualizarCumpleanios() {
+
+  if (!verificarSesionLocal()) {
+    return;
+  }
+
+  mostrarToast('Consultando cumpleaños...');
+
+  google.script.run
+
+    .withSuccessHandler(function(respuesta) {
+
+      if (!respuesta || respuesta.estado !== true) {
+        mostrarToast(
+          respuesta && respuesta.mensaje
+            ? respuesta.mensaje
+            : 'No fue posible consultar los cumpleaños.',
+          'error'
+        );
+        return;
+      }
+
+      cumpleaniosSesion = respuesta.datos || null;
+
+      if (
+        !cumpleaniosSesion ||
+        !cumpleaniosSesion.lista ||
+        cumpleaniosSesion.lista.length === 0
+      ) {
+        mostrarToast('Hoy no hay cumpleaños registrados.');
+        return;
+      }
+
+      mostrarCumpleaniosHoy_(cumpleaniosSesion);
+
+    })
+
+    .withFailureHandler(function(error) {
+
+      console.error(error);
+
+      mostrarToast(
+        'Error consultando los cumpleaños.',
+        'error'
+      );
+
+    })
+
+    .consultarCumpleaniosHoy(
+      tokenSesion,
+      true
+    );
+}
+
 
 
 /* =====================================================
