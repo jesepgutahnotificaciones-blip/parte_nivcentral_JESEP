@@ -1,0 +1,4161 @@
+  <!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+
+  <title>
+    Sistema de Gestión de Novedades - JESEP
+  </title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <style>
+
+    :root {
+      --verde: #01592F;
+      --verde-oscuro: #013d21;
+      --azul: #173E56;
+      --dorado: #C9A227;
+      --gris: #f4f6f7;
+      --gris-borde: #dfe4e7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--gris);
+      font-family: Arial, Helvetica, sans-serif;
+      color: #263238;
+    }
+
+    .app-header {
+      background: var(--verde);
+      color: white;
+      padding: 18px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+
+    .app-header h3 {
+      margin: 0;
+      font-weight: 700;
+    }
+
+    .app-header small {
+      opacity: .9;
+    }
+
+    .container-app {
+      max-width: 1500px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      background: white;
+      border-bottom: 1px solid var(--gris-borde);
+      font-weight: 700;
+      padding: 15px 18px;
+    }
+
+    .card-body {
+      padding: 18px;
+    }
+
+    .btn-pol {
+      background: var(--verde);
+      color: white;
+      border: none;
+    }
+
+    .btn-pol:hover {
+      background: var(--verde-oscuro);
+      color: white;
+    }
+
+    .btn-dorado {
+      background: var(--dorado);
+      color: white;
+      border: none;
+    }
+
+    .btn-dorado:hover {
+      opacity: .9;
+      color: white;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .menu {
+      background: white;
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+
+    .menu button {
+      border: none;
+      background: transparent;
+      padding: 10px 14px;
+      border-radius: 7px;
+      margin: 2px;
+      color: #455a64;
+      font-weight: 600;
+    }
+
+    .menu button:hover {
+      background: #eef3f1;
+    }
+
+    .menu button.active {
+      background: var(--verde);
+      color: white;
+    }
+
+    .turn-buttons {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .turn-button {
+      border: 1px solid var(--gris-borde);
+      background: white;
+      border-radius: 12px;
+      padding: 18px 12px;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .turn-button:hover {
+      transform: translateY(-2px);
+      border-color: var(--verde);
+      box-shadow: 0 4px 12px rgba(0,0,0,.10);
+    }
+
+    .turn-button strong {
+      display: block;
+      font-size: 30px;
+      color: var(--verde);
+    }
+
+    .turn-button span {
+      display: block;
+      margin-top: 5px;
+      font-size: 13px;
+      color: #546e7a;
+    }
+
+    .employee-card {
+      border-left: 5px solid var(--verde);
+      background: #f8faf9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .employee-name {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--verde);
+    }
+
+    .employee-meta {
+      color: #546e7a;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    table {
+      width: 100%;
+      font-size: 13px;
+      background: white;
+    }
+
+    th {
+      background: var(--verde) !important;
+      color: white !important;
+      white-space: nowrap;
+    }
+
+    td {
+      vertical-align: middle;
+    }
+
+    .badge-novedad {
+      background: #e8f3ed;
+      color: var(--verde);
+      border: 1px solid #c8dfd2;
+      padding: 4px 7px;
+      border-radius: 5px;
+      display: inline-block;
+      margin: 2px;
+      font-size: 11px;
+    }
+
+    .badge-activa {
+      background: #fff3cd;
+      color: #7a5b00;
+      border: 1px solid #ead28a;
+      padding: 4px 7px;
+      border-radius: 5px;
+      font-size: 11px;
+    }
+
+    .empty {
+      padding: 25px;
+      text-align: center;
+      color: #78909c;
+      background: white;
+      border-radius: 10px;
+    }
+
+    .loading {
+      padding: 25px;
+      text-align: center;
+      background: white;
+      border-radius: 10px;
+      color: var(--verde);
+    }
+
+    .login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background:
+        linear-gradient(
+          135deg,
+          #01592F,
+          #173E56
+        );
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 430px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 35px rgba(0,0,0,.25);
+      overflow: hidden;
+    }
+
+    .login-header {
+      background: var(--verde);
+      color: white;
+      padding: 25px;
+      text-align: center;
+    }
+
+    .login-header h3 {
+      margin: 0;
+    }
+
+    .login-body {
+      padding: 25px;
+    }
+
+    .session-info {
+      font-size: 12px;
+      color: #607d8b;
+      text-align: right;
+      margin-bottom: 10px;
+    }
+
+    .stat-card {
+      border-radius: 10px;
+      padding: 15px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      height: 100%;
+    }
+
+    .stat-number {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--verde);
+    }
+
+    .stat-label {
+      color: #607d8b;
+      font-size: 13px;
+    }
+
+    .toast-app {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 9999;
+      min-width: 280px;
+      max-width: 420px;
+      background: #263238;
+      color: white;
+      padding: 14px 18px;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0,0,0,.25);
+      display: none;
+    }
+
+    .toast-app.show {
+      display: block;
+    }
+
+    .report-frame {
+      width: 100%;
+      min-height: 600px;
+      border: 1px solid var(--gris-borde);
+      border-radius: 8px;
+      background: white;
+    }
+
+    @media print {
+
+      body {
+        background: white;
+      }
+
+      .no-print,
+      .menu,
+      .app-header,
+      button,
+      input,
+      select,
+      textarea {
+        display: none !important;
+      }
+
+      .section {
+        display: none !important;
+      }
+
+      #seccionTurnos {
+        display: block !important;
+      }
+
+      #resultadoTurno {
+        display: block !important;
+      }
+
+      .card {
+        box-shadow: none;
+        border: none;
+      }
+
+      table {
+        font-size: 10px;
+      }
+
+      th {
+        background: #01592F !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+    }
+
+  .grupo-grado td{background:#e9ecef;font-weight:700;border-top:2px solid #6c757d;padding:6px;}
+</style>
+
+</head>
+
+<body>
+
+
+<!-- =====================================================
+     LOGIN
+     ===================================================== -->
+
+<div id="pantallaLogin" class="login-wrapper">
+
+  <div class="login-card">
+
+    <div class="login-header">
+
+      <h3>
+        POLICÍA NACIONAL
+      </h3>
+
+      <div class="mt-2">
+        Sistema de Gestión de Novedades
+      </div>
+
+      <small>
+        JESEP - GUTAH
+      </small>
+
+    </div>
+
+    <div class="login-body">
+
+      <div class="mb-3">
+
+        <label class="form-label">
+          Usuario
+        </label>
+
+        <input
+          type="text"
+          id="loginUsuario"
+          class="form-control"
+          autocomplete="username"
+        >
+
+      </div>
+
+
+      <div class="mb-3">
+
+        <label class="form-label">
+          Contraseña
+        </label>
+
+        <input
+          type="password"
+          id="loginClave"
+          class="form-control"
+          autocomplete="current-password"
+          onkeydown="
+            if(event.key === 'Enter'){
+              iniciarSesion();
+            }
+          "
+        >
+
+      </div>
+
+
+      <button
+        type="button"
+        id="btnLogin"
+        class="btn btn-pol w-100"
+        onclick="iniciarSesion()"
+      >
+        Ingresar
+      </button>
+
+      <div
+        id="mensajeLogin"
+        class="mt-3 text-center"
+      ></div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     APLICACIÓN
+     ===================================================== -->
+
+<div id="aplicacion" style="display:none;">
+
+
+  <!-- HEADER -->
+
+  <header class="app-header">
+
+    <div class="container-app">
+
+      <div class="d-flex
+                  justify-content-between
+                  align-items-center
+                  flex-wrap
+                  gap-2">
+
+        <div>
+
+          <h3>
+            POLICÍA NACIONAL
+          </h3>
+
+          <small>
+            Sistema de Gestión de Novedades
+            — JESEP / GUTAH
+          </small>
+
+        </div>
+
+
+        <div class="text-end">
+
+          <div id="usuarioActual"></div>
+
+          <button
+            type="button"
+            class="btn btn-sm btn-light mt-1"
+            onclick="cerrarSesionCliente()"
+          >
+            Cerrar sesión
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <main class="container-app">
+
+
+    <!-- =================================================
+         MENÚ
+         ================================================= -->
+
+    <nav class="menu no-print">
+
+      <button
+        type="button"
+        id="menuConsulta"
+        onclick="mostrarSeccion('consulta')"
+      >
+        🔎 Consulta
+      </button>
+
+      <button
+        type="button"
+        id="menuNovedad"
+        onclick="mostrarSeccion('novedad')"
+      >
+        📝 Registrar novedad
+      </button>
+
+      <button
+        type="button"
+        id="menuTurnos"
+        onclick="mostrarSeccion('turnos')"
+      >
+        📋 Turnos
+      </button>
+
+      <button
+        type="button"
+        id="menuReportes"
+        onclick="mostrarSeccion('reportes')"
+      >
+        📄 Reportes
+      </button>
+
+      <button
+        type="button"
+        id="menuUsuarios"
+        class="soloAdministrador"
+        onclick="mostrarSeccion('usuarios')"
+      >
+        👤 Usuarios
+      </button>
+
+    </nav>
+
+
+    <!-- =================================================
+         CONSULTA FUNCIONARIO
+         ================================================= -->
+
+    <section
+      id="seccionConsulta"
+      class="section"
+    >
+
+      <div class="card">
+
+        <div class="card-header">
+          🔎 Consulta de funcionario
+        </div>
+
+        <div class="card-body">
+
+          <div class="row g-2">
+
+            <div class="col-md-9">
+
+              <input
+                type="text"
+                id="buscarValor"
+                class="form-control"
+                placeholder="Digite cédula, nombre, grado, nivel o dependencia"
+                onkeydown="
+                  if(event.key === 'Enter'){
+                    buscarFuncionario();
+                  }
+                "
+              >
+
+            </div>
+
+            <div class="col-md-3">
+
+              <button
+                type="button"
+                class="btn btn-pol w-100"
+                onclick="buscarFuncionario()"
+              >
+                🔎 Buscar
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div id="resultadosBusqueda"></div>
+
+      <div id="fichaFuncionario"></div>
+
+      <div id="historialFuncionario"></div>
+
+    </section>
+
+
+    <!-- =================================================
+         REGISTRAR NOVEDAD
+         ================================================= -->
+
+    <section
+      id="seccionNovedad"
+      class="section"
+    >
+
+      <div class="card">
+
+        <div class="card-header">
+          📝 Registrar novedad
+        </div>
+
+        <div class="card-body">
+
+
+          <div class="row g-3">
+
+            <div class="col-md-8">
+
+              <label class="form-label">
+                Funcionario
+              </label>
+
+              <input
+                type="text"
+                id="novedadFuncionario"
+                class="form-control"
+                readonly
+                placeholder="Seleccione un funcionario mediante la consulta"
+              >
+
+              <input
+                type="hidden"
+                id="novedadCedula"
+              >
+
+            </div>
+
+
+            <div class="col-md-4">
+
+              <label class="form-label">
+                Tipo
+              </label>
+
+              <select
+                id="tipoNovedad"
+                class="form-select"
+              >
+
+                <option value="SERVICIO">
+                  SERVICIO
+                </option>
+
+                <option value="VACACIONES">
+                  VACACIONES
+                </option>
+
+                <option value="PERMISO">
+                  PERMISO
+                </option>
+
+                <option value="CITA MEDICA">
+                  CITA MEDICA
+                </option>
+
+                <option value="LICENCIA">
+                  LICENCIA
+                </option>
+
+                <option value="OTRA NOVEDAD">
+                  OTRA NOVEDAD
+                </option>
+
+              </select>
+
+            </div>
+
+
+            <div class="col-md-6">
+
+              <label class="form-label">
+                Novedad
+              </label>
+
+              <input
+                type="text"
+                id="novedadNombre"
+                class="form-control"
+                placeholder="Nombre de la novedad"
+              >
+
+            </div>
+
+
+            <div class="col-md-6">
+
+              <label class="form-label">
+                Días
+              </label>
+
+              <input
+                type="number"
+                id="novedadDias"
+                class="form-control"
+                min="0"
+              >
+
+            </div>
+
+
+            <div class="col-md-6">
+
+              <label class="form-label">
+                Fecha inicial
+              </label>
+
+              <input
+                type="date"
+                id="fechaInicial"
+                class="form-control"
+              >
+
+            </div>
+
+
+            <div class="col-md-6">
+
+              <label class="form-label">
+                Fecha presentación
+              </label>
+
+              <input
+                type="date"
+                id="fechaPresentacion"
+                class="form-control"
+              >
+
+            </div>
+
+
+            <div class="col-md-12">
+
+              <label class="form-label">
+                Descripción
+              </label>
+
+              <textarea
+                id="descripcionNovedad"
+                class="form-control"
+                rows="2"
+                placeholder="Descripción de la novedad"
+              ></textarea>
+
+            </div>
+
+
+            <div class="col-md-12">
+
+              <label class="form-label">
+                Observación
+              </label>
+
+              <textarea
+                id="observacionNovedad"
+                class="form-control"
+                rows="3"
+                placeholder="Observación"
+              ></textarea>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+              <label class="form-label">
+                RV
+              </label>
+
+              <input
+                type="text"
+                id="rvNovedad"
+                class="form-control"
+              >
+
+            </div>
+
+          </div>
+
+
+          <div class="mt-3">
+
+            <button
+              type="button"
+              class="btn btn-pol"
+              onclick="registrarNovedad()"
+            >
+              💾 Guardar novedad
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick="limpiarFormularioNovedad()"
+            >
+              Limpiar
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =================================================
+         TURNOS
+         ================================================= -->
+
+    <section
+      id="seccionTurnos"
+      class="section"
+    >
+
+      <div class="card">
+
+        <div class="card-header">
+          📋 Listado completo por turno
+        </div>
+
+        <div class="card-body">
+
+          <p class="text-muted">
+            Seleccione el grupo que desea consultar.
+            La consulta se realiza directamente sobre
+            LISTADO_BASE y respeta la dependencia
+            autorizada para el usuario.
+          </p>
+
+
+          <div class="turn-buttons">
+
+
+            <button
+              type="button"
+              class="turn-button"
+              onclick="cargarTurno('A')"
+            >
+
+              <strong>A</strong>
+
+              <span>
+                Consultar Turno A
+              </span>
+
+            </button>
+
+
+            <button
+              type="button"
+              class="turn-button"
+              onclick="cargarTurno('B')"
+            >
+
+              <strong>B</strong>
+
+              <span>
+                Consultar Turno B
+              </span>
+
+            </button>
+
+
+            <button
+              type="button"
+              class="turn-button"
+              onclick="cargarTurno('C')"
+            >
+
+              <strong>C</strong>
+
+              <span>
+                Consultar Turno C
+              </span>
+
+            </button>
+
+
+            <button
+              type="button"
+              class="turn-button"
+              onclick="cargarTurno('SEPRI')"
+            >
+
+              <strong>SEPRI</strong>
+
+              <span>
+                Todos los turnos SEPRI
+              </span>
+
+            </button>
+
+
+            <button
+              type="button"
+              class="turn-button"
+              onclick="cargarTurno('GURIN')"
+            >
+
+              <strong>GURIN</strong>
+
+              <span>
+                Grupo GURIN
+              </span>
+
+            </button>
+
+
+            <button
+              type="button"
+              class="turn-button"
+              onclick="cargarTurno('NO APLICA')"
+            >
+
+              <strong>N/A</strong>
+
+              <span>
+                NO APLICA
+              </span>
+
+            </button>
+
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="resultadoTurno"
+      ></div>
+
+
+    </section>
+
+
+    <!-- =================================================
+         REPORTES
+         ================================================= -->
+
+    <section
+      id="seccionReportes"
+      class="section"
+    >
+
+      <div class="card">
+
+        <div class="card-header">
+          📄 Reportes
+        </div>
+
+        <div class="card-body">
+
+          <div class="row g-2">
+
+            <div class="col-md-6">
+
+              <label class="form-label">
+                Turno
+              </label>
+
+              <select
+                id="filtroReporte"
+                class="form-select"
+              >
+
+                <option value="A">
+                  A
+                </option>
+
+                <option value="B">
+                  B
+                </option>
+
+                <option value="C">
+                  C
+                </option>
+
+                <option value="SEPRI">
+                  SEPRI
+                </option>
+
+                <option value="GURIN">
+                  GURIN
+                </option>
+
+                <option value="NO APLICA">
+                  NO APLICA
+                </option>
+
+              </select>
+
+            </div>
+
+
+            <div
+              class="col-md-6
+                     d-flex
+                     align-items-end
+                     gap-2"
+            >
+
+              <button
+                type="button"
+                class="btn btn-pol"
+                onclick="previsualizarReporte()"
+              >
+                👁 Previsualizar
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="imprimirReporte()"
+              >
+                🖨 Imprimir
+              </button>
+
+              <button
+                type="button"
+                id="btnGenerarPDF"
+                class="btn btn-danger"
+                onclick="generarArchivoReporte('pdf')"
+              >
+                📄 Generar PDF
+              </button>
+
+              <button
+                type="button"
+                id="btnGenerarExcel"
+                class="btn btn-success"
+                onclick="generarArchivoReporte('excel')"
+              >
+                📊 Generar Excel
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div id="resultadoReporte"></div>
+
+
+      <div class="card">
+
+        <div class="card-header">
+          Historial de reportes
+        </div>
+
+        <div class="card-body">
+
+          <button
+            type="button"
+            class="btn btn-pol mb-3"
+            onclick="cargarReportes()"
+          >
+            🔄 Actualizar
+          </button>
+
+          <div
+            id="listaReportes"
+          ></div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =================================================
+         USUARIOS
+         ================================================= -->
+
+    <section
+      id="seccionUsuarios"
+      class="section soloAdministrador"
+    >
+
+      <div class="card">
+
+        <div class="card-header">
+          👤 Administración de usuarios
+        </div>
+
+        <div class="card-body">
+
+          <div class="row g-3">
+
+            <div class="col-md-3">
+
+              <label class="form-label">
+                Usuario
+              </label>
+
+              <input
+                type="text"
+                id="nuevoUsuario"
+                class="form-control"
+              >
+
+            </div>
+
+
+            <div class="col-md-3">
+
+              <label class="form-label">
+                Contraseña
+              </label>
+
+              <input
+                type="password"
+                id="nuevaClave"
+                class="form-control"
+              >
+
+            </div>
+
+
+            <div class="col-md-3">
+
+              <label class="form-label">
+                Rol
+              </label>
+
+              <select
+                id="nuevoRol"
+                class="form-select"
+              >
+
+                <option value="OPERADOR">
+                  OPERADOR
+                </option>
+
+                <option value="ADMINISTRADOR">
+                  ADMINISTRADOR
+                </option>
+
+              </select>
+
+            </div>
+
+
+            <div class="col-md-3">
+
+              <label class="form-label">
+                Dependencia
+              </label>
+
+              <input
+                type="text"
+                id="nuevaDependencia"
+                class="form-control"
+                placeholder="Ej. NIVEL_CENTRAL"
+              >
+
+            </div>
+
+          </div>
+
+
+          <button
+            type="button"
+            class="btn btn-pol mt-3"
+            onclick="crearUsuario()"
+          >
+            ➕ Crear usuario
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="listaUsuarios"
+      ></div>
+
+    </section>
+
+
+  </main>
+
+</div>
+
+
+<!-- =====================================================
+     TOAST
+     ===================================================== -->
+
+<div
+  id="toastApp"
+  class="toast-app"
+></div>
+
+
+<!-- =====================================================
+     JAVASCRIPT
+     ===================================================== -->
+
+<script>
+
+
+/* =====================================================
+   PUENTE API (GITHUB PAGES -> APPS SCRIPT)
+   =====================================================
+
+ * Este archivo ya NO se sirve desde dentro de Apps
+ * Script, así que "google.script.run" no existe de
+ * forma nativa (solo funciona dentro del sandbox de
+ * HtmlService).
+ *
+ * Este bloque crea un reemplazo ("shim") que imita
+ * exactamente la misma forma de uso:
+ *
+ *   google.script.run
+ *     .withSuccessHandler(fn)
+ *     .withFailureHandler(fn)
+ *     .nombreDeFuncion(arg1, arg2, ...);
+ *
+ * pero por debajo llama al Web App de Apps Script
+ * mediante JSONP (una etiqueta <script>), que es la
+ * única forma de evitar el bloqueo de CORS al llamar
+ * desde un dominio distinto (github.io) hacia
+ * script.google.com.
+ *
+ * IMPORTANTE: cambia esta URL si vuelves a implementar
+ * (Deploy) el proyecto de Apps Script y se genera una
+ * URL /exec nueva.
+ */
+
+const APPS_SCRIPT_API_URL =
+  'https://script.google.com/macros/s/AKfycbzqf5Vadtuh-ckC98XTH5bUQhJoMIMgN7Hn9tDhhaWHsojqpNdLb_jJb_aoj2KS8AB-/exec';
+
+
+(function configurarPuenteAPI() {
+
+  const TIMEOUT_MS = 90000;
+
+
+  function llamarAPI_(accion, argumentos, alExito, alFallar) {
+
+    const nombreCallback =
+      '__cb_' +
+      accion.replace(/[^a-zA-Z0-9_]/g, '') +
+      '_' +
+      Date.now() +
+      '_' +
+      Math.floor(Math.random() * 1000000);
+
+    let finalizado = false;
+
+
+    function limpiar() {
+
+      delete window[nombreCallback];
+
+      if (elementoScript.parentNode) {
+        elementoScript.parentNode.removeChild(elementoScript);
+      }
+
+      clearTimeout(idTimeout);
+
+    }
+
+
+    window[nombreCallback] = function(respuesta) {
+
+      if (finalizado) {
+        return;
+      }
+
+      finalizado = true;
+
+      limpiar();
+
+
+      if (
+        respuesta &&
+        respuesta.__jsonp_error === true
+      ) {
+
+        if (alFallar) {
+          alFallar({
+            message:
+              respuesta.mensaje ||
+              'Se presentó un error en el servidor.'
+          });
+        }
+
+        return;
+
+      }
+
+
+      if (alExito) {
+        alExito(respuesta);
+      }
+
+    };
+
+
+    const idTimeout = setTimeout(function() {
+
+      if (finalizado) {
+        return;
+      }
+
+      finalizado = true;
+
+      limpiar();
+
+      if (alFallar) {
+        alFallar({
+          message:
+            'Tiempo de espera agotado contactando el servidor. ' +
+            'Verifica tu conexión e inténtalo de nuevo.'
+        });
+      }
+
+    }, TIMEOUT_MS);
+
+
+    const parametros =
+      new URLSearchParams();
+
+    parametros.set('accion', accion);
+    parametros.set('callback', nombreCallback);
+
+    try {
+
+      parametros.set(
+        'args',
+        JSON.stringify(argumentos || [])
+      );
+
+    } catch (errorSerializacion) {
+
+      finalizado = true;
+
+      clearTimeout(idTimeout);
+
+      if (alFallar) {
+        alFallar({
+          message: 'No fue posible preparar la solicitud.'
+        });
+      }
+
+      return;
+
+    }
+
+
+    const elementoScript =
+      document.createElement('script');
+
+    elementoScript.src =
+      APPS_SCRIPT_API_URL +
+      '?' +
+      parametros.toString();
+
+    elementoScript.onerror = function() {
+
+      if (finalizado) {
+        return;
+      }
+
+      finalizado = true;
+
+      limpiar();
+
+      if (alFallar) {
+        alFallar({
+          message:
+            'No se pudo contactar el servidor. ' +
+            'Verifica la URL del backend o tu conexión.'
+        });
+      }
+
+    };
+
+
+    document.head.appendChild(elementoScript);
+
+  }
+
+
+  function crearEjecutor_() {
+
+    let manejadorExito = null;
+
+    let manejadorFallo = null;
+
+
+    const base = {
+
+      withSuccessHandler: function(fn) {
+        manejadorExito = fn;
+        return proxyEjecutor;
+      },
+
+      withFailureHandler: function(fn) {
+        manejadorFallo = fn;
+        return proxyEjecutor;
+      },
+
+      withUserObject: function() {
+        return proxyEjecutor;
+      }
+
+    };
+
+
+    const proxyEjecutor = new Proxy(base, {
+
+      get: function(objetivo, propiedad) {
+
+        if (propiedad in objetivo) {
+          return objetivo[propiedad];
+        }
+
+        return function() {
+
+          const argumentos =
+            Array.prototype.slice.call(
+              arguments
+            );
+
+          llamarAPI_(
+            propiedad,
+            argumentos,
+            manejadorExito,
+            manejadorFallo
+          );
+
+        };
+
+      }
+
+    });
+
+
+    return proxyEjecutor;
+
+  }
+
+
+  window.google = window.google || {};
+
+  window.google.script =
+    window.google.script || {};
+
+  Object.defineProperty(
+    window.google.script,
+    'run',
+    {
+      get: crearEjecutor_,
+      configurable: true
+    }
+  );
+
+})();
+
+
+/* =====================================================
+   VARIABLES GLOBALES
+   ===================================================== */
+
+let tokenSesion = null;
+
+let usuarioSesion = null;
+
+let rolSesion = null;
+
+let dependenciaSesion = null;
+
+let funcionarioSeleccionado = null;
+
+let ultimoTurnoConsultado = null;
+
+let ultimoResultadoTurno = null;
+
+
+/* =====================================================
+   INICIO
+   ===================================================== */
+
+document.addEventListener(
+  'DOMContentLoaded',
+  function() {
+
+    document
+      .getElementById('loginUsuario')
+      .focus();
+
+  }
+);
+
+
+/* =====================================================
+   ESCAPE HTML
+   ===================================================== */
+
+function esc(valor) {
+
+  if (
+    valor === null ||
+    valor === undefined
+  ) {
+    return '';
+  }
+
+  return String(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+}
+
+
+/* =====================================================
+   TOAST
+   ===================================================== */
+
+function mostrarToast(
+  mensaje,
+  tipo = 'success'
+) {
+
+  const toast =
+    document.getElementById(
+      'toastApp'
+    );
+
+  toast.textContent =
+    mensaje || '';
+
+  toast.style.background =
+    tipo === 'error'
+      ? '#b71c1c'
+      : '#263238';
+
+  toast.classList.add('show');
+
+  setTimeout(
+    function() {
+
+      toast.classList.remove(
+        'show'
+      );
+
+    },
+    3500
+  );
+
+}
+
+
+/* =====================================================
+   LOGIN
+   ===================================================== */
+
+function iniciarSesion() {
+
+  const usuario =
+    document
+      .getElementById(
+        'loginUsuario'
+      )
+      .value
+      .trim();
+
+  const clave =
+    document
+      .getElementById(
+        'loginClave'
+      )
+      .value;
+
+  const mensaje =
+    document.getElementById(
+      'mensajeLogin'
+    );
+
+  const boton =
+    document.getElementById(
+      'btnLogin'
+    );
+
+
+  if (!usuario || !clave) {
+
+    mensaje.innerHTML =
+      '<div class="alert alert-warning">' +
+      'Ingrese usuario y contraseña.' +
+      '</div>';
+
+    return;
+
+  }
+
+
+  boton.disabled = true;
+
+  boton.textContent =
+    'Validando...';
+
+  mensaje.innerHTML = '';
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        boton.disabled = false;
+
+        boton.textContent =
+          'Ingresar';
+
+
+        if (
+          !respuesta ||
+          respuesta.estado !== true
+        ) {
+
+          mensaje.innerHTML =
+            '<div class="alert alert-danger">' +
+            esc(
+              respuesta &&
+              respuesta.mensaje
+                ? respuesta.mensaje
+                : 'Usuario o contraseña incorrectos.'
+            ) +
+            '</div>';
+
+          return;
+
+        }
+
+
+        tokenSesion =
+          respuesta.token;
+
+        usuarioSesion =
+          respuesta.usuario &&
+          respuesta.usuario.usuario
+            ? respuesta.usuario.usuario
+            : usuario;
+
+        rolSesion =
+          respuesta.usuario &&
+          respuesta.usuario.rol
+            ? respuesta.usuario.rol
+            : '';
+
+        dependenciaSesion =
+          respuesta.usuario &&
+          respuesta.usuario.dependencia
+            ? respuesta.usuario.dependencia
+            : '';
+
+
+        document
+          .getElementById(
+            'pantallaLogin'
+          )
+          .style.display =
+          'none';
+
+
+        document
+          .getElementById(
+            'aplicacion'
+          )
+          .style.display =
+          'block';
+
+
+        document
+          .getElementById(
+            'usuarioActual'
+          )
+          .innerHTML =
+          '<strong>' +
+          esc(usuarioSesion) +
+          '</strong><br>' +
+          '<small>' +
+          esc(rolSesion) +
+          ' — ' +
+          esc(dependenciaSesion) +
+          '</small>';
+
+
+        configurarPermisos();
+
+        mostrarSeccion(
+          'consulta'
+        );
+
+        mostrarToast(
+          'Sesión iniciada correctamente.'
+        );
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        boton.disabled = false;
+
+        boton.textContent =
+          'Ingresar';
+
+        console.error(error);
+
+        mensaje.innerHTML =
+          '<div class="alert alert-danger">' +
+          esc(
+            error &&
+            error.message
+              ? error.message
+              : 'Error al iniciar sesión.'
+          ) +
+          '</div>';
+
+      }
+    )
+
+    .validarUsuario(
+      usuario,
+      clave
+    );
+
+}
+
+
+/* =====================================================
+   CERRAR SESIÓN
+   ===================================================== */
+
+function cerrarSesionCliente() {
+
+  if (!tokenSesion) {
+
+    location.reload();
+
+    return;
+
+  }
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function() {
+
+        tokenSesion = null;
+
+        usuarioSesion = null;
+
+        rolSesion = null;
+
+        dependenciaSesion = null;
+
+        funcionarioSeleccionado = null;
+
+        location.reload();
+
+      }
+    )
+
+    .withFailureHandler(
+      function() {
+
+        location.reload();
+
+      }
+    )
+
+    .cerrarSesionCliente(
+      tokenSesion
+    );
+
+}
+
+
+/* =====================================================
+   VALIDACIÓN DE SESIÓN
+   ===================================================== */
+
+function verificarSesionLocal() {
+
+  if (!tokenSesion) {
+
+    mostrarToast(
+      'La sesión no está disponible.',
+      'error'
+    );
+
+    return false;
+
+  }
+
+  return true;
+
+}
+
+
+/* =====================================================
+   PERMISOS
+   ===================================================== */
+
+function configurarPermisos() {
+
+  const elementos =
+    document.querySelectorAll(
+      '.soloAdministrador'
+    );
+
+
+  elementos.forEach(
+    function(elemento) {
+
+      if (
+        rolSesion ===
+        'ADMINISTRADOR'
+      ) {
+
+        elemento.style.display =
+          '';
+
+      } else {
+
+        elemento.style.display =
+          'none';
+
+      }
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   NAVEGACIÓN
+   ===================================================== */
+
+function mostrarSeccion(
+  nombre
+) {
+
+  const mapa = {
+
+    consulta:
+      'seccionConsulta',
+
+    novedad:
+      'seccionNovedad',
+
+    turnos:
+      'seccionTurnos',
+
+    reportes:
+      'seccionReportes',
+
+    usuarios:
+      'seccionUsuarios'
+
+  };
+
+
+  const botones = {
+
+    consulta:
+      'menuConsulta',
+
+    novedad:
+      'menuNovedad',
+
+    turnos:
+      'menuTurnos',
+
+    reportes:
+      'menuReportes',
+
+    usuarios:
+      'menuUsuarios'
+
+  };
+
+
+  document
+    .querySelectorAll(
+      '.section'
+    )
+    .forEach(
+      function(seccion) {
+
+        seccion.classList.remove(
+          'active'
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      '.menu button'
+    )
+    .forEach(
+      function(boton) {
+
+        boton.classList.remove(
+          'active'
+        );
+
+      }
+    );
+
+
+  const seccion =
+    document.getElementById(
+      mapa[nombre]
+    );
+
+
+  if (!seccion) {
+    return;
+  }
+
+
+  seccion.classList.add(
+    'active'
+  );
+
+
+  const boton =
+    document.getElementById(
+      botones[nombre]
+    );
+
+
+  if (boton) {
+
+    boton.classList.add(
+      'active'
+    );
+
+  }
+
+
+  if (
+    nombre ===
+    'reportes'
+  ) {
+
+    cargarReportes();
+
+  }
+
+
+  if (
+    nombre ===
+    'usuarios' &&
+    rolSesion ===
+    'ADMINISTRADOR'
+  ) {
+
+    cargarUsuarios();
+
+  }
+
+}
+
+
+/* =====================================================
+   BUSCAR FUNCIONARIO
+   ===================================================== */
+
+function buscarFuncionario() {
+
+  if (
+    !verificarSesionLocal()
+  ) {
+    return;
+  }
+
+
+  const valor =
+    document
+      .getElementById(
+        'buscarValor'
+      )
+      .value
+      .trim();
+
+
+  const contenedor =
+    document.getElementById(
+      'resultadosBusqueda'
+    );
+
+
+  if (!valor) {
+
+    contenedor.innerHTML =
+      '<div class="empty">' +
+      'Ingrese cédula, nombre, grado, nivel o dependencia.' +
+      '</div>';
+
+    return;
+
+  }
+
+
+  contenedor.innerHTML =
+    '<div class="loading">' +
+    '🔄 Buscando funcionario...' +
+    '</div>';
+
+
+  document
+    .getElementById(
+      'fichaFuncionario'
+    )
+    .innerHTML = '';
+
+  document
+    .getElementById(
+      'historialFuncionario'
+    )
+    .innerHTML = '';
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          !respuesta ||
+          respuesta.estado !== true
+        ) {
+
+          contenedor.innerHTML =
+            '<div class="empty">' +
+            esc(
+              respuesta &&
+              respuesta.mensaje
+                ? respuesta.mensaje
+                : 'No se encontraron funcionarios.'
+            ) +
+            '</div>';
+
+          return;
+
+        }
+
+
+        const datos =
+          respuesta.datos ||
+          [];
+
+
+        if (!datos.length) {
+
+          contenedor.innerHTML =
+            '<div class="empty">' +
+            'No se encontraron funcionarios.' +
+            '</div>';
+
+          return;
+
+        }
+
+
+        let html =
+          '<div class="card">' +
+          '<div class="card-header">' +
+          'Funcionarios encontrados' +
+          '</div>' +
+          '<div class="card-body">';
+
+
+        datos.forEach(
+          function(funcionario) {
+
+            html +=
+              '<div class="employee-card">' +
+
+              '<div class="employee-name">' +
+              esc(
+                funcionario.funcionario ||
+                funcionario.FUNCIONARIO ||
+                ''
+              ) +
+              '</div>' +
+
+              '<div class="employee-meta">' +
+              'CC: ' +
+              esc(
+                funcionario.cedula ||
+                funcionario.CEDULA ||
+                ''
+              ) +
+              ' &nbsp; | &nbsp; ' +
+
+              'GR: ' +
+              esc(
+                funcionario.grado ||
+                funcionario.GR ||
+                ''
+              ) +
+              ' &nbsp; | &nbsp; ' +
+
+              'Turno: ' +
+              esc(
+                funcionario.turno ||
+                funcionario.TURNO ||
+                ''
+              ) +
+              '</div>' +
+
+              '<div class="mt-2">' +
+
+              '<button ' +
+              'type="button" ' +
+              'class="btn btn-sm btn-pol me-1" ' +
+              'onclick=\'seleccionarFuncionario(' +
+              JSON.stringify(
+                funcionario
+              ) +
+              ')\'>' +
+              'Seleccionar' +
+              '</button>' +
+
+              '</div>' +
+
+              '</div>';
+
+          }
+        );
+
+
+        html +=
+          '</div></div>';
+
+
+        contenedor.innerHTML =
+          html;
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        contenedor.innerHTML =
+          '<div class="alert alert-danger">' +
+          esc(
+            error &&
+            error.message
+              ? error.message
+              : 'Error al consultar funcionarios.'
+          ) +
+          '</div>';
+
+      }
+    )
+
+    .buscarFuncionario(
+      tokenSesion,
+      valor
+    );
+
+}
+
+
+/* =====================================================
+   SELECCIONAR FUNCIONARIO
+   ===================================================== */
+
+function seleccionarFuncionario(
+  funcionario
+) {
+
+  funcionarioSeleccionado =
+    funcionario;
+
+
+  const cedula =
+    funcionario.cedula ||
+    funcionario.CEDULA ||
+    '';
+
+
+  document
+    .getElementById(
+      'novedadCedula'
+    )
+    .value =
+    cedula;
+
+
+  document
+    .getElementById(
+      'novedadFuncionario'
+    )
+    .value =
+    funcionario.funcionario ||
+    funcionario.FUNCIONARIO ||
+    '';
+
+
+  cargarFicha(
+    cedula
+  );
+
+
+  mostrarSeccion(
+    'novedad'
+  );
+
+
+  mostrarToast(
+    'Funcionario seleccionado.'
+  );
+
+}
+
+
+/* =====================================================
+   FICHA FUNCIONARIO
+   ===================================================== */
+
+function cargarFicha(
+  cedula
+) {
+
+  const contenedor =
+    document.getElementById(
+      'fichaFuncionario'
+    );
+
+
+  contenedor.innerHTML =
+    '<div class="loading">' +
+    '🔄 Cargando ficha...' +
+    '</div>';
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          !respuesta ||
+          respuesta.estado !== true
+        ) {
+
+          contenedor.innerHTML =
+            '<div class="empty">' +
+            esc(
+              respuesta &&
+              respuesta.mensaje
+                ? respuesta.mensaje
+                : 'No se pudo cargar la ficha.'
+            ) +
+            '</div>';
+
+          return;
+
+        }
+
+
+        const funcionario =
+          respuesta.funcionario ||
+          respuesta.datos ||
+          {};
+
+
+        let html =
+          '<div class="card">' +
+          '<div class="card-header">' +
+          'Ficha del funcionario' +
+          '</div>' +
+          '<div class="card-body">';
+
+
+        html +=
+          '<div class="employee-card">' +
+
+          '<div class="employee-name">' +
+          esc(
+            funcionario.funcionario ||
+            funcionario.FUNCIONARIO ||
+            ''
+          ) +
+          '</div>' +
+
+          '<div class="employee-meta">' +
+          'Cédula: ' +
+          esc(
+            funcionario.cedula ||
+            funcionario.CEDULA ||
+            ''
+          ) +
+          ' | Nivel: ' +
+          esc(
+            funcionario.nivel ||
+            funcionario.NIV ||
+            ''
+          ) +
+          ' | Grado: ' +
+          esc(
+            funcionario.grado ||
+            funcionario.GR ||
+            ''
+          ) +
+          ' | Turno: ' +
+          esc(
+            funcionario.turno ||
+            funcionario.TURNO ||
+            ''
+          ) +
+          '</div>' +
+
+          '<div class="mt-2">' +
+          'Dependencia: ' +
+          '<strong>' +
+          esc(
+            funcionario.dependencia ||
+            funcionario.DEPENDENCIA ||
+            ''
+          ) +
+          '</strong>' +
+          '</div>' +
+
+          '</div>';
+
+
+        html +=
+          '</div></div>';
+
+
+        contenedor.innerHTML =
+          html;
+
+
+        cargarHistorial(
+          cedula
+        );
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        contenedor.innerHTML =
+          '<div class="alert alert-danger">' +
+          esc(
+            error &&
+            error.message
+              ? error.message
+              : 'Error cargando ficha.'
+          ) +
+          '</div>';
+
+      }
+    )
+
+    .obtenerFichaFuncionario(
+      tokenSesion,
+      cedula
+    );
+
+}
+
+
+/* =====================================================
+   HISTORIAL
+   ===================================================== */
+
+function cargarHistorial(
+  cedula
+) {
+
+  const contenedor =
+    document.getElementById(
+      'historialFuncionario'
+    );
+
+
+  contenedor.innerHTML =
+    '<div class="loading">' +
+    '🔄 Consultando historial...' +
+    '</div>';
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          !respuesta ||
+          respuesta.estado !== true
+        ) {
+
+          contenedor.innerHTML =
+            '<div class="empty">' +
+            'No fue posible consultar el historial.' +
+            '</div>';
+
+          return;
+
+        }
+
+
+        const historial =
+          respuesta.historial ||
+          respuesta.datos ||
+          [];
+
+
+        if (!historial.length) {
+
+          contenedor.innerHTML =
+            '<div class="card">' +
+            '<div class="card-header">' +
+            'Historial de novedades' +
+            '</div>' +
+            '<div class="card-body">' +
+            '<div class="empty">' +
+            'No registra novedades.' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+
+          return;
+
+        }
+
+
+        let html =
+          '<div class="card">' +
+          '<div class="card-header">' +
+          'Historial de novedades' +
+          '</div>' +
+          '<div class="card-body">' +
+          '<div class="table-wrapper">' +
+          '<table class="table table-bordered">' +
+
+          '<thead>' +
+          '<tr>' +
+          '<th>GR</th>' +
+          '<th>NOVEDAD</th>' +
+          '<th>DESCRIPCIÓN</th>' +
+          '<th>DÍAS</th>' +
+          '<th>FECHA INICIAL</th>' +
+          '<th>FECHA PRESENTACIÓN</th>' +
+          '<th>OBSERVACIÓN</th>' +
+          '<th>RV</th>' +
+          '<th>TEXTO</th>' +
+          '</tr>' +
+          '</thead>' +
+
+          '<tbody>';
+
+
+        historial.forEach(
+          function(n) {
+
+            html +=
+              '<tr>' +
+
+              '<td>' +
+              esc(n.GR) +
+              '</td>' +
+
+              '<td>' +
+              '<span class="badge-novedad">' +
+              esc(n.NOVEDAD) +
+              '</span>' +
+              '</td>' +
+
+              '<td>' +
+              esc(n.DESCRIPCION) +
+              '</td>' +
+
+              '<td>' +
+              esc(n.Dias) +
+              '</td>' +
+
+              '<td>' +
+              esc(
+                formatearValor(
+                  n['Fecha INICIAL']
+                )
+              ) +
+              '</td>' +
+
+              '<td>' +
+              esc(
+                formatearValor(
+                  n['Fecha PRESENTACION']
+                )
+              ) +
+              '</td>' +
+
+              '<td>' +
+              esc(n.Observacion) +
+              '</td>' +
+
+              '<td>' +
+              esc(n.RV) +
+              '</td>' +
+
+              '<td>' +
+              esc(n.TEXTO) +
+              '</td>' +
+
+              '</tr>';
+
+          }
+        );
+
+
+        html +=
+          '</tbody>' +
+          '</table>' +
+          '</div>' +
+          '</div>' +
+          '</div>';
+
+
+        contenedor.innerHTML =
+          html;
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        contenedor.innerHTML =
+          '<div class="alert alert-danger">' +
+          'Error consultando historial.' +
+          '</div>';
+
+      }
+    )
+
+    .obtenerHistorialFuncionario(
+      tokenSesion,
+      cedula
+    );
+
+}
+
+
+/* =====================================================
+   REGISTRAR NOVEDAD
+   ===================================================== */
+
+function registrarNovedad() {
+
+  if (
+    !verificarSesionLocal()
+  ) {
+    return;
+  }
+
+
+  if (
+    !funcionarioSeleccionado
+  ) {
+
+    mostrarToast(
+      'Debe seleccionar primero un funcionario.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  const cedula =
+    funcionarioSeleccionado.cedula ||
+    funcionarioSeleccionado.CEDULA ||
+    document
+      .getElementById(
+        'novedadCedula'
+      )
+      .value;
+
+
+  const novedad =
+    document
+      .getElementById(
+        'novedadNombre'
+      )
+      .value
+      .trim();
+
+
+  if (!novedad) {
+
+    mostrarToast(
+      'Ingrese la novedad.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  const datos = {
+
+    cc:
+      cedula,
+
+    cedula:
+      cedula,
+
+    novedad:
+      novedad,
+
+    tipo:
+      document
+        .getElementById(
+          'tipoNovedad'
+        )
+        .value,
+
+    descripcion:
+      document
+        .getElementById(
+          'descripcionNovedad'
+        )
+        .value
+        .trim(),
+
+    dias:
+      document
+        .getElementById(
+          'novedadDias'
+        )
+        .value,
+
+    fechaInicial:
+      document
+        .getElementById(
+          'fechaInicial'
+        )
+        .value,
+
+    fechaPresentacion:
+      document
+        .getElementById(
+          'fechaPresentacion'
+        )
+        .value,
+
+    observacion:
+      document
+        .getElementById(
+          'observacionNovedad'
+        )
+        .value
+        .trim(),
+
+    rv:
+      document
+        .getElementById(
+          'rvNovedad'
+        )
+        .value
+        .trim()
+
+  };
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          respuesta &&
+          respuesta.estado === true
+        ) {
+
+          mostrarToast(
+            respuesta.mensaje ||
+            'Novedad registrada correctamente.'
+          );
+
+          limpiarFormularioNovedad();
+
+          cargarHistorial(
+            cedula
+          );
+
+        } else {
+
+          mostrarToast(
+            respuesta &&
+            respuesta.mensaje
+              ? respuesta.mensaje
+              : 'No fue posible registrar la novedad.',
+            'error'
+          );
+
+        }
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        mostrarToast(
+          error &&
+          error.message
+            ? error.message
+            : 'Error registrando novedad.',
+          'error'
+        );
+
+      }
+    )
+
+    .registrarNovedad(
+      tokenSesion,
+      datos
+    );
+
+}
+
+
+/* =====================================================
+   LIMPIAR NOVEDAD
+   ===================================================== */
+
+function limpiarFormularioNovedad() {
+
+  document
+    .getElementById(
+      'novedadNombre'
+    )
+    .value = '';
+
+  document
+    .getElementById(
+      'novedadDias'
+    )
+    .value = '';
+
+  document
+    .getElementById(
+      'fechaInicial'
+    )
+    .value = '';
+
+  document
+    .getElementById(
+      'fechaPresentacion'
+    )
+    .value = '';
+
+  document
+    .getElementById(
+      'descripcionNovedad'
+    )
+    .value = '';
+
+  document
+    .getElementById(
+      'observacionNovedad'
+    )
+    .value = '';
+
+  document
+    .getElementById(
+      'rvNovedad'
+    )
+    .value = '';
+
+}
+
+
+/* =====================================================
+   CONSULTA POR TURNO
+   ===================================================== */
+
+/*
+ * IMPORTANTE:
+ * Esta es la ÚNICA función del HTML que maneja
+ * los botones A, B, C, SEPRI, GURIN y NO APLICA.
+ *
+ * NO se llama consultarTurno().
+ * De esta manera evitamos cualquier conflicto
+ * con funciones antiguas.
+ */
+
+function cargarTurno(
+  filtro
+) {
+
+  if (
+    !verificarSesionLocal()
+  ) {
+    return;
+  }
+
+
+  const contenedor =
+    document.getElementById(
+      'resultadoTurno'
+    );
+
+
+  ultimoTurnoConsultado =
+    filtro;
+
+
+  ultimoResultadoTurno =
+    null;
+
+
+  contenedor.innerHTML =
+    '<div class="loading">' +
+    '🔄 Consultando ' +
+    esc(filtro) +
+    '...' +
+    '</div>';
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        console.log(
+          'Respuesta consultarPorTurno:',
+          respuesta
+        );
+
+
+        if (
+          !respuesta ||
+          respuesta.estado !== true
+        ) {
+
+          contenedor.innerHTML =
+            '<div class="empty">' +
+            esc(
+              respuesta &&
+              respuesta.mensaje
+                ? respuesta.mensaje
+                : 'No se encontró información.'
+            ) +
+            '</div>';
+
+          return;
+
+        }
+
+
+        ultimoResultadoTurno =
+          respuesta;
+
+
+        renderTurno(
+          respuesta
+        );
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(
+          'Error consultarPorTurno:',
+          error
+        );
+
+
+        contenedor.innerHTML =
+          '<div class="alert alert-danger">' +
+          '<strong>Error:</strong> ' +
+          esc(
+            error &&
+            error.message
+              ? error.message
+              : 'Error consultando el turno.'
+          ) +
+          '</div>';
+
+      }
+    )
+
+    .consultarPorTurno(
+      tokenSesion,
+      filtro
+    );
+
+}
+
+
+/* =====================================================
+   RENDER TURNOS
+   ===================================================== */
+
+function renderTurno(
+  respuesta
+) {
+  const contenedor = document.getElementById('resultadoTurno');
+  const datos = respuesta.datos || {};
+  let funcionarios = datos.funcionarios || respuesta.funcionarios || [];
+  const filtro = datos.filtro || respuesta.filtro || ultimoTurnoConsultado || '';
+
+  if (!funcionarios.length) {
+    contenedor.innerHTML = '<div class="card"><div class="card-body"><div class="empty">No hay funcionarios registrados para ' + esc(filtro) + ' en la dependencia autorizada.</div></div></div>';
+    return;
+  }
+
+  // Refuerzo del orden: solo por grado y conservando el orden original dentro de cada grado.
+  const ORDEN_GRADOS_TURNO = ['BG','CR','TC','MY','CT','TE','ST','CM','SC','IJ','IT','SI','PT','PP','AXP','NO'];
+  const posicionGrado = {};
+  ORDEN_GRADOS_TURNO.forEach(function(g, i) { posicionGrado[g] = i; });
+  funcionarios = funcionarios.slice().sort(function(a, b) {
+    const ga = String(a.grado || a.GR || '').trim().toUpperCase();
+    const gb = String(b.grado || b.GR || '').trim().toUpperCase();
+    const pa = Object.prototype.hasOwnProperty.call(posicionGrado, ga) ? posicionGrado[ga] : 999;
+    const pb = Object.prototype.hasOwnProperty.call(posicionGrado, gb) ? posicionGrado[gb] : 999;
+    return pa - pb;
+  });
+
+  const resumen = { OF:0, 'NIV. EJE':0, PT:0, PP:0, AXP:0, 'NO UNI':0 };
+  const oficiales = { BG:true, CR:true, TC:true, MY:true, CT:true, TE:true, ST:true, CM:true };
+  const nivelEje = { SC:true, IJ:true, IT:true, SI:true };
+  funcionarios.forEach(function(f) {
+    const grado = String(f.grado || f.GR || '').trim().toUpperCase();
+    const nivel = String(f.nivel || f.NIV || '').trim().toUpperCase();
+    if (oficiales[grado] || nivel.indexOf('OFICIAL') !== -1) resumen.OF++;
+    else if (grado === 'PT' || nivel === 'PT') resumen.PT++;
+    else if (grado === 'PP' || nivel === 'PP') resumen.PP++;
+    else if (grado === 'AXP' || nivel.indexOf('AXP') !== -1 || nivel.indexOf('AUXILIAR') !== -1) resumen.AXP++;
+    else if (nivel.indexOf('NO UNI') !== -1 || nivel.indexOf('NO UNIFORM') !== -1 || nivel === 'NO UNIFORMADO' || nivel === 'NO UNIFORMADOS') resumen['NO UNI']++;
+    else if (nivelEje[grado] || nivel.indexOf('EJECUTIVO') !== -1) resumen['NIV. EJE']++;
+    else resumen['NO UNI']++;
+  });
+
+  let html = '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><span>📋 Listado ' + esc(filtro) + '</span><div class="no-print"><button type="button" class="btn btn-sm btn-secondary me-1" onclick="imprimirTurno()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="previsualizarTurnoActual()">📄 Reporte</button></div></div></div><div class="card-body">';
+
+  html += '<div class="row g-2 mb-3">';
+  html += crearEstadistica('OF', resumen.OF);
+  html += crearEstadistica('NIV. EJE', resumen['NIV. EJE']);
+  html += crearEstadistica('PT', resumen.PT);
+  html += crearEstadistica('PP', resumen.PP);
+  html += crearEstadistica('AXP', resumen.AXP);
+  html += crearEstadistica('NO UNI', resumen['NO UNI']);
+  html += '</div>';
+
+  html += '<div class="table-wrapper"><table id="tablaTurno" class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>NIV</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
+
+  let ultimoGrado = null;
+  funcionarios.forEach(function(f, indice) {
+    const grado = String(f.grado || f.GR || '').trim().toUpperCase() || 'SIN GRADO';
+    if (grado !== ultimoGrado) {
+      html += '<tr class="grupo-grado"><td colspan="8"><strong>GRADO: ' + esc(grado) + '</strong></td></tr>';
+      ultimoGrado = grado;
+    }
+
+    const novedades = f.historialNovedades || [];
+    let novedadesHtml = '';
+    if (novedades.length) {
+      novedadesHtml = novedades.slice(0,5).map(function(n) {
+        return '<span class="badge-novedad">' + esc(n.NOVEDAD || n.novedad || '') + '</span>';
+      }).join('');
+      if (novedades.length > 5) novedadesHtml += '<span class="badge-novedad">+' + (novedades.length - 5) + '</span>';
+    } else {
+      novedadesHtml = '<span class="text-muted">Sin novedades</span>';
+    }
+
+    html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+  });
+
+  html += '</tbody></table></div></div></div>';
+  contenedor.innerHTML = html;
+}
+
+
+/* =====================================================
+   ESTADÍSTICA
+   ===================================================== */
+
+function crearEstadistica(
+  etiqueta,
+  valor
+) {
+
+  return (
+    '<div class="col-md-4">' +
+
+    '<div class="stat-card">' +
+
+    '<div class="stat-number">' +
+    esc(valor) +
+    '</div>' +
+
+    '<div class="stat-label">' +
+    esc(etiqueta) +
+    '</div>' +
+
+    '</div>' +
+
+    '</div>'
+  );
+
+}
+
+
+/* =====================================================
+   IMPRIMIR TURNO
+   ===================================================== */
+
+function imprimirTurno() {
+
+  window.print();
+
+}
+
+
+/* =====================================================
+   PREVISUALIZAR REPORTE ACTUAL
+   ===================================================== */
+
+function previsualizarTurnoActual() {
+
+  if (
+    !ultimoTurnoConsultado
+  ) {
+
+    mostrarToast(
+      'Primero consulte un turno.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  previsualizarReporteFiltro(
+    ultimoTurnoConsultado
+  );
+
+}
+
+
+/* =====================================================
+   PREVISUALIZAR REPORTE
+   ===================================================== */
+
+function previsualizarReporte() {
+
+  const filtro =
+    document
+      .getElementById(
+        'filtroReporte'
+      )
+      .value;
+
+
+  previsualizarReporteFiltro(
+    filtro
+  );
+
+}
+
+
+function previsualizarReporteFiltro(
+  filtro
+) {
+
+  const contenedor =
+    document.getElementById(
+      'resultadoReporte'
+    );
+
+
+  contenedor.innerHTML =
+    '<div class="loading">' +
+    '🔄 Generando previsualización...' +
+    '</div>';
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          !respuesta ||
+          respuesta.estado !== true
+        ) {
+
+          contenedor.innerHTML =
+            '<div class="alert alert-danger">' +
+            esc(
+              respuesta &&
+              respuesta.mensaje
+                ? respuesta.mensaje
+                : 'No se pudo generar la previsualización.'
+            ) +
+            '</div>';
+
+          return;
+
+        }
+
+
+        const html =
+          respuesta.html ||
+          respuesta.contenido ||
+          '';
+
+
+        contenedor.innerHTML =
+          '<div class="card">' +
+          '<div class="card-header">' +
+          'Previsualización — ' +
+          esc(filtro) +
+          '</div>' +
+          '<div class="card-body p-0">' +
+          '<iframe ' +
+          'class="report-frame" ' +
+          'id="frameReporte">' +
+          '</iframe>' +
+          '</div>' +
+          '</div>';
+
+
+        const frame =
+          document.getElementById(
+            'frameReporte'
+          );
+
+
+        frame.srcdoc =
+          html;
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        contenedor.innerHTML =
+          '<div class="alert alert-danger">' +
+          esc(
+            error &&
+            error.message
+              ? error.message
+              : 'Error generando reporte.'
+          ) +
+          '</div>';
+
+      }
+    )
+
+    .previsualizarReporteTurno(
+      tokenSesion,
+      filtro
+    );
+
+}
+
+
+/* =====================================================
+   IMPRIMIR REPORTE
+   ===================================================== */
+
+function imprimirReporte() {
+
+  const frame =
+    document.getElementById(
+      'frameReporte'
+    );
+
+
+  if (!frame) {
+
+    mostrarToast(
+      'Primero genere la previsualización.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  frame.contentWindow.focus();
+
+  frame.contentWindow.print();
+
+}
+
+
+/* =====================================================
+   GENERAR ARCHIVOS PDF / EXCEL
+   ===================================================== */
+
+let ultimoReporteArchivos = null;
+
+
+function generarArchivoReporte(
+  formato
+) {
+
+  if (!verificarSesionLocal()) {
+    return;
+  }
+
+  const selector = document.getElementById('filtroReporte');
+  const filtro = selector ? selector.value : '';
+
+  if (!filtro) {
+    mostrarToast(
+      'Seleccione un turno para generar el reporte.',
+      'error'
+    );
+    return;
+  }
+
+  // Evita generar un nuevo consecutivo si ya se generaron
+  // los archivos para el mismo turno durante esta sesión.
+  if (
+    ultimoReporteArchivos &&
+    ultimoReporteArchivos.filtro === filtro
+  ) {
+    abrirArchivoReporte_(formato, ultimoReporteArchivos);
+    return;
+  }
+
+  const btnPDF = document.getElementById('btnGenerarPDF');
+  const btnExcel = document.getElementById('btnGenerarExcel');
+
+  if (btnPDF) btnPDF.disabled = true;
+  if (btnExcel) btnExcel.disabled = true;
+
+  mostrarToast('Generando PDF y Excel. Espere un momento...');
+
+  google.script.run
+    .withSuccessHandler(function(respuesta) {
+
+      if (btnPDF) btnPDF.disabled = false;
+      if (btnExcel) btnExcel.disabled = false;
+
+      if (!respuesta || respuesta.estado !== true) {
+        mostrarToast(
+          respuesta && respuesta.mensaje
+            ? respuesta.mensaje
+            : 'No fue posible generar los archivos.',
+          'error'
+        );
+        return;
+      }
+
+      const datos = respuesta.datos || respuesta;
+
+      ultimoReporteArchivos = {
+        filtro: datos.filtro || filtro,
+        consecutivo: datos.consecutivo || '',
+        archivoPDF: datos.archivoPDF || '',
+        urlPDF: datos.urlPDF || '',
+        archivoExcel: datos.archivoExcel || '',
+        urlExcel: datos.urlExcel || ''
+      };
+
+      mostrarResultadoArchivosReporte_(ultimoReporteArchivos);
+      abrirArchivoReporte_(formato, ultimoReporteArchivos);
+
+    })
+    .withFailureHandler(function(error) {
+
+      if (btnPDF) btnPDF.disabled = false;
+      if (btnExcel) btnExcel.disabled = false;
+
+      console.error('Error generando archivos:', error);
+
+      mostrarToast(
+        error && error.message
+          ? error.message
+          : 'Error generando los archivos.',
+        'error'
+      );
+
+    })
+    .generarReporteTurno(
+      tokenSesion,
+      filtro
+    );
+}
+
+
+function abrirArchivoReporte_(formato, datos) {
+
+  const url = formato === 'pdf'
+    ? datos.urlPDF
+    : datos.urlExcel;
+
+  if (!url) {
+    mostrarToast(
+      formato === 'pdf'
+        ? 'No se obtuvo el enlace del archivo PDF.'
+        : 'No se obtuvo el enlace del archivo Excel.',
+      'error'
+    );
+    return;
+  }
+
+  window.open(url, '_blank', 'noopener');
+}
+
+
+function mostrarResultadoArchivosReporte_(datos) {
+
+  const contenedor = document.getElementById('resultadoReporte');
+
+  if (!contenedor) return;
+
+  const bloque = document.createElement('div');
+  bloque.className = 'alert alert-success mt-3';
+
+  bloque.innerHTML =
+    '<strong>Reporte generado correctamente.</strong>' +
+    (datos.consecutivo
+      ? ' Consecutivo: <strong>' + esc(datos.consecutivo) + '</strong>.'
+      : '') +
+    '<div class="mt-2 d-flex flex-wrap gap-2">' +
+    (datos.urlPDF
+      ? '<a class="btn btn-sm btn-danger" href="' +
+        esc(datos.urlPDF) +
+        '" target="_blank" rel="noopener">📄 Abrir PDF</a>'
+      : '') +
+    (datos.urlExcel
+      ? '<a class="btn btn-sm btn-success" href="' +
+        esc(datos.urlExcel) +
+        '" target="_blank" rel="noopener">📊 Abrir Excel</a>'
+      : '') +
+    '</div>';
+
+  contenedor.prepend(bloque);
+}
+
+
+/* =====================================================
+   REPORTES
+   ===================================================== */
+
+function cargarReportes() {
+
+  if (
+    !verificarSesionLocal()
+  ) {
+    return;
+  }
+
+
+  const contenedor =
+    document.getElementById(
+      'listaReportes'
+    );
+
+
+  if (!contenedor) {
+    return;
+  }
+
+
+  contenedor.innerHTML =
+    '<div class="loading">' +
+    '🔄 Cargando reportes...' +
+    '</div>';
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          !respuesta ||
+          respuesta.estado !== true
+        ) {
+
+          contenedor.innerHTML =
+            '<div class="empty">' +
+            esc(
+              respuesta &&
+              respuesta.mensaje
+                ? respuesta.mensaje
+                : 'No fue posible cargar reportes.'
+            ) +
+            '</div>';
+
+          return;
+
+        }
+
+
+        const reportes =
+          respuesta.datos ||
+          respuesta.reportes ||
+          [];
+
+
+        if (!reportes.length) {
+
+          contenedor.innerHTML =
+            '<div class="empty">' +
+            'No existen reportes registrados.' +
+            '</div>';
+
+          return;
+
+        }
+
+
+        let html =
+          '<div class="table-wrapper">' +
+          '<table class="table table-bordered">' +
+
+          '<thead>' +
+          '<tr>' +
+          '<th>CONSECUTIVO</th>' +
+          '<th>FECHA</th>' +
+          '<th>USUARIO</th>' +
+          '<th>TURNO</th>' +
+          '<th>ARCHIVO</th>' +
+          '<th>URL</th>' +
+          '</tr>' +
+          '</thead>' +
+
+          '<tbody>';
+
+
+        reportes.forEach(
+          function(r) {
+
+            html +=
+              '<tr>' +
+
+              '<td>' +
+              esc(r.CONSECUTIVO) +
+              '</td>' +
+
+              '<td>' +
+              esc(
+                formatearValor(
+                  r.FECHA
+                )
+              ) +
+              '</td>' +
+
+              '<td>' +
+              esc(r.USUARIO) +
+              '</td>' +
+
+              '<td>' +
+              esc(r.TURNO) +
+              '</td>' +
+
+              '<td>' +
+              esc(r.ARCHIVO) +
+              '</td>' +
+
+              '<td>';
+
+            if (
+              r.URL
+            ) {
+
+              html +=
+                '<a ' +
+                'href="' +
+                esc(r.URL) +
+                '" ' +
+                'target="_blank" ' +
+                'rel="noopener">' +
+                'Abrir' +
+                '</a>';
+
+            } else {
+
+              html +=
+                '<span class="text-muted">' +
+                'Sin enlace' +
+                '</span>';
+
+            }
+
+            html +=
+              '</td>' +
+              '</tr>';
+
+          }
+        );
+
+
+        html +=
+          '</tbody>' +
+          '</table>' +
+          '</div>';
+
+
+        contenedor.innerHTML =
+          html;
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        contenedor.innerHTML =
+          '<div class="alert alert-danger">' +
+          esc(
+            error &&
+            error.message
+              ? error.message
+              : 'Error cargando reportes.'
+          ) +
+          '</div>';
+
+      }
+    )
+
+    .listarReportes(
+      tokenSesion,
+      100
+    );
+
+}
+
+
+/* =====================================================
+   USUARIOS
+   ===================================================== */
+
+function cargarUsuarios() {
+
+  if (
+    rolSesion !==
+    'ADMINISTRADOR'
+  ) {
+    return;
+  }
+
+
+  const contenedor =
+    document.getElementById(
+      'listaUsuarios'
+    );
+
+
+  contenedor.innerHTML =
+    '<div class="loading">' +
+    '🔄 Cargando usuarios...' +
+    '</div>';
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          !respuesta ||
+          respuesta.estado !== true
+        ) {
+
+          contenedor.innerHTML =
+            '<div class="alert alert-danger">' +
+            esc(
+              respuesta &&
+              respuesta.mensaje
+                ? respuesta.mensaje
+                : 'No se pudieron cargar los usuarios.'
+            ) +
+            '</div>';
+
+          return;
+
+        }
+
+
+        const usuarios =
+          respuesta.datos ||
+          respuesta.usuarios ||
+          [];
+
+
+        if (!usuarios.length) {
+
+          contenedor.innerHTML =
+            '<div class="empty">' +
+            'No existen usuarios registrados.' +
+            '</div>';
+
+          return;
+
+        }
+
+
+        let html =
+          '<div class="table-wrapper">' +
+          '<table class="table table-bordered">' +
+
+          '<thead>' +
+          '<tr>' +
+          '<th>USUARIO</th>' +
+          '<th>ROL</th>' +
+          '<th>DEPENDENCIA</th>' +
+          '<th>ESTADO</th>' +
+          '<th>ÚLTIMO ACCESO</th>' +
+          '<th>ACCIÓN</th>' +
+          '</tr>' +
+          '</thead>' +
+
+          '<tbody>';
+
+
+        usuarios.forEach(
+          function(u) {
+
+            const estado =
+              String(
+                u.ESTADO ||
+                ''
+              )
+              .toUpperCase();
+
+
+            html +=
+              '<tr>' +
+
+              '<td>' +
+              esc(u.USUARIO) +
+              '</td>' +
+
+              '<td>' +
+              esc(u.ROL) +
+              '</td>' +
+
+              '<td>' +
+              esc(u.DEPENDENCIA) +
+              '</td>' +
+
+              '<td>' +
+              esc(estado) +
+              '</td>' +
+
+              '<td>' +
+              esc(
+                formatearValor(
+                  u.ULTIMO_ACCESO
+                )
+              ) +
+              '</td>' +
+
+              '<td>';
+
+
+            if (
+              u.USUARIO !==
+              usuarioSesion
+            ) {
+
+              const nuevoEstado =
+                estado ===
+                'ACTIVO'
+                  ? 'INACTIVO'
+                  : 'ACTIVO';
+
+
+              html +=
+                '<button ' +
+                'type="button" ' +
+                'class="btn btn-sm ' +
+                (
+                  nuevoEstado ===
+                  'ACTIVO'
+                    ? 'btn-success'
+                    : 'btn-danger'
+                ) +
+                '" ' +
+                'onclick=\'cambiarEstadoUsuario(' +
+                JSON.stringify(
+                  u.USUARIO
+                ) +
+                ',' +
+                JSON.stringify(
+                  nuevoEstado
+                ) +
+                ')\'>' +
+                nuevoEstado +
+                '</button>';
+
+            } else {
+
+              html +=
+                '<span class="text-muted">' +
+                'Sesión actual' +
+                '</span>';
+
+            }
+
+
+            html +=
+              '</td>' +
+              '</tr>';
+
+          }
+        );
+
+
+        html +=
+          '</tbody>' +
+          '</table>' +
+          '</div>';
+
+
+        contenedor.innerHTML =
+          html;
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        contenedor.innerHTML =
+          '<div class="alert alert-danger">' +
+          esc(
+            error &&
+            error.message
+              ? error.message
+              : 'Error cargando usuarios.'
+          ) +
+          '</div>';
+
+      }
+    )
+
+    .listarUsuarios(
+      tokenSesion
+    );
+
+}
+
+
+/* =====================================================
+   CREAR USUARIO
+   ===================================================== */
+
+function crearUsuario() {
+
+  if (
+    rolSesion !==
+    'ADMINISTRADOR'
+  ) {
+    return;
+  }
+
+
+  const usuario =
+    document
+      .getElementById(
+        'nuevoUsuario'
+      )
+      .value
+      .trim();
+
+
+  const clave =
+    document
+      .getElementById(
+        'nuevaClave'
+      )
+      .value;
+
+
+  const rol =
+    document
+      .getElementById(
+        'nuevoRol'
+      )
+      .value;
+
+
+  const dependencia =
+    document
+      .getElementById(
+        'nuevaDependencia'
+      )
+      .value
+      .trim();
+
+
+  if (
+    !usuario ||
+    !clave ||
+    !rol ||
+    !dependencia
+  ) {
+
+    mostrarToast(
+      'Complete todos los campos.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          respuesta &&
+          respuesta.estado === true
+        ) {
+
+          mostrarToast(
+            respuesta.mensaje ||
+            'Usuario creado correctamente.'
+          );
+
+
+          document
+            .getElementById(
+              'nuevoUsuario'
+            )
+            .value = '';
+
+          document
+            .getElementById(
+              'nuevaClave'
+            )
+            .value = '';
+
+          document
+            .getElementById(
+              'nuevaDependencia'
+            )
+            .value = '';
+
+
+          cargarUsuarios();
+
+        } else {
+
+          mostrarToast(
+            respuesta &&
+            respuesta.mensaje
+              ? respuesta.mensaje
+              : 'No fue posible crear el usuario.',
+            'error'
+          );
+
+        }
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        mostrarToast(
+          error &&
+          error.message
+            ? error.message
+            : 'Error creando usuario.',
+          'error'
+        );
+
+      }
+    )
+
+    .crearUsuario(
+      tokenSesion,
+      usuario,
+      clave,
+      rol,
+      dependencia
+    );
+
+}
+
+
+/* =====================================================
+   CAMBIAR ESTADO USUARIO
+   ===================================================== */
+
+function cambiarEstadoUsuario(
+  usuario,
+  nuevoEstado
+) {
+
+  if (
+    rolSesion !==
+    'ADMINISTRADOR'
+  ) {
+    return;
+  }
+
+
+  google.script.run
+
+    .withSuccessHandler(
+      function(respuesta) {
+
+        if (
+          respuesta &&
+          respuesta.estado === true
+        ) {
+
+          mostrarToast(
+            respuesta.mensaje ||
+            'Estado actualizado.'
+          );
+
+          cargarUsuarios();
+
+        } else {
+
+          mostrarToast(
+            respuesta &&
+            respuesta.mensaje
+              ? respuesta.mensaje
+              : 'No fue posible actualizar el estado.',
+            'error'
+          );
+
+        }
+
+      }
+    )
+
+    .withFailureHandler(
+      function(error) {
+
+        console.error(error);
+
+        mostrarToast(
+          error &&
+          error.message
+            ? error.message
+            : 'Error actualizando usuario.',
+          'error'
+        );
+
+      }
+    )
+
+    .cambiarEstadoUsuario(
+      tokenSesion,
+      usuario,
+      nuevoEstado
+    );
+
+}
+
+
+/* =====================================================
+   FORMATEAR VALOR
+   ===================================================== */
+
+function formatearValor(
+  valor
+) {
+
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === ''
+  ) {
+
+    return '';
+
+  }
+
+
+  if (
+    typeof valor ===
+    'string'
+  ) {
+
+    return valor;
+
+  }
+
+
+  try {
+
+    const fecha =
+      new Date(valor);
+
+
+    if (
+      !isNaN(
+        fecha.getTime()
+      )
+    ) {
+
+      return (
+        String(
+          fecha.getDate()
+        )
+        .padStart(2,'0') +
+        '/' +
+
+        String(
+          fecha.getMonth() + 1
+        )
+        .padStart(2,'0') +
+        '/' +
+
+        fecha.getFullYear()
+      );
+
+    }
+
+  } catch(e) {
+
+    console.warn(e);
+
+  }
+
+
+  return String(valor);
+
+}
+
+
+/* =====================================================
+   FIN
+   ===================================================== */
+
+</script>
+
+</body>
+</html>
