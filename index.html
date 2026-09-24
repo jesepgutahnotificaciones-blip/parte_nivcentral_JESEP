@@ -3240,7 +3240,7 @@ function renderTurno(
       }).join('');
       if (novedades.length > 5) novedadesHtml += '<span class="badge-novedad">+' + (novedades.length - 5) + '</span>';
     } else {
-      novedadesHtml = '<span class="text-muted">Sin novedades</span>';
+      novedadesHtml = '<span class="text-muted">Sin novedad</span>';
     }
 
     html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
