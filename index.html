@@ -389,6 +389,7 @@
   .grupo-grado td{background:#e9ecef;font-weight:700;border-top:2px solid #6c757d;padding:6px;}
 </style>
 
+<base target="_blank">
 </head>
 
 <body>
@@ -1262,7 +1263,7 @@
  */
 
 const APPS_SCRIPT_API_URL =
-  'https://script.google.com/macros/s/AKfycbzuHM02UYmvC_ZpQA6AIWt6Ecef5sWs0DEskwp0oiYkHzfCNG8MvqaD562CC0Yz7GyP/exec';
+  'https://script.google.com/macros/s/AKfycbxlD-gzoF2P52bNG9HPMdVZ43_GQPIooesJVcHzqV2MV4DkE9XgFWw8ikLpALVn-20r/exec';
 
 
 (function configurarPuenteAPI() {
@@ -1514,6 +1515,13 @@ let funcionarioSeleccionado = null;
 let ultimoTurnoConsultado = null;
 
 let ultimoResultadoTurno = null;
+
+/*
+ * FUERZA DISPONIBLE: igual que en Código.gs.
+ *   false = descuenta a quien tenga CUALQUIER registro en NOVEDADES.
+ *   true  = descuenta solo novedades ACTIVAS.
+ */
+const FUERZA_DISPONIBLE_SOLO_ACTIVAS = false;
 
 
 /* =====================================================
@@ -3126,30 +3134,59 @@ function renderTurno(
     return pa - pb;
   });
 
+  /*
+   * FUERZA EFECTIVA: conteo total por categoría.
+   * FUERZA DISPONIBLE: efectiva menos los funcionarios que
+   * tienen al menos un registro en la hoja NOVEDADES
+   * (ver FUERZA_DISPONIBLE_SOLO_ACTIVAS, igual que en Código.gs).
+   */
+  const CATEGORIAS_FUERZA = ['OF', 'NIV. EJE', 'PT', 'PP', 'AXP', 'NO UNI'];
+
   const resumen = { OF:0, 'NIV. EJE':0, PT:0, PP:0, AXP:0, 'NO UNI':0 };
+  const conNovedad = { OF:0, 'NIV. EJE':0, PT:0, PP:0, AXP:0, 'NO UNI':0 };
+
   const oficiales = { BG:true, CR:true, TC:true, MY:true, CT:true, TE:true, ST:true, CM:true };
   const nivelEje = { SC:true, IJ:true, IT:true, SI:true };
+
   funcionarios.forEach(function(f) {
+
     const grado = String(f.grado || f.GR || '').trim().toUpperCase();
     const nivel = String(f.nivel || f.NIV || '').trim().toUpperCase();
-    if (oficiales[grado] || nivel.indexOf('OFICIAL') !== -1) resumen.OF++;
-    else if (grado === 'PT' || nivel === 'PT') resumen.PT++;
-    else if (grado === 'PP' || nivel === 'PP') resumen.PP++;
-    else if (grado === 'AXP' || nivel.indexOf('AXP') !== -1 || nivel.indexOf('AUXILIAR') !== -1) resumen.AXP++;
-    else if (nivel.indexOf('NO UNI') !== -1 || nivel.indexOf('NO UNIFORM') !== -1 || nivel === 'NO UNIFORMADO' || nivel === 'NO UNIFORMADOS') resumen['NO UNI']++;
-    else if (nivelEje[grado] || nivel.indexOf('EJECUTIVO') !== -1) resumen['NIV. EJE']++;
-    else resumen['NO UNI']++;
+
+    let categoria;
+
+    if (oficiales[grado] || nivel.indexOf('OFICIAL') !== -1) categoria = 'OF';
+    else if (grado === 'PT' || nivel === 'PT') categoria = 'PT';
+    else if (grado === 'PP' || nivel === 'PP') categoria = 'PP';
+    else if (grado === 'AXP' || nivel.indexOf('AXP') !== -1 || nivel.indexOf('AUXILIAR') !== -1) categoria = 'AXP';
+    else if (nivel.indexOf('NO UNI') !== -1 || nivel.indexOf('NO UNIFORM') !== -1 || nivel === 'NO UNIFORMADO' || nivel === 'NO UNIFORMADOS') categoria = 'NO UNI';
+    else if (nivelEje[grado] || nivel.indexOf('EJECUTIVO') !== -1) categoria = 'NIV. EJE';
+    else categoria = 'NO UNI';
+
+    resumen[categoria]++;
+
+    const restaDisponible = FUERZA_DISPONIBLE_SOLO_ACTIVAS
+      ? (f.tieneNovedadActiva === true)
+      : ((Number(f.totalNovedades) || (f.historialNovedades || []).length) > 0);
+
+    if (restaDisponible) conNovedad[categoria]++;
+  });
+
+  const disponible = {};
+  CATEGORIAS_FUERZA.forEach(function(c) {
+    disponible[c] = resumen[c] - conNovedad[c];
   });
 
   let html = '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><span>📋 Listado ' + esc(filtro) + '</span><div class="no-print"><button type="button" class="btn btn-sm btn-secondary me-1" onclick="imprimirTurno()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Descargar PDF</button></div></div></div><div class="card-body">';
 
+  html += '<div class="mb-1"><strong style="color:#01592F;font-size:15px;">FUERZA EFECTIVA</strong></div>';
+  html += '<div class="row g-2 mb-2">';
+  CATEGORIAS_FUERZA.forEach(function(c) { html += crearEstadistica(c, resumen[c]); });
+  html += '</div>';
+
+  html += '<div class="mb-1"><strong style="color:#173E56;font-size:15px;">FUERZA DISPONIBLE</strong> <small class="text-muted">(efectiva sin registros en novedades)</small></div>';
   html += '<div class="row g-2 mb-3">';
-  html += crearEstadistica('OF', resumen.OF);
-  html += crearEstadistica('NIV. EJE', resumen['NIV. EJE']);
-  html += crearEstadistica('PT', resumen.PT);
-  html += crearEstadistica('PP', resumen.PP);
-  html += crearEstadistica('AXP', resumen.AXP);
-  html += crearEstadistica('NO UNI', resumen['NO UNI']);
+  CATEGORIAS_FUERZA.forEach(function(c) { html += crearEstadistica(c, disponible[c]); });
   html += '</div>';
 
   html += '<div class="table-wrapper"><table id="tablaTurno" class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>NIV</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
