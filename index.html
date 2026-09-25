@@ -699,6 +699,7 @@
               <select
                 id="tipoNovedad"
                 class="form-select"
+                onchange="alCambiarTipoNovedad()"
               >
 
                 <option value="SERVICIO">
@@ -786,53 +787,6 @@
               <input
                 type="date"
                 id="fechaPresentacion"
-                class="form-control"
-              >
-
-            </div>
-
-
-            <div class="col-md-12">
-
-              <label class="form-label">
-                Descripción
-              </label>
-
-              <textarea
-                id="descripcionNovedad"
-                class="form-control"
-                rows="2"
-                placeholder="Descripción de la novedad"
-              ></textarea>
-
-            </div>
-
-
-            <div class="col-md-12">
-
-              <label class="form-label">
-                Observación
-              </label>
-
-              <textarea
-                id="observacionNovedad"
-                class="form-control"
-                rows="3"
-                placeholder="Observación"
-              ></textarea>
-
-            </div>
-
-
-            <div class="col-md-4">
-
-              <label class="form-label">
-                RV
-              </label>
-
-              <input
-                type="text"
-                id="rvNovedad"
                 class="form-control"
               >
 
@@ -2580,13 +2534,9 @@ function cargarHistorial(
           '<tr>' +
           '<th>GR</th>' +
           '<th>NOVEDAD</th>' +
-          '<th>DESCRIPCIÓN</th>' +
           '<th>DÍAS</th>' +
           '<th>FECHA INICIAL</th>' +
           '<th>FECHA PRESENTACIÓN</th>' +
-          '<th>OBSERVACIÓN</th>' +
-          '<th>RV</th>' +
-          '<th>TEXTO</th>' +
           '</tr>' +
           '</thead>' +
 
@@ -2610,10 +2560,6 @@ function cargarHistorial(
               '</td>' +
 
               '<td>' +
-              esc(n.DESCRIPCION) +
-              '</td>' +
-
-              '<td>' +
               esc(n.Dias) +
               '</td>' +
 
@@ -2631,18 +2577,6 @@ function cargarHistorial(
                   n['Fecha PRESENTACION']
                 )
               ) +
-              '</td>' +
-
-              '<td>' +
-              esc(n.Observacion) +
-              '</td>' +
-
-              '<td>' +
-              esc(n.RV) +
-              '</td>' +
-
-              '<td>' +
-              esc(n.TEXTO) +
               '</td>' +
 
               '</tr>';
@@ -2682,6 +2616,44 @@ function cargarHistorial(
       tokenSesion,
       cedula
     );
+
+}
+
+
+/* =====================================================
+   TIPO -> NOVEDAD
+   =====================================================
+
+ * El nombre que realmente se guarda en la hoja NOVEDADES
+ * es el del campo "Novedad" (texto libre). El campo "Tipo"
+ * por sí solo no se guardaba en ningún lado: si el usuario
+ * solo elegía el Tipo y dejaba "Novedad" vacío, el registro
+ * se rechazaba (o guardaba en blanco) sin que fuera obvio
+ * por qué. Ahora, al cambiar el Tipo, se copia su valor al
+ * campo Novedad automáticamente; con "OTRA NOVEDAD" el
+ * campo queda vacío para que el usuario escriba el nombre.
+ */
+
+function alCambiarTipoNovedad() {
+
+  const tipo =
+    document
+      .getElementById('tipoNovedad')
+      .value;
+
+  const campoNovedad =
+    document.getElementById('novedadNombre');
+
+  if (tipo === 'OTRA NOVEDAD') {
+
+    campoNovedad.value = '';
+    campoNovedad.focus();
+
+  } else {
+
+    campoNovedad.value = tipo;
+
+  }
 
 }
 
@@ -2762,14 +2734,6 @@ function registrarNovedad() {
         )
         .value,
 
-    descripcion:
-      document
-        .getElementById(
-          'descripcionNovedad'
-        )
-        .value
-        .trim(),
-
     dias:
       document
         .getElementById(
@@ -2789,23 +2753,7 @@ function registrarNovedad() {
         .getElementById(
           'fechaPresentacion'
         )
-        .value,
-
-    observacion:
-      document
-        .getElementById(
-          'observacionNovedad'
-        )
         .value
-        .trim(),
-
-    rv:
-      document
-        .getElementById(
-          'rvNovedad'
-        )
-        .value
-        .trim()
 
   };
 
@@ -2897,24 +2845,6 @@ function limpiarFormularioNovedad() {
   document
     .getElementById(
       'fechaPresentacion'
-    )
-    .value = '';
-
-  document
-    .getElementById(
-      'descripcionNovedad'
-    )
-    .value = '';
-
-  document
-    .getElementById(
-      'observacionNovedad'
-    )
-    .value = '';
-
-  document
-    .getElementById(
-      'rvNovedad'
     )
     .value = '';
 
