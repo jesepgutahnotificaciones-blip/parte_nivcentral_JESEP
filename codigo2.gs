@@ -90,13 +90,15 @@ function validarUsuario(usuarioIngresado, claveIngresada) {
     
     var cabeceras = datos[0].map(function(c) { return String(c).trim().toUpperCase(); });
     
-    // Buscar los índices de manera flexible
+    // Buscar los índices de manera flexible soportando 'CLAVE' o 'CONTRASEÑA'
     var idxUser = cabeceras.indexOf('USUARIO');
-    var idxClave = cabeceras.indexOf('CLAVE');
+    var idxClave = cabeceras.indexOf('CONTRASEÑA');
+    if (idxClave === -1) idxClave = cabeceras.indexOf('CLAVE');
+    
     var idxRol = cabeceras.indexOf('ROL');
     var idxDep = cabeceras.indexOf('DEPENDENCIA');
 
-    // Si no encuentra por nombres de cabecera predeterminados, asume las columnas estándar (A=0, B=1, C=2, D=3)
+    // Si no encuentra por nombres de cabecera, asigna por defecto
     if (idxUser === -1) idxUser = 0;
     if (idxClave === -1) idxClave = 1;
     if (idxRol === -1) idxRol = 2;
@@ -111,14 +113,23 @@ function validarUsuario(usuarioIngresado, claveIngresada) {
       var rowClave = String(row[idxClave] || '').trim();
 
       if (rowUser === userClean && rowClave === passClean) {
+        var rolUsuario = String(row[idxRol] || 'OPERADOR').trim().toUpperCase();
+        
+        // Asignar módulos según el rol o permisos institucionales
+        var modulosAsignados = ['index_1', 'index_2']; // Por defecto acceso total o según criterio
+        if (rolUsuario === 'OPERADOR') {
+          modulosAsignados = ['index_1']; // O el módulo que corresponda al operador
+        }
+
         return {
           estado: true,
-          token: 'MODO_SIN_LOGIN',
+          token: 'MODO_SIN_LOGIN_' + Date.now(),
           usuario: { 
             usuario: row[idxUser], 
-            rol: row[idxRol] || 'ADMINISTRADOR', 
+            rol: rolUsuario, 
             dependencia: row[idxDep] || 'GENERAL' 
-          }
+          },
+          modulos: modulosAsignados
         };
       }
     }
