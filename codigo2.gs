@@ -88,75 +88,41 @@ function validarUsuario(usuarioIngresado, claveIngresada) {
     var datos = hojaUsuarios.getDataRange().getValues();
     if (datos.length < 2) return { estado: false, mensaje: 'La hoja USUARIOS no contiene registros.' };
     
-    var cabeceras = datos[0];
+    var cabeceras = datos[0].map(function(c) { return String(c).trim().toUpperCase(); });
+    
+    // Buscar los índices de manera flexible
     var idxUser = cabeceras.indexOf('USUARIO');
     var idxClave = cabeceras.indexOf('CLAVE');
     var idxRol = cabeceras.indexOf('ROL');
     var idxDep = cabeceras.indexOf('DEPENDENCIA');
 
+    // Si no encuentra por nombres de cabecera predeterminados, asume las columnas estándar (A=0, B=1, C=2, D=3)
+    if (idxUser === -1) idxUser = 0;
+    if (idxClave === -1) idxClave = 1;
+    if (idxRol === -1) idxRol = 2;
+    if (idxDep === -1) idxDep = 3;
+
+    var userClean = String(usuarioIngresado).trim().toLowerCase();
+    var passClean = String(claveIngresada).trim();
+
     for (var i = 1; i < datos.length; i++) {
       var row = datos[i];
-      if (String(row[idxUser]).trim().toLowerCase() === String(usuarioIngresado).trim().toLowerCase() && String(row[idxClave]).trim() === String(claveIngresada)) {
+      var rowUser = String(row[idxUser] || '').trim().toLowerCase();
+      var rowClave = String(row[idxClave] || '').trim();
+
+      if (rowUser === userClean && rowClave === passClean) {
         return {
           estado: true,
           token: 'MODO_SIN_LOGIN',
-          usuario: { usuario: row[idxUser], rol: row[idxRol] || 'ADMINISTRADOR', dependencia: row[idxDep] || 'GENERAL' }
+          usuario: { 
+            usuario: row[idxUser], 
+            rol: row[idxRol] || 'ADMINISTRADOR', 
+            dependencia: row[idxDep] || 'GENERAL' 
+          }
         };
       }
     }
     return { estado: false, mensaje: 'Usuario o contraseña incorrectos.' };
-  } catch (err) {
-    return { estado: false, mensaje: err.message };
-  }
-}
-
-function cerrarSesionCliente(token) { return { estado: true }; }
-
-function listarUsuarios(token) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hoja = ss.getSheetByName('USUARIOS');
-    if (!hoja) return { estado: true, datos: [] };
-    var datos = hoja.getDataRange().getValues();
-    var cabeceras = datos[0];
-    var usuarios = [];
-    for (var i = 1; i < datos.length; i++) {
-      var obj = {};
-      for (var j = 0; j < cabeceras.length; j++) { obj[cabeceras[j]] = datos[i][j]; }
-      usuarios.push(obj);
-    }
-    return { estado: true, datos: usuarios };
-  } catch (err) {
-    return { estado: false, mensaje: err.message };
-  }
-}
-
-function crearUsuario(token, usuario, clave, rol, dependencia) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hoja = ss.getSheetByName('USUARIOS');
-    if (!hoja) return { estado: false, mensaje: 'Hoja USUARIOS no encontrada.' };
-    hoja.appendRow([usuario, clave, rol, dependencia, 'ACTIVO', new Date()]);
-    return { estado: true, mensaje: 'Usuario creado exitosamente.' };
-  } catch (err) {
-    return { estado: false, mensaje: err.message };
-  }
-}
-
-function cambiarEstadoUsuario(token, usuario, nuevoEstado) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hoja = ss.getSheetByName('USUARIOS');
-    var datos = hoja.getDataRange().getValues();
-    var idxUser = datos[0].indexOf('USUARIO');
-    var idxEstado = datos[0].indexOf('ESTADO');
-    for (var i = 1; i < datos.length; i++) {
-      if (String(datos[i][idxUser]).trim() === String(usuario).trim()) {
-        hoja.getRange(i + 1, idxEstado + 1).setValue(nuevoEstado);
-        return { estado: true, mensaje: 'Estado actualizado correctamente.' };
-      }
-    }
-    return { estado: false, mensaje: 'Usuario no encontrado.' };
   } catch (err) {
     return { estado: false, mensaje: err.message };
   }
@@ -295,21 +261,21 @@ function registrarNovedad(token, datosNovedad) {
 
 
 /* =====================================================
-   4. TURNOS Y REPORTES
+   4. TURNOS Y REPORTES (CON CRUCE DE COLUMNAS E Y F)
    ===================================================== */
 
 function consultarPorTurno(token, filtro) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hojaBase = ss.getSheetByName('LISTADO_BASE');
-    if (!hojaBase) return { estado: false, mensaje: 'Hoja LISTADO_BASE no encontrada.' };
+    if (!hojaBase) return { estado: false, mensaje: 'Hoja LISTADO_BASE não encontrada.' };
 
     var datosBase = hojaBase.getDataRange().getValues();
     if (datosBase.length < 2) return { estado: false, mensaje: 'La hoja LISTADO_BASE está vacía.' };
 
     var cabecerasBase = datosBase[0];
     
-    // Leer también la hoja NOVEDADES para hacer el cruce
+    // Leer hoja NOVEDADES para cruzar información
     var hojaNovedades = ss.getSheetByName('NOVEDADES');
     var datosNovedades = [];
     if (hojaNovedades) {
@@ -327,12 +293,10 @@ function consultarPorTurno(token, filtro) {
       var turnoFila = String(obj.turno || obj.TURNO || '').trim().toUpperCase();
       if (filtro === 'SEPRI' || turnoFila === String(filtro).trim().toUpperCase()) {
         
-        // Buscar cédula del funcionario actual
         var cedulaFuncionario = String(obj.cedula || obj.CEDULA || '').trim();
         var novedadesCruzadas = [];
 
-        // Cruzar con la hoja NOVEDADES (buscando cédula y concatenando columnas E y F)
-        // Nota: En getValues(), la columna E es el índice 4 y la F es el índice 5.
+        // Cruce con la hoja NOVEDADES (Concatenando columna E [índice 4] y F [índice 5])
         if (datosNovedades.length > 1 && cedulaFuncionario !== '') {
           var cabecerasNov = datosNovedades[0];
           var idxCedulaNov = -1;
@@ -379,6 +343,60 @@ function consultarPorTurno(token, filtro) {
         funcionarios: funcionarios
       }
     };
+  } catch (err) {
+    return { estado: false, mensaje: err.message };
+  }
+}
+
+function previsualizarReporteTurno(token, filtro) {
+  try {
+    var resultadoTurno = consultarPorTurno(token, filtro);
+    if (!resultadoTurno.estado) return resultadoTurno;
+
+    var funcs = resultadoTurno.datos.funcionarios;
+    var html = '<h3 style="font-family:Arial;">Reporte de Turno: ' + filtro + '</h3>';
+    html += '<table border="1" cellpadding="5" style="border-collapse:collapse;width:100%;font-family:Arial;font-size:12px;">';
+    html += '<tr style="background:#01592F;color:white;"><th>Cédula</th><th>Grado</th><th>Funcionario</th><th>Dependencia</th><th>Turno</th><th>Novedades</th></tr>';
+    
+    funcs.forEach(function(f) {
+      var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
+      html += '<tr>';
+      html += '<td>' + (f.cedula || f.CEDULA || '') + '</td>';
+      html += '<td>' + (f.grado || f.GR || '') + '</td>';
+      html += '<td>' + (f.funcionario || f.FUNCIONARIO || '') + '</td>';
+      html += '<td>' + (f.dependencia || f.DEPENDENCIA || '') + '</td>';
+      html += '<td>' + (f.turno || f.TURNO || '') + '</td>';
+      html += '<td>' + novedadesTexto + '</td>';
+      html += '</tr>';
+    });
+    html += '</table>';
+
+    return { estado: true, html: html };
+  } catch (err) {
+    return { estado: false, mensaje: err.message };
+  }
+}
+
+function generarReporteTurno(token, filtro) {
+  try {
+    var consecutivo = 'REP-' + Date.now();
+    return {
+      estado: true,
+      datos: {
+        filtro: filtro,
+        consecutivo: consecutivo,
+        urlPDF: '#',
+        urlExcel: '#'
+      }
+    };
+  } catch (err) {
+    return { estado: false, mensaje: err.message };
+  }
+}
+
+function listarReportes(token, limite) {
+  try {
+    return { estado: true, datos: [] };
   } catch (err) {
     return { estado: false, mensaje: err.message };
   }
