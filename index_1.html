@@ -120,17 +120,6 @@
     th { background: var(--verde) !important; color: white !important; white-space: nowrap; }
     td { vertical-align: middle; }
 
-    .badge-novedad {
-      background: #e8f3ed;
-      color: var(--verde);
-      border: 1px solid #c8dfd2;
-      padding: 4px 7px;
-      border-radius: 5px;
-      display: inline-block;
-      margin: 2px;
-      font-size: 11px;
-    }
-
     .empty { padding: 25px; text-align: center; color: #78909c; background: white; border-radius: 10px; }
     .loading { padding: 25px; text-align: center; background: white; border-radius: 10px; color: var(--verde); }
 
@@ -486,14 +475,44 @@ function cargarTurno(filtro) {
   const contenedor = document.getElementById('resultadoTurno');
   contenedor.innerHTML = '<div class="loading">🔄 Calculando fuerza disponible para el turno ' + esc(filtro) + '...</div>';
 
+  // CORREGIDO: Se cambia 'buscarFuncionario' por 'obtenerTurno' (método adecuado del backend para turnos)
   google.script.run
     .withSuccessHandler(respuesta => {
-      contenedor.innerHTML = '<div class="card"><div class="card-header">Fuerza Disponible - Turno ' + esc(filtro) + '</div><div class="card-body"><p class="text-success">Conteo y listado procesado correctamente.</p></div></div>';
+      if (!respuesta || respuesta.estado !== true) {
+        contenedor.innerHTML = '<div class="card"><div class="card-header">Turno ' + esc(filtro) + '</div><div class="card-body"><div class="empty">No se encontraron registros para este turno.</div></div></div>';
+        return;
+      }
+      
+      // Si el backend devuelve un bloque HTML directo
+      if (respuesta.html) {
+        contenedor.innerHTML = '<div class="card"><div class="card-header">Fuerza Disponible - Turno ' + esc(filtro) + '</div><div class="card-body">' + respuesta.html + '</div></div>';
+        return;
+      }
+
+      // Si el backend devuelve una lista de datos (array)
+      const datos = respuesta.datos || [];
+      let html = '<div class="card"><div class="card-header">Fuerza Disponible - Turno ' + esc(filtro) + ' (' + datos.length + ' registros)</div><div class="card-body">';
+      if (datos.length === 0) {
+        html += '<div class="empty">No hay personal registrado en este turno.</div>';
+      } else {
+        html += '<div class="table-wrapper"><table class="table table-striped table-bordered"><thead><tr><th>Grado</th><th>Funcionario</th><th>Cédula</th><th>Dependencia</th></tr></thead><tbody>';
+        datos.forEach(d => {
+          html += '<tr>' +
+            '<td>' + esc(d.grado || d.GRADO || '') + '</td>' +
+            '<td>' + esc(d.funcionario || d.FUNCIONARIO || '') + '</td>' +
+            '<td>' + esc(d.cedula || d.CEDULA || '') + '</td>' +
+            '<td>' + esc(d.dependencia || d.DEPENDENCIA || '') + '</td>' +
+            '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+      html += '</div></div>';
+      contenedor.innerHTML = html;
     })
     .withFailureHandler(error => {
-      contenedor.innerHTML = '<div class="alert alert-danger">Error al consultar el turno.</div>';
+      contenedor.innerHTML = '<div class="alert alert-danger">Error al consultar el turno: ' + esc(error.message || error) + '</div>';
     })
-    .buscarFuncionario(TOKEN_FIJO, filtro);
+    .obtenerTurno(TOKEN_FIJO, filtro);
 }
 
 function previsualizarReporte() {
