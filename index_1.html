@@ -675,7 +675,7 @@ function cargarTurno(filtro) {
     .consultarPorTurno(tokenSesion, filtro);
 }
 
-ffunction renderTurno(respuesta) {
+function renderTurno(respuesta) {
   const contenedor = document.getElementById('resultadoTurno');
   const datos = respuesta.datos || {};
   let funcionarios = datos.funcionarios || respuesta.funcionarios || [];
@@ -686,16 +686,13 @@ ffunction renderTurno(respuesta) {
     return;
   }
 
-  // Se eliminó '<th>NIV</th>' de las cabeceras
   let html = '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Listado ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
-  html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
+  html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>NIV</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
   funcionarios.forEach(function(f, indice) {
     const novedades = f.historialNovedades || [];
     let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">Sin novedades</span>';
-    
-    // Se removió la celda correspondiente a NIV
-    html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+    html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
   });
   html += '</tbody></table></div></div></div>';
   contenedor.innerHTML = html;
