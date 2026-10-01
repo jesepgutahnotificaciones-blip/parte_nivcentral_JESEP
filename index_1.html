@@ -332,15 +332,17 @@ const TOKEN_FIJO = 'MODULO_DISPONIBLE_AUTOMATICO';
       withFailureHandler: function(fn) { manejadorFallo = fn; return proxyEjecutor; },
       withUserObject: function() { return proxyEjecutor; }
     };
-    return new Proxy(base, {
+    const proxyEjecutor = new Proxy(base, {
       get: function(objetivo, propiedad) {
         if (propiedad in objetivo) return objetivo[propiedad];
+        if (typeof propiedad === 'symbol') return undefined;
         return function() {
           const argumentos = Array.prototype.slice.call(arguments);
           llamarAPI_(propiedad, argumentos, manejadorExito, manejadorFallo);
         };
       }
     });
+    return proxyEjecutor;
   }
 
   window.google = window.google || {};
@@ -437,8 +439,8 @@ function registrarNovedad() {
   const datos = {
     cc: cedula,
     cedula: cedula,
-    novedad: novedad,
-    tipo: document.getElementById('tipoNovedad').value,
+    novedad: document.getElementById('tipoNovedad').value,
+    nombreNovedad: novedad,
     dias: document.getElementById('novedadDias').value,
     fechaInicial: document.getElementById('fechaInicial').value,
     fechaPresentacion: document.getElementById('fechaPresentacion').value
