@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión</title>
+  <style>
+    :root {
+      --primary-color: #0d47a1;
+      --secondary-color: #1565c0;
+      --accent-color: #d4af37;
+      --bg-color: #f4f6f9;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-info {
+      font-size: 0.9em;
+    }
+
+    nav.menu {
+      background-color: var(--secondary-color);
+      display: flex;
+      gap: 10px;
+      padding: 10px 20px;
+      flex-wrap: wrap;
+    }
+
+    nav.menu button {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+
+    nav.menu button:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    nav.menu button.btn-dorado {
+      background-color: var(--accent-color);
+      color: #000;
+      font-weight: bold;
+      border: none;
+    }
+
+    nav.menu button.btn-dorado:hover {
+      background-color: #b89628;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 30px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 4px;
+      width: 100%;
+    }
+
+    .btn:hover {
+      background-color: var(--secondary-color);
+    }
+
+    .oculto {
+      display: none !important;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PANTALLA DE LOGIN -->
+  <div id="pantallaLogin" class="login-container">
+    <h2 style="text-align: center; margin-top: 0;">Iniciar Sesión</h2>
+    <form id="formLogin" onsubmit="event.preventDefault(); iniciarSesion();">
+      <div class="form-group">
+        <label for="txtUsuario">Usuario:</label>
+        <input type="text" id="txtUsuario" required>
+      </div>
+      <div class="form-group">
+        <label for="txtClave">Contraseña:</label>
+        <input type="password" id="txtClave" required>
+      </div>
+      <button type="submit" class="btn">Ingresar</button>
+    </form>
+    <p id="msgLogin" style="color: red; text-align: center; margin-top: 15px;"></p>
+  </div>
+
+  <!-- PANTALLA PRINCIPAL DE APLICACIÓN -->
+  <div id="pantallaApp" class="oculto">
+    
+    <header class="no-print">
+      <h1>Sistema de Gestión</h1>
+      <div class="user-info">
+        <span id="infoUsuario">Cargando...</span> | 
+        <a href="#" onclick="cerrarSesionCliente()" style="color: #ffc107;">Cerrar Sesión</a>
+      </div>
+    </header>
+
+    <!-- MENÚ DE NAVEGACIÓN -->
+    <nav class="menu no-print">
+      <button type="button" id="menuConsulta" onclick="mostrarSeccion('consulta')">🔎 Consulta</button>
+      <button type="button" id="menuNovedad" onclick="mostrarSeccion('novedad')">📝 Registrar novedad</button>
+      <button type="button" id="menuTurnos" onclick="mostrarSeccion('turnos')">📋 Turnos</button>
+      <button type="button" id="menuReportes" onclick="mostrarSeccion('reportes')">📄 Reportes</button>
+      <button type="button" id="menuUsuarios" class="soloAdministrador" onclick="mostrarSeccion('usuarios')">👤 Usuarios</button>
+      
+      <!-- BOTÓN PARA ABRIR INDEX_2 (SOLO PARA USUARIOS AUTORIZADOS) -->
+      <button type="button" id="btnIndex2" style="display: none;" class="btn-dorado" onclick="window.open('index_2.html', '_blank')">🚀 Módulo Especial (Index 2)</button>
+    </nav>
+
+    <!-- CONTENIDOS DE SECCIONES -->
+    <div class="container">
+      
+      <!-- SECCIÓN CONSULTA -->
+      <div id="seccionConsulta" class="card seccion-modulo">
+        <h2>Consulta de Información</h2>
+        <p>Bienvenido al módulo de consulta.</p>
+      </div>
+
+      <!-- SECCIÓN NOVEDAD -->
+      <div id="seccionNovedad" class="card seccion-modulo oculto">
+        <h2>Registrar Novedad</h2>
+        <form id="formNovedad" onsubmit="event.preventDefault(); guardarNovedadCliente();">
+          <div class="form-group">
+            <label for="selectTipoNovedad">Tipo de Novedad:</label>
+            <select id="selectTipoNovedad" required>
+              <option value="">Seleccione...</option>
+              <option value="Permiso">Permiso</option>
+              <option value="Incapacidad">Incapacidad</option>
+              <option value="Cambio de Turno">Cambio de Turno</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="txtObservacion">Observación:</label>
+            <textarea id="txtObservacion" rows="3" required></textarea>
+          </div>
+          <button type="submit" class="btn">Guardar Novedad</button>
+        </form>
+      </div>
+
+      <!-- SECCIÓN TURNOS -->
+      <div id="seccionTurnos" class="card seccion-modulo oculto">
+        <h2>Gestión de Turnos</h2>
+        <p>Módulo de visualización y asignación de turnos.</p>
+      </div>
+
+      <!-- SECCIÓN REPORTES -->
+      <div id="seccionReportes" class="card seccion-modulo oculto">
+        <h2>Reportes</h2>
+        <p>Generación de reportes del sistema.</p>
+      </div>
+
+      <!-- SECCIÓN USUARIOS -->
+      <div id="seccionUsuarios" class="card seccion-modulo soloAdministrador oculto">
+        <h2>Administración de Usuarios</h2>
+        <p>Gestión de usuarios y permisos.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // VARIABLES GLOBALES DE SESIÓN
+    let tokenSesion = '';
+    let usuarioSesion = '';
+    let rolSesion = '';
+    let dependenciaSesion = '';
+    let tienePermisoEspecialSesion = false;
+
+    // INICIAR SESIÓN
+    function iniciarSesion() {
+      const usr = document.getElementById('txtUsuario').value;
+      const pass = document.getElementById('txtClave').value;
+      const msg = document.getElementById('msgLogin');
+
+      msg.innerText = 'Verificando...';
+
+      google.script.run
+        .withSuccessHandler(function(respuesta) {
+          if (respuesta.estado) {
+            tokenSesion = respuesta.token;
+            usuarioSesion = respuesta.usuario ? respuesta.usuario.usuario : usr;
+            rolSesion = respuesta.usuario ? respuesta.usuario.rol : '';
+            dependenciaSesion = respuesta.usuario ? respuesta.usuario.dependencia : '';
+            tienePermisoEspecialSesion = respuesta.permisoEspecial || false;
+
+            document.getElementById('infoUsuario').innerText = 'Usuario: ' + usuarioSesion + ' | Rol: ' + rolSesion;
+            
+            document.getElementById('pantallaLogin').classList.add('oculto');
+            document.getElementById('pantallaApp').classList.remove('oculto');
+
+            configurarPermisos();
+            mostrarSeccion('consulta');
+          } else {
+            msg.innerText = respuesta.mensaje;
+          }
+        })
+        .withFailureHandler(function(err) {
+          msg.innerText = 'Error de conexión con el servidor.';
+        })
+        .validarUsuario(usr, pass);
+    }
+
+    // CONFIGURACIÓN DE PERMISOS
+    function configurarPermisos() {
+      // Mostrar u ocultar elementos solo para administradores
+      const elementosAdmin = document.querySelectorAll('.soloAdministrador');
+      elementosAdmin.forEach(function(elem) {
+        if (rolSesion === 'ADMINISTRADOR') {
+          elem.classList.remove('oculto');
+        } else {
+          elem.classList.add('oculto');
+        }
+      });
+
+      // Control del Botón Permiso Especial para Index_2
+      const btnIndex2 = document.getElementById('btnIndex2');
+      const usuariosAutorizados = [
+        'SGSST', 'JESEPVAC', 'JESEPPAS', 'JESEPCIT', 
+        'JESEPPRO', 'JESEPUBL', 'JESEPGH', 'JESEPCAP', 'JESEP'
+      ];
+
+      const usuarioLimpio = String(usuarioSesion || '').trim().toUpperCase();
+
+      if (tienePermisoEspecialSesion || usuariosAutorizados.indexOf(usuarioLimpio) !== -1) {
+        btnIndex2.style.display = 'inline-block';
+      } else {
+        btnIndex2.style.display = 'none';
+      }
+    }
+
+    // NAVEGACIÓN ENTRE SECCIONES
+    function mostrarSeccion(seccion) {
+      const secciones = document.querySelectorAll('.seccion-modulo');
+      secciones.forEach(function(s) {
+        s.classList.add('oculto');
+      });
+
+      if (seccion === 'consulta') document.getElementById('seccionConsulta').classList.remove('oculto');
+      if (seccion === 'novedad') document.getElementById('seccionNovedad').classList.remove('oculto');
+      if (seccion === 'turnos') document.getElementById('seccionTurnos').classList.remove('oculto');
+      if (seccion === 'reportes') document.getElementById('seccionReportes').classList.remove('oculto');
+      if (seccion === 'usuarios') document.getElementById('seccionUsuarios').classList.remove('oculto');
+    }
+
+    // REGISTRAR NOVEDAD DESDE EL CLIENTE
+    function guardarNovedadCliente() {
+      const datos = {
+        usuario: usuarioSesion,
+        dependencia: dependenciaSesion,
+        tipoNovedad: document.getElementById('selectTipoNovedad').value,
+        observacion: document.getElementById('txtObservacion').value
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          alert(res.mensaje);
+          if (res.estado) {
+            document.getElementById('formNovedad').reset();
+          }
+        })
+        .guardarNovedad(datos);
+    }
+
+    // CERRAR SESIÓN
+    function cerrarSesionCliente() {
+      tokenSesion = '';
+      usuarioSesion = '';
+      rolSesion = '';
+      dependenciaSesion = '';
+      tienePermisoEspecialSesion = false;
+
+      document.getElementById('formLogin').reset();
+      document.getElementById('msgLogin').innerText = '';
+      document.getElementById('pantallaApp').classList.add('oculto');
+      document.getElementById('pantallaLogin').classList.remove('oculto');
+    }
+  </script>
+</body>
+</html>

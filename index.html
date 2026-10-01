@@ -483,6 +483,14 @@
      APLICACIÓN
      ===================================================== -->
 
+
+<!-- Contenedor del botón (oculto por defecto) -->
+<div id="contenedor-boton-index2" style="display: none;">
+  <button id="btn-ir-index2" class="btn btn-primary" onclick="window.location.href='index_2.html'">
+    Ir a Index 2
+  </button>
+</div>
+
 <div id="aplicacion" style="display:none;">
 
 
@@ -1233,6 +1241,41 @@
 
 <script>
 
+/* =====================================================
+   CONTROL DE ACCESO A INDEX_2.html SEGÚN USUARIO
+   ===================================================== */
+const USUARIOS_PERMITIDOS_INDEX2 = [
+  "SGSST_JESEP",
+  "VAC_JESEP",
+  "PAS__JESEP",
+  "CIT_JESEP",
+  "PRO__JESEP",
+  "UBL_JESEP",
+  "GH_JESEP",
+  "CAP_JESEP"
+];
+
+function evaluarPermisoIndex2(nombreUsuario) {
+  const contenedorBoton = document.getElementById("contenedor-boton-index2");
+  if (!contenedorBoton) return;
+
+  const limpio = String(nombreUsuario || "").trim().toUpperCase();
+  
+  if (USUARIOS_PERMITIDOS_INDEX2.includes(limpió)) {
+    contenedorBoton.style.display = "block"; // Muestra el botón solo para ellos
+  } else {
+    contenedorBoton.style.display = "none";
+  }
+}
+
+// Integra esta validación dentro de tu función existente de éxito al iniciar sesión:
+// (Dentro del withSuccessHandler de validarUsuario)
+/*
+  tokenSesion = respuesta.token;
+  usuarioSesion = respuesta.usuario && respuesta.usuario.usuario ? respuesta.usuario.usuario : usuario;
+  ...
+  evaluarPermisoIndex2(usuarioSesion); // <--- LLAMAR A ESTA FUNCIÓN AQUÍ
+*/
 
 /* =====================================================
    PUENTE API (GITHUB PAGES -> APPS SCRIPT)
@@ -1263,7 +1306,7 @@
  */
 
 const APPS_SCRIPT_API_URL =
-  'https://script.google.com/macros/s/AKfycbxlD-gzoF2P52bNG9HPMdVZ43_GQPIooesJVcHzqV2MV4DkE9XgFWw8ikLpALVn-20r/exec';
+  'https://script.google.com/macros/s/AKfycbzdNdWSajyRBiMdULGbXNizO6ST37SV7QY5mYuBxCPFCzDU_UdoE7n7OVZELpfArhfS/exec';
 
 
 (function configurarPuenteAPI() {
@@ -4933,11 +4976,10 @@ function actualizarCumpleanios() {
       true
     );
 }
-/* =====================================================
-   FIN
-   ===================================================== */
 
 </script>
+
+
 
 </body>
 
