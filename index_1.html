@@ -144,7 +144,6 @@
 <body>
 
 <div id="aplicacion">
-  <!-- HEADER -->
   <header class="app-header">
     <div class="container-app">
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -160,7 +159,6 @@
   </header>
 
   <main class="container-app">
-    <!-- MENÚ -->
     <nav class="menu no-print">
       <button type="button" id="menuConsulta" onclick="mostrarSeccion('consulta')" class="active">🔎 Consulta</button>
       <button type="button" id="menuNovedad" onclick="mostrarSeccion('novedad')">📝 Registrar novedad</button>
@@ -168,7 +166,6 @@
       <button type="button" id="menuReportes" onclick="mostrarSeccion('reportes')">📄 Reportes</button>
     </nav>
 
-    <!-- CONSULTA FUNCIONARIO -->
     <section id="seccionConsulta" class="section active">
       <div class="card">
         <div class="card-header">🔎 Consulta de funcionario</div>
@@ -188,7 +185,6 @@
       <div id="historialFuncionario"></div>
     </section>
 
-    <!-- REGISTRAR NOVEDAD -->
     <section id="seccionNovedad" class="section">
       <div class="card">
         <div class="card-header">📝 Registrar novedad</div>
@@ -232,7 +228,6 @@
       </div>
     </section>
 
-    <!-- TURNOS Y FUERZA DISPONIBLE -->
     <section id="seccionTurnos" class="section">
       <div class="card">
         <div class="card-header">📋 Conteo y Listado por Turno / Fuerza Disponible</div>
@@ -248,7 +243,6 @@
       <div id="resultadoTurno"></div>
     </section>
 
-    <!-- REPORTES -->
     <section id="seccionReportes" class="section">
       <div class="card">
         <div class="card-header">📄 Reportes de Novedades</div>
@@ -475,21 +469,18 @@ function cargarTurno(filtro) {
   const contenedor = document.getElementById('resultadoTurno');
   contenedor.innerHTML = '<div class="loading">🔄 Calculando fuerza disponible para el turno ' + esc(filtro) + '...</div>';
 
-  // CORREGIDO: Se cambia 'buscarFuncionario' por 'obtenerTurno' (método adecuado del backend para turnos)
   google.script.run
     .withSuccessHandler(respuesta => {
       if (!respuesta || respuesta.estado !== true) {
-        contenedor.innerHTML = '<div class="card"><div class="card-header">Turno ' + esc(filtro) + '</div><div class="card-body"><div class="empty">No se encontraron registros para este turno.</div></div></div>';
+        contenedor.innerHTML = '<div class="card"><div class="card-header">Turno ' + esc(filtro) + '</div><div class="card-body"><div class="empty">' + esc(respuesta ? respuesta.mensaje : 'No se encontraron registros.') + '</div></div></div>';
         return;
       }
       
-      // Si el backend devuelve un bloque HTML directo
       if (respuesta.html) {
         contenedor.innerHTML = '<div class="card"><div class="card-header">Fuerza Disponible - Turno ' + esc(filtro) + '</div><div class="card-body">' + respuesta.html + '</div></div>';
         return;
       }
 
-      // Si el backend devuelve una lista de datos (array)
       const datos = respuesta.datos || [];
       let html = '<div class="card"><div class="card-header">Fuerza Disponible - Turno ' + esc(filtro) + ' (' + datos.length + ' registros)</div><div class="card-body">';
       if (datos.length === 0) {
@@ -512,7 +503,7 @@ function cargarTurno(filtro) {
     .withFailureHandler(error => {
       contenedor.innerHTML = '<div class="alert alert-danger">Error al consultar el turno: ' + esc(error.message || error) + '</div>';
     })
-    .obtenerTurno(TOKEN_FIJO, filtro);
+    .consultarPorTurno(TOKEN_FIJO, filtro);
 }
 
 function previsualizarReporte() {
