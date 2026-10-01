@@ -1,4986 +1,567 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1"
-  >
-
-  <title>
-    Sistema de Gestión de Novedades - JESEP
-  </title>
-
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Policía Nacional de Colombia — Sistema de Gestión de Novedades</title>
   <style>
-
     :root {
       --verde: #01592F;
-      --verde-oscuro: #013d21;
-      --azul: #173E56;
+      --verde-oscuro: #013d20;
+      --verde-claro: #e7f1ec;
       --dorado: #C9A227;
-      --gris: #f4f6f7;
-      --gris-borde: #dfe4e7;
+      --dorado-oscuro: #a8851a;
+      --gris: #f3f5f4;
+      --borde: #d9dfdc;
+      --texto: #1f2a24;
+      --error: #b71c1c;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
 
     body {
       margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, Arial, sans-serif;
+      color: var(--texto);
       background: var(--gris);
-      font-family: Arial, Helvetica, sans-serif;
-      color: #263238;
-    }
-
-    .app-header {
-      background: var(--verde);
-      color: white;
-      padding: 18px 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.15);
-    }
-
-    .app-header h3 {
-      margin: 0;
-      font-weight: 700;
-    }
-
-    .app-header small {
-      opacity: .9;
-    }
-
-    .container-app {
-      max-width: 1500px;
-      margin: auto;
-      padding: 20px;
-    }
-
-    .card {
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.08);
-      margin-bottom: 20px;
-    }
-
-    .card-header {
-      background: white;
-      border-bottom: 1px solid var(--gris-borde);
-      font-weight: 700;
-      padding: 15px 18px;
-    }
-
-    .card-body {
-      padding: 18px;
-    }
-
-    .btn-pol {
-      background: var(--verde);
-      color: white;
-      border: none;
-    }
-
-    .btn-pol:hover {
-      background: var(--verde-oscuro);
-      color: white;
-    }
-
-    .btn-dorado {
-      background: var(--dorado);
-      color: white;
-      border: none;
-    }
-
-    .btn-dorado:hover {
-      opacity: .9;
-      color: white;
-    }
-
-    .section {
-      display: none;
-    }
-
-    .section.active {
-      display: block;
-    }
-
-    .menu {
-      background: white;
-      border-radius: 10px;
-      padding: 8px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
-    }
-
-    .menu button {
-      border: none;
-      background: transparent;
-      padding: 10px 14px;
-      border-radius: 7px;
-      margin: 2px;
-      color: #455a64;
-      font-weight: 600;
-    }
-
-    .menu button:hover {
-      background: #eef3f1;
-    }
-
-    .menu button.active {
-      background: var(--verde);
-      color: white;
-    }
-
-    .turn-buttons {
-      display: grid;
-      grid-template-columns:
-        repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-    }
-
-    .turn-button {
-      border: 1px solid var(--gris-borde);
-      background: white;
-      border-radius: 12px;
-      padding: 18px 12px;
-      cursor: pointer;
-      transition: .2s;
-    }
-
-    .turn-button:hover {
-      transform: translateY(-2px);
-      border-color: var(--verde);
-      box-shadow: 0 4px 12px rgba(0,0,0,.10);
-    }
-
-    .turn-button strong {
-      display: block;
-      font-size: 30px;
-      color: var(--verde);
-    }
-
-    .turn-button span {
-      display: block;
-      margin-top: 5px;
-      font-size: 13px;
-      color: #546e7a;
-    }
-
-    .employee-card {
-      border-left: 5px solid var(--verde);
-      background: #f8faf9;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 12px;
-    }
-
-    .employee-name {
-      font-size: 19px;
-      font-weight: 700;
-      color: var(--verde);
-    }
-
-    .employee-meta {
-      color: #546e7a;
-      font-size: 14px;
-      margin-top: 5px;
-    }
-
-    .table-wrapper {
-      overflow-x: auto;
-      width: 100%;
-    }
-
-    table {
-      width: 100%;
-      font-size: 13px;
-      background: white;
-    }
-
-    th {
-      background: var(--verde) !important;
-      color: white !important;
-      white-space: nowrap;
-    }
-
-    td {
-      vertical-align: middle;
-    }
-
-    .badge-novedad {
-      background: #e8f3ed;
-      color: var(--verde);
-      border: 1px solid #c8dfd2;
-      padding: 4px 7px;
-      border-radius: 5px;
-      display: inline-block;
-      margin: 2px;
-      font-size: 11px;
-    }
-
-    .badge-activa {
-      background: #fff3cd;
-      color: #7a5b00;
-      border: 1px solid #ead28a;
-      padding: 4px 7px;
-      border-radius: 5px;
-      font-size: 11px;
-    }
-
-    .empty {
-      padding: 25px;
-      text-align: center;
-      color: #78909c;
-      background: white;
-      border-radius: 10px;
-    }
-
-    .loading {
-      padding: 25px;
-      text-align: center;
-      background: white;
-      border-radius: 10px;
-      color: var(--verde);
-    }
-
-    .login-wrapper {
+      display: flex;
+      flex-direction: column;
       min-height: 100vh;
+    }
+
+    /* ---------- Franja institucional ---------- */
+    .franja {
+      background: var(--verde);
+      color: #fff;
+      border-bottom: 4px solid var(--dorado);
+    }
+
+    .franja-interna {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .escudo { width: 54px; height: 54px; flex: 0 0 auto; }
+
+    .franja h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      letter-spacing: .12em;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .franja p { margin: 2px 0 0; font-size: .85rem; opacity: .9; }
+
+    /* ---------- Contenido ---------- */
+    main {
+      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
-      background:
-        linear-gradient(
-          135deg,
-          #01592F,
-          #173E56
-        );
+      padding: 28px 16px;
     }
 
-    .login-card {
+    .oculto { display: none !important; }
+
+    .panel {
       width: 100%;
       max-width: 430px;
-      background: white;
-      border-radius: 15px;
-      box-shadow: 0 10px 35px rgba(0,0,0,.25);
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid var(--borde);
+      box-shadow: 0 6px 22px rgba(1, 61, 32, .12);
       overflow: hidden;
     }
 
-    .login-header {
+    .panel-titulo {
+      background: var(--verde-claro);
+      border-bottom: 1px solid var(--borde);
+      padding: 16px 24px;
+    }
+
+    .panel-titulo h2 { margin: 0; font-size: 1.1rem; color: var(--verde-oscuro); }
+    .panel-titulo span { font-size: .85rem; color: #51615a; }
+
+    .panel-cuerpo { padding: 24px; }
+
+    label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 6px; }
+
+    .campo { margin-bottom: 18px; }
+
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 11px 12px;
+      font-size: 1rem;
+      border: 1px solid #b8c2bd;
+      border-radius: 6px;
+      background: #fff;
+      color: var(--texto);
+    }
+
+    input:focus {
+      outline: 3px solid rgba(201, 162, 39, .45);
+      border-color: var(--verde);
+    }
+
+    .con-ojo { position: relative; }
+    .con-ojo input { padding-right: 76px; }
+
+    .btn-ojo {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--verde);
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 8px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
       background: var(--verde);
-      color: white;
-      padding: 25px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .btn:hover:not(:disabled) { background: var(--verde-oscuro); }
+    .btn:disabled { opacity: .65; cursor: wait; }
+
+    .mensaje {
+      min-height: 1.3em;
+      margin-top: 14px;
+      font-size: .9rem;
       text-align: center;
     }
 
-    .login-header h3 {
-      margin: 0;
+    .mensaje.error { color: var(--error); font-weight: 600; }
+    .mensaje.info { color: #51615a; }
+
+    .aviso-legal {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--borde);
+      font-size: .76rem;
+      line-height: 1.45;
+      color: #5d6b64;
+      text-align: justify;
     }
 
-    .login-body {
-      padding: 25px;
+    /* ---------- Selección de módulo (administradores) ---------- */
+    .selector { width: 100%; max-width: 760px; }
+
+    .selector-cabecera {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
     }
 
-    .session-info {
-      font-size: 12px;
-      color: #607d8b;
-      text-align: right;
-      margin-bottom: 10px;
-    }
+    .selector-cabecera h2 { margin: 0; color: var(--verde-oscuro); font-size: 1.25rem; }
+    .selector-cabecera small { color: #51615a; display: block; }
 
-    .stat-card {
-      border-radius: 10px;
-      padding: 15px;
-      background: white;
-      box-shadow: 0 2px 8px rgba(0,0,0,.07);
-      height: 100%;
-    }
-
-    .stat-number {
-      font-size: 28px;
-      font-weight: 700;
+    .btn-salir {
+      background: #fff;
       color: var(--verde);
+      border: 1px solid var(--verde);
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-weight: 600;
+      cursor: pointer;
     }
 
-    .stat-label {
-      color: #607d8b;
-      font-size: 13px;
+    .btn-salir:hover { background: var(--verde-claro); }
+
+    .modulos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
     }
 
-    .toast-app {
-      position: fixed;
-      right: 20px;
-      bottom: 20px;
-      z-index: 9999;
-      min-width: 280px;
-      max-width: 420px;
-      background: #263238;
-      color: white;
-      padding: 14px 18px;
-      border-radius: 8px;
-      box-shadow: 0 5px 20px rgba(0,0,0,.25);
-      display: none;
+    .modulo {
+      text-align: left;
+      background: #fff;
+      border: 1px solid var(--borde);
+      border-top: 5px solid var(--verde);
+      border-radius: 10px;
+      padding: 22px;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(1, 61, 32, .08);
+      transition: transform .15s, box-shadow .15s, border-top-color .15s;
+      font-family: inherit;
+      color: inherit;
     }
 
-    .toast-app.show {
-      display: block;
+    .modulo:hover, .modulo:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(1, 61, 32, .16);
+      border-top-color: var(--dorado);
+      outline: none;
     }
 
-    .report-frame {
-      width: 100%;
-      min-height: 600px;
-      border: 1px solid var(--gris-borde);
-      border-radius: 8px;
-      background: white;
+    .modulo .icono { font-size: 2rem; }
+    .modulo h3 { margin: 8px 0 6px; color: var(--verde-oscuro); font-size: 1.1rem; }
+    .modulo p { margin: 0; font-size: .88rem; color: #51615a; line-height: 1.4; }
+
+    footer {
+      background: var(--verde-oscuro);
+      color: #cfe0d7;
+      text-align: center;
+      font-size: .78rem;
+      padding: 12px 16px;
     }
 
-    @media print {
-
-      body {
-        background: white;
-      }
-
-      .no-print,
-      .menu,
-      .app-header,
-      button,
-      input,
-      select,
-      textarea {
-        display: none !important;
-      }
-
-      .section {
-        display: none !important;
-      }
-
-      #seccionTurnos {
-        display: block !important;
-      }
-
-      #resultadoTurno {
-        display: block !important;
-      }
-
-      .card {
-        box-shadow: none;
-        border: none;
-      }
-
-      table {
-        font-size: 10px;
-      }
-
-      th {
-        background: #01592F !important;
-        color: white !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
+    @media (max-width: 520px) {
+      .franja h1 { font-size: 1rem; }
+      .franja p { font-size: .78rem; }
+      .panel-cuerpo { padding: 18px; }
     }
-
-  .grupo-grado td{background:#e9ecef;font-weight:700;border-top:2px solid #6c757d;padding:6px;}
-</style>
-
-<base target="_blank">
+  </style>
 </head>
-
 <body>
 
-
-<!-- =====================================================
-     LOGIN
-     ===================================================== -->
-
-<div id="pantallaLogin" class="login-wrapper">
-
-  <div class="login-card">
-
-    <div class="login-header">
-
-      <h3>
-        POLICÍA NACIONAL
-      </h3>
-
-      <div class="mt-2">
-        Sistema de Gestión de Novedades
+  <header class="franja">
+    <div class="franja-interna">
+      <!-- Marcador de escudo genérico: reemplazar por el escudo oficial (img) si se dispone del archivo autorizado -->
+      <svg class="escudo" viewBox="0 0 64 64" role="img" aria-label="Escudo institucional">
+        <path d="M32 3 6 12v19c0 15 11 25 26 30 15-5 26-15 26-30V12L32 3z" fill="#013d20" stroke="#C9A227" stroke-width="3"/>
+        <path d="M32 16l4.4 9.2 10.1 1.4-7.3 7 1.8 10-9-4.8-9 4.8 1.8-10-7.3-7 10.1-1.4L32 16z" fill="#C9A227"/>
+      </svg>
+      <div>
+        <h1>Policía Nacional de Colombia</h1>
+        <p>Sistema de Gestión de Novedades — JESEP / GUTAH</p>
       </div>
-
-      <small>
-        JESEP - GUTAH
-      </small>
-
     </div>
-
-    <div class="login-body">
-
-      <div class="mb-3">
-
-        <label class="form-label">
-          Usuario
-        </label>
-
-        <input
-          type="text"
-          id="loginUsuario"
-          class="form-control"
-          autocomplete="username"
-        >
-
-      </div>
-
-
-      <div class="mb-3">
-
-        <label class="form-label">
-          Contraseña
-        </label>
-
-        <input
-          type="password"
-          id="loginClave"
-          class="form-control"
-          autocomplete="current-password"
-          onkeydown="
-            if(event.key === 'Enter'){
-              iniciarSesion();
-            }
-          "
-        >
-
-      </div>
-
-
-      <button
-        type="button"
-        id="btnLogin"
-        class="btn btn-pol w-100"
-        onclick="iniciarSesion()"
-      >
-        Ingresar
-      </button>
-
-      <div
-        id="mensajeLogin"
-        class="mt-3 text-center"
-      ></div>
-
-    </div>
-
-  </div>
-
-</div>
-
-
-<!-- =====================================================
-     APLICACIÓN
-     ===================================================== -->
-
-
-<!-- Contenedor del botón (oculto por defecto) -->
-<div id="contenedor-boton-index2" style="display: none;">
-  <button id="btn-ir-index2" class="btn btn-primary" onclick="window.location.href='index_2.html'">
-    Ir a Index 2
-  </button>
-</div>
-
-<div id="aplicacion" style="display:none;">
-
-
-  <!-- HEADER -->
-
-  <header class="app-header">
-
-    <div class="container-app">
-
-      <div class="d-flex
-                  justify-content-between
-                  align-items-center
-                  flex-wrap
-                  gap-2">
-
-        <div>
-
-          <h3>
-            POLICÍA NACIONAL
-          </h3>
-
-          <small>
-            Sistema de Gestión de Novedades
-            — JESEP / GUTAH
-          </small>
-
-        </div>
-
-
-        <div class="text-end">
-
-          <div id="usuarioActual"></div>
-
-          <button
-            type="button"
-            class="btn btn-sm btn-light mt-1"
-            onclick="cerrarSesionCliente()"
-          >
-            Cerrar sesión
-          </button>
-
-        </div>
-
-      </div>
-
-    </div>
-
   </header>
 
+  <main>
 
-  <main class="container-app">
-
-
-    <!-- =================================================
-         MENÚ
-         ================================================= -->
-
-    <nav class="menu no-print">
-
-      <button
-        type="button"
-        id="menuConsulta"
-        onclick="mostrarSeccion('consulta')"
-      >
-        🔎 Consulta
-      </button>
-
-      <button
-        type="button"
-        id="menuNovedad"
-        onclick="mostrarSeccion('novedad')"
-      >
-        📝 Registrar novedad
-      </button>
-
-      <button
-        type="button"
-        id="menuTurnos"
-        onclick="mostrarSeccion('turnos')"
-      >
-        📋 Turnos
-      </button>
-
-      <button
-        type="button"
-        id="menuReportes"
-        onclick="mostrarSeccion('reportes')"
-      >
-        📄 Reportes
-      </button>
-
-      <button
-        type="button"
-        id="menuUsuarios"
-        class="soloAdministrador"
-        onclick="mostrarSeccion('usuarios')"
-      >
-        👤 Usuarios
-      </button>
-
-    </nav>
-
-
-    <!-- =================================================
-         CONSULTA FUNCIONARIO
-         ================================================= -->
-
-    <section
-      id="seccionConsulta"
-      class="section"
-    >
-
-      <div class="card">
-
-        <div class="card-header">
-          🔎 Consulta de funcionario
-        </div>
-
-        <div class="card-body">
-
-          <div class="row g-2">
-
-            <div class="col-md-9">
-
-              <input
-                type="text"
-                id="buscarValor"
-                class="form-control"
-                placeholder="Digite cédula, nombre, grado, nivel o dependencia"
-                onkeydown="
-                  if(event.key === 'Enter'){
-                    buscarFuncionario();
-                  }
-                "
-              >
-
-            </div>
-
-            <div class="col-md-3">
-
-              <button
-                type="button"
-                class="btn btn-pol w-100"
-                onclick="buscarFuncionario()"
-              >
-                🔎 Buscar
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div id="resultadosBusqueda"></div>
-
-      <div id="fichaFuncionario"></div>
-
-      <div id="historialFuncionario"></div>
-
+    <!-- CARGA / VERIFICACIÓN DE SESIÓN -->
+    <section id="pantallaCarga" class="panel oculto" aria-live="polite">
+      <div class="panel-cuerpo"><p class="mensaje info" style="margin:0">Verificando sesión…</p></div>
     </section>
 
-
-    <!-- =================================================
-         REGISTRAR NOVEDAD
-         ================================================= -->
-
-    <section
-      id="seccionNovedad"
-      class="section"
-    >
-
-      <div class="card">
-
-        <div class="card-header">
-          📝 Registrar novedad
-        </div>
-
-        <div class="card-body">
-
-
-          <div class="row g-3">
-
-            <div class="col-md-8">
-
-              <label class="form-label">
-                Funcionario
-              </label>
-
-              <input
-                type="text"
-                id="novedadFuncionario"
-                class="form-control"
-                readonly
-                placeholder="Seleccione un funcionario mediante la consulta"
-              >
-
-              <input
-                type="hidden"
-                id="novedadCedula"
-              >
-
-            </div>
-
-
-            <div class="col-md-4">
-
-              <label class="form-label">
-                Tipo
-              </label>
-
-              <select
-                id="tipoNovedad"
-                class="form-select"
-                onchange="alCambiarTipoNovedad()"
-              >
-
-                <option value="SERVICIO">
-                  SERVICIO
-                </option>
-
-                <option value="VACACIONES">
-                  VACACIONES
-                </option>
-
-                <option value="PERMISO">
-                  PERMISO
-                </option>
-
-                <option value="CITA MEDICA">
-                  CITA MEDICA
-                </option>
-
-                <option value="LICENCIA">
-                  LICENCIA
-                </option>
-
-                <option value="OTRA NOVEDAD">
-                  OTRA NOVEDAD
-                </option>
-
-              </select>
-
-            </div>
-
-
-            <div class="col-md-6">
-
-              <label class="form-label">
-                Novedad
-              </label>
-
-              <input
-                type="text"
-                id="novedadNombre"
-                class="form-control"
-                placeholder="Nombre de la novedad"
-              >
-
-            </div>
-
-
-            <div class="col-md-6">
-
-              <label class="form-label">
-                Días
-              </label>
-
-              <input
-                type="number"
-                id="novedadDias"
-                class="form-control"
-                min="0"
-              >
-
-            </div>
-
-
-            <div class="col-md-6">
-
-              <label class="form-label">
-                Fecha inicial
-              </label>
-
-              <input
-                type="date"
-                id="fechaInicial"
-                class="form-control"
-              >
-
-            </div>
-
-
-            <div class="col-md-6">
-
-              <label class="form-label">
-                Fecha presentación
-              </label>
-
-              <input
-                type="date"
-                id="fechaPresentacion"
-                class="form-control"
-              >
-
-            </div>
-
-          </div>
-
-
-          <div class="mt-3">
-
-            <button
-              type="button"
-              class="btn btn-pol"
-              onclick="registrarNovedad()"
-            >
-              💾 Guardar novedad
-            </button>
-
-            <button
-              type="button"
-              class="btn btn-secondary"
-              onclick="limpiarFormularioNovedad()"
-            >
-              Limpiar
-            </button>
-
-          </div>
-
-        </div>
-
+    <!-- LOGIN -->
+    <section id="pantallaLogin" class="panel">
+      <div class="panel-titulo">
+        <h2>Ingreso al sistema</h2>
+        <span>Autenticación de usuario autorizado</span>
       </div>
-
+      <div class="panel-cuerpo">
+        <form id="formLogin" autocomplete="on" novalidate>
+          <div class="campo">
+            <label for="txtUsuario">Usuario</label>
+            <input type="text" id="txtUsuario" name="usuario" autocomplete="username" autocapitalize="characters" spellcheck="false" required>
+          </div>
+          <div class="campo">
+            <label for="txtClave">Contraseña</label>
+            <div class="con-ojo">
+              <input type="password" id="txtClave" name="clave" autocomplete="current-password" required>
+              <button type="button" class="btn-ojo" id="btnOjo" aria-label="Mostrar u ocultar la contraseña">Mostrar</button>
+            </div>
+          </div>
+          <button type="submit" class="btn" id="btnIngresar">Ingresar</button>
+          <div id="msgLogin" class="mensaje" role="alert" aria-live="assertive"></div>
+        </form>
+        <p class="aviso-legal">
+          Sistema de uso exclusivo del personal autorizado de la Policía Nacional. La información que
+          contiene es de carácter reservado y su acceso, consulta y modificación quedan sujetos a
+          control y auditoría. El uso indebido acarrea las responsabilidades disciplinarias, fiscales y
+          penales que establezca la ley.
+        </p>
+      </div>
     </section>
 
-
-    <!-- =================================================
-         TURNOS
-         ================================================= -->
-
-    <section
-      id="seccionTurnos"
-      class="section"
-    >
-
-      <div class="card">
-
-        <div class="card-header">
-          📋 Listado completo por turno
+    <!-- SELECCIÓN DE MÓDULO (solo usuarios con más de un módulo) -->
+    <section id="pantallaModulos" class="selector oculto">
+      <div class="selector-cabecera">
+        <div>
+          <h2>Seleccione el módulo</h2>
+          <small id="infoUsuario"></small>
         </div>
-
-        <div class="card-body">
-
-          <p class="text-muted">
-            Seleccione el grupo que desea consultar.
-            La consulta se realiza directamente sobre
-            LISTADO_BASE y respeta la dependencia
-            autorizada para el usuario.
-          </p>
-
-
-          <div class="turn-buttons">
-
-
-            <button
-              type="button"
-              class="turn-button"
-              data-turno="A"
-              onclick="cargarTurno('A')"
-            >
-
-              <strong>A</strong>
-
-              <span>
-                Consultar Turno A
-              </span>
-
-            </button>
-
-
-            <button
-              type="button"
-              class="turn-button"
-              data-turno="B"
-              onclick="cargarTurno('B')"
-            >
-
-              <strong>B</strong>
-
-              <span>
-                Consultar Turno B
-              </span>
-
-            </button>
-
-
-            <button
-              type="button"
-              class="turn-button"
-              data-turno="C"
-              onclick="cargarTurno('C')"
-            >
-
-              <strong>C</strong>
-
-              <span>
-                Consultar Turno C
-              </span>
-
-            </button>
-
-
-            <button
-              type="button"
-              class="turn-button"
-              data-turno="SEPRI"
-              onclick="cargarTurno('SEPRI')"
-            >
-
-              <strong>SEPRI</strong>
-
-              <span>
-                Todos los turnos SEPRI
-              </span>
-
-            </button>
-
-
-            <button
-              type="button"
-              class="turn-button"
-              data-turno="GURIN"
-              onclick="cargarTurno('GURIN')"
-            >
-
-              <strong>GURIN</strong>
-
-              <span>
-                Grupo GURIN
-              </span>
-
-            </button>
-
-
-            <button
-              type="button"
-              class="turn-button"
-              data-turno="NO APLICA"
-              onclick="cargarTurno('NO APLICA')"
-            >
-
-              <strong>N/A</strong>
-
-              <span>
-                NO APLICA
-              </span>
-
-            </button>
-
-
-          </div>
-
-        </div>
-
+        <button type="button" class="btn-salir" id="btnSalir">Cerrar sesión</button>
       </div>
-
-
-      <div
-        id="resultadoTurno"
-      ></div>
-
-
+      <div class="modulos">
+        <button type="button" class="modulo" data-modulo="index_1" id="tarjetaIndex1">
+          <div class="icono">📋</div>
+          <h3>Módulo Disponibles</h3>
+          <p>Consulta de funcionarios y registro de novedades para el personal de turnos disponibles.</p>
+        </button>
+        <button type="button" class="modulo" data-modulo="index_2" id="tarjetaIndex2">
+          <div class="icono">🗂️</div>
+          <h3>Módulo Áreas JESEP</h3>
+          <p>Gestión de novedades por área: SGSST, vacaciones, pasaportes, citaciones, procesos, base UBL, GH y capacitación.</p>
+        </button>
+      </div>
     </section>
-
-
-    <!-- =================================================
-         REPORTES
-         ================================================= -->
-
-    <section
-      id="seccionReportes"
-      class="section"
-    >
-
-      <div class="card">
-
-        <div class="card-header">
-          📄 Reportes
-        </div>
-
-        <div class="card-body">
-
-          <div class="row g-2">
-
-            <div class="col-md-6">
-
-              <label class="form-label">
-                Turno
-              </label>
-
-              <select
-                id="filtroReporte"
-                class="form-select"
-              >
-
-                <option value="A">
-                  A
-                </option>
-
-                <option value="B">
-                  B
-                </option>
-
-                <option value="C">
-                  C
-                </option>
-
-                <option value="SEPRI">
-                  SEPRI
-                </option>
-
-                <option value="GURIN">
-                  GURIN
-                </option>
-
-                <option value="NO APLICA">
-                  NO APLICA
-                </option>
-
-              </select>
-
-            </div>
-
-
-            <div
-              class="col-md-6
-                     d-flex
-                     align-items-end
-                     gap-2"
-            >
-
-              <button
-                type="button"
-                class="btn btn-pol"
-                onclick="previsualizarReporte()"
-              >
-                👁 Previsualizar
-              </button>
-
-              <button
-                type="button"
-                class="btn btn-secondary"
-                onclick="imprimirReporte()"
-              >
-                🖨 Imprimir
-              </button>
-
-              <button
-                type="button"
-                id="btnGenerarPDF"
-                class="btn btn-danger"
-                onclick="descargarPDFReporte()"
-              >
-                📄 Generar PDF
-              </button>
-
-              <button
-                type="button"
-                id="btnGenerarExcel"
-                class="btn btn-success"
-                onclick="descargarExcelReporte()"
-              >
-                📊 Descargar Excel
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div id="resultadoReporte"></div>
-
-
-      <div class="card">
-
-        <div class="card-header">
-          Historial de reportes
-        </div>
-
-        <div class="card-body">
-
-          <button
-            type="button"
-            class="btn btn-pol mb-3"
-            onclick="cargarReportes()"
-          >
-            🔄 Actualizar
-          </button>
-
-          <div
-            id="listaReportes"
-          ></div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- =================================================
-         USUARIOS
-         ================================================= -->
-
-    <section
-      id="seccionUsuarios"
-      class="section soloAdministrador"
-    >
-
-      <div class="card">
-
-        <div class="card-header">
-          👤 Administración de usuarios
-        </div>
-
-        <div class="card-body">
-
-          <div class="row g-3">
-
-            <div class="col-md-3">
-
-              <label class="form-label">
-                Usuario
-              </label>
-
-              <input
-                type="text"
-                id="nuevoUsuario"
-                class="form-control"
-              >
-
-            </div>
-
-
-            <div class="col-md-3">
-
-              <label class="form-label">
-                Contraseña
-              </label>
-
-              <input
-                type="password"
-                id="nuevaClave"
-                class="form-control"
-              >
-
-            </div>
-
-
-            <div class="col-md-3">
-
-              <label class="form-label">
-                Rol
-              </label>
-
-              <select
-                id="nuevoRol"
-                class="form-select"
-              >
-
-                <option value="OPERADOR">
-                  OPERADOR
-                </option>
-
-                <option value="ADMINISTRADOR">
-                  ADMINISTRADOR
-                </option>
-
-              </select>
-
-            </div>
-
-
-            <div class="col-md-3">
-
-              <label class="form-label">
-                Dependencia
-              </label>
-
-              <input
-                type="text"
-                id="nuevaDependencia"
-                class="form-control"
-                placeholder="Ej. NIVEL_CENTRAL"
-              >
-
-            </div>
-
-          </div>
-
-
-          <button
-            type="button"
-            class="btn btn-pol mt-3"
-            onclick="crearUsuario()"
-          >
-            ➕ Crear usuario
-          </button>
-
-        </div>
-
-      </div>
-
-
-      <div
-        id="listaUsuarios"
-      ></div>
-
-    </section>
-
 
   </main>
 
-</div>
-
-
-<!-- =====================================================
-     TOAST
-     ===================================================== -->
-
-<div
-  id="toastApp"
-  class="toast-app"
-></div>
-
-
-<!-- =====================================================
-     JAVASCRIPT
-     ===================================================== -->
+  <footer>
+    Policía Nacional de Colombia — JESEP / GUTAH · Uso institucional
+  </footer>
 
 <script>
-
-/* =====================================================
-   CONTROL DE ACCESO A INDEX_2.html SEGÚN USUARIO
-   ===================================================== */
-const USUARIOS_PERMITIDOS_INDEX2 = [
-  "SGSST_JESEP",
-  "VAC_JESEP",
-  "PAS__JESEP",
-  "CIT_JESEP",
-  "PRO__JESEP",
-  "UBL_JESEP",
-  "GH_JESEP",
-  "CAP_JESEP"
-];
-
-function evaluarPermisoIndex2(nombreUsuario) {
-  const contenedorBoton = document.getElementById("contenedor-boton-index2");
-  if (!contenedorBoton) return;
-
-  const limpio = String(nombreUsuario || "").trim().toUpperCase();
-  
-  if (USUARIOS_PERMITIDOS_INDEX2.includes(limpió)) {
-    contenedorBoton.style.display = "block"; // Muestra el botón solo para ellos
-  } else {
-    contenedorBoton.style.display = "none";
-  }
-}
-
-// Integra esta validación dentro de tu función existente de éxito al iniciar sesión:
-// (Dentro del withSuccessHandler de validarUsuario)
-/*
-  tokenSesion = respuesta.token;
-  usuarioSesion = respuesta.usuario && respuesta.usuario.usuario ? respuesta.usuario.usuario : usuario;
-  ...
-  evaluarPermisoIndex2(usuarioSesion); // <--- LLAMAR A ESTA FUNCIÓN AQUÍ
-*/
-
-/* =====================================================
-   PUENTE API (GITHUB PAGES -> APPS SCRIPT)
-   =====================================================
-
- * Este archivo ya NO se sirve desde dentro de Apps
- * Script, así que "google.script.run" no existe de
- * forma nativa (solo funciona dentro del sandbox de
- * HtmlService).
- *
- * Este bloque crea un reemplazo ("shim") que imita
- * exactamente la misma forma de uso:
- *
- *   google.script.run
- *     .withSuccessHandler(fn)
- *     .withFailureHandler(fn)
- *     .nombreDeFuncion(arg1, arg2, ...);
- *
- * pero por debajo llama al Web App de Apps Script
- * mediante JSONP (una etiqueta <script>), que es la
- * única forma de evitar el bloqueo de CORS al llamar
- * desde un dominio distinto (github.io) hacia
- * script.google.com.
- *
- * IMPORTANTE: cambia esta URL si vuelves a implementar
- * (Deploy) el proyecto de Apps Script y se genera una
- * URL /exec nueva.
- */
-
-const APPS_SCRIPT_API_URL =
-  'https://script.google.com/macros/s/AKfycbzdNdWSajyRBiMdULGbXNizO6ST37SV7QY5mYuBxCPFCzDU_UdoE7n7OVZELpfArhfS/exec';
-
+const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyEQ7lALRQu3LMSVVqb9J7BvsqSFTG2yhEk0cSGfV8bEQUwtmtz0-DukZTFy7W67qGs/exec';
 
 (function configurarPuenteAPI() {
-
   const TIMEOUT_MS = 90000;
 
-
   function llamarAPI_(accion, argumentos, alExito, alFallar) {
-
-    const nombreCallback =
-      '__cb_' +
-      accion.replace(/[^a-zA-Z0-9_]/g, '') +
-      '_' +
-      Date.now() +
-      '_' +
-      Math.floor(Math.random() * 1000000);
-
+    const nombreCallback = '__cb_' + accion.replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
     let finalizado = false;
 
-
     function limpiar() {
-
       delete window[nombreCallback];
-
-      if (elementoScript.parentNode) {
-        elementoScript.parentNode.removeChild(elementoScript);
-      }
-
+      if (elementoScript.parentNode) elementoScript.parentNode.removeChild(elementoScript);
       clearTimeout(idTimeout);
-
     }
 
-
     window[nombreCallback] = function(respuesta) {
-
-      if (finalizado) {
-        return;
-      }
-
+      if (finalizado) return;
       finalizado = true;
-
       limpiar();
-
-
-      if (
-        respuesta &&
-        respuesta.__jsonp_error === true
-      ) {
-
-        if (alFallar) {
-          alFallar({
-            message:
-              respuesta.mensaje ||
-              'Se presentó un error en el servidor.'
-          });
-        }
-
+      if (respuesta && respuesta.__jsonp_error === true) {
+        if (alFallar) alFallar({ message: respuesta.mensaje || 'Se presentó un error en el servidor.' });
         return;
-
       }
-
-
-      if (alExito) {
-        alExito(respuesta);
-      }
-
+      if (alExito) alExito(respuesta);
     };
 
-
     const idTimeout = setTimeout(function() {
-
-      if (finalizado) {
-        return;
-      }
-
+      if (finalizado) return;
       finalizado = true;
-
       limpiar();
-
-      if (alFallar) {
-        alFallar({
-          message:
-            'Tiempo de espera agotado contactando el servidor. ' +
-            'Verifica tu conexión e inténtalo de nuevo.'
-        });
-      }
-
+      if (alFallar) alFallar({ message: 'Tiempo de espera agotado contactando el servidor.' });
     }, TIMEOUT_MS);
 
-
-    const parametros =
-      new URLSearchParams();
-
+    const parametros = new URLSearchParams();
     parametros.set('accion', accion);
     parametros.set('callback', nombreCallback);
 
     try {
-
-      parametros.set(
-        'args',
-        JSON.stringify(argumentos || [])
-      );
-
-    } catch (errorSerializacion) {
-
+      parametros.set('args', JSON.stringify(argumentos || []));
+    } catch (e) {
       finalizado = true;
-
       clearTimeout(idTimeout);
-
-      if (alFallar) {
-        alFallar({
-          message: 'No fue posible preparar la solicitud.'
-        });
-      }
-
+      if (alFallar) alFallar({ message: 'No fue posible preparar la solicitud.' });
       return;
-
     }
 
-
-    const elementoScript =
-      document.createElement('script');
-
-    elementoScript.src =
-      APPS_SCRIPT_API_URL +
-      '?' +
-      parametros.toString();
-
+    const elementoScript = document.createElement('script');
+    elementoScript.src = APPS_SCRIPT_API_URL + '?' + parametros.toString();
     elementoScript.onerror = function() {
-
-      if (finalizado) {
-        return;
-      }
-
+      if (finalizado) return;
       finalizado = true;
-
       limpiar();
-
-      if (alFallar) {
-        alFallar({
-          message:
-            'No se pudo contactar el servidor. ' +
-            'Verifica la URL del backend o tu conexión.'
-        });
-      }
-
+      if (alFallar) alFallar({ message: 'No se pudo contactar el servidor.' });
     };
-
 
     document.head.appendChild(elementoScript);
-
   }
-
 
   function crearEjecutor_() {
-
     let manejadorExito = null;
-
     let manejadorFallo = null;
 
-
     const base = {
-
-      withSuccessHandler: function(fn) {
-        manejadorExito = fn;
-        return proxyEjecutor;
-      },
-
-      withFailureHandler: function(fn) {
-        manejadorFallo = fn;
-        return proxyEjecutor;
-      },
-
-      withUserObject: function() {
-        return proxyEjecutor;
-      }
-
+      withSuccessHandler: function(fn) { manejadorExito = fn; return proxyEjecutor; },
+      withFailureHandler: function(fn) { manejadorFallo = fn; return proxyEjecutor; },
+      withUserObject: function() { return proxyEjecutor; }
     };
-
 
     const proxyEjecutor = new Proxy(base, {
-
       get: function(objetivo, propiedad) {
-
-        if (propiedad in objetivo) {
-          return objetivo[propiedad];
-        }
-
+        if (propiedad in objetivo) return objetivo[propiedad];
         return function() {
-
-          const argumentos =
-            Array.prototype.slice.call(
-              arguments
-            );
-
-          llamarAPI_(
-            propiedad,
-            argumentos,
-            manejadorExito,
-            manejadorFallo
-          );
-
+          const argumentos = Array.prototype.slice.call(arguments);
+          llamarAPI_(propiedad, argumentos, manejadorExito, manejadorFallo);
         };
-
       }
-
     });
 
-
     return proxyEjecutor;
-
   }
-
 
   window.google = window.google || {};
-
-  window.google.script =
-    window.google.script || {};
-
-  Object.defineProperty(
-    window.google.script,
-    'run',
-    {
-      get: crearEjecutor_,
-      configurable: true
-    }
-  );
-
+  window.google.script = window.google.script || {};
+  Object.defineProperty(window.google.script, 'run', { get: crearEjecutor_, configurable: true });
 })();
 
+const CLAVE_SESION = 'jesep_sesion';
 
-/* =====================================================
-   VARIABLES GLOBALES
-   ===================================================== */
+const RUTAS_MODULO = {
+  index_1: 'index_1.html',
+  index_2: 'index_2.html'
+};
 
-let tokenSesion = null;
-
-let usuarioSesion = null;
-
-let rolSesion = null;
-
-let dependenciaSesion = null;
-
-let turnoAsignadoSesion = null;
-let cumpleaniosSesion = null;
-
-let funcionarioSeleccionado = null;
-
-let ultimoTurnoConsultado = null;
-
-let ultimoResultadoTurno = null;
-
-/*
- * FUERZA DISPONIBLE: igual que en Código.gs.
- *   false = descuenta a quien tenga CUALQUIER registro en NOVEDADES.
- *   true  = descuenta solo novedades ACTIVAS.
- */
-const FUERZA_DISPONIBLE_SOLO_ACTIVAS = true;
-
-
-/* =====================================================
-   INICIO
-   ===================================================== */
-
-document.addEventListener(
-  'DOMContentLoaded',
-  function() {
-
-    document
-      .getElementById('loginUsuario')
-      .focus();
-
-  }
-);
-
-
-/* =====================================================
-   ESCAPE HTML
-   ===================================================== */
+function $(id) { return document.getElementById(id); }
 
 function esc(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
 
-  if (
-    valor === null ||
-    valor === undefined
-  ) {
-    return '';
+function leerSesion() {
+  try { return JSON.parse(sessionStorage.getItem(CLAVE_SESION) || 'null'); } catch (e) { return null; }
+}
+
+function guardarSesion(datos) {
+  try { sessionStorage.setItem(CLAVE_SESION, JSON.stringify(datos)); } catch (e) {}
+}
+
+function borrarSesion() {
+  try { sessionStorage.removeItem(CLAVE_SESION); } catch (e) {}
+}
+
+function mostrarPantalla(nombre) {
+  ['pantallaCarga', 'pantallaLogin', 'pantallaModulos'].forEach(function(id) {
+    $(id).classList.toggle('oculto', id !== nombre);
+  });
+}
+
+function mostrarMensaje(texto, tipo) {
+  const el = $('msgLogin');
+  el.className = 'mensaje' + (tipo ? ' ' + tipo : '');
+  el.textContent = texto || '';
+}
+
+/* Un solo módulo: entra directo. Varios (administradores): muestra el selector. */
+function enrutar(sesion) {
+  const modulos = (sesion.modulos || []).filter(function(m) { return RUTAS_MODULO[m]; });
+
+  if (!modulos.length) {
+    borrarSesion();
+    mostrarPantalla('pantallaLogin');
+    mostrarMensaje('Su usuario no tiene un módulo asignado. Comuníquese con el administrador.', 'error');
+    return;
   }
 
-  return String(valor)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+  if (modulos.length === 1) {
+    window.location.replace(RUTAS_MODULO[modulos[0]]);
+    return;
+  }
 
+  const u = sesion.usuario || {};
+  $('infoUsuario').textContent = (u.usuario || '') + (u.rol ? ' — ' + u.rol : '');
+  $('tarjetaIndex1').classList.toggle('oculto', modulos.indexOf('index_1') === -1);
+  $('tarjetaIndex2').classList.toggle('oculto', modulos.indexOf('index_2') === -1);
+  mostrarPantalla('pantallaModulos');
 }
-
-
-/* =====================================================
-   TOAST
-   ===================================================== */
-
-function mostrarToast(
-  mensaje,
-  tipo = 'success'
-) {
-
-  const toast =
-    document.getElementById(
-      'toastApp'
-    );
-
-  toast.textContent =
-    mensaje || '';
-
-  toast.style.background =
-    tipo === 'error'
-      ? '#b71c1c'
-      : '#263238';
-
-  toast.classList.add('show');
-
-  setTimeout(
-    function() {
-
-      toast.classList.remove(
-        'show'
-      );
-
-    },
-    3500
-  );
-
-}
-
-
-/* =====================================================
-   LOGIN
-   ===================================================== */
 
 function iniciarSesion() {
-
-  const usuario =
-    document
-      .getElementById(
-        'loginUsuario'
-      )
-      .value
-      .trim();
-
-  const clave =
-    document
-      .getElementById(
-        'loginClave'
-      )
-      .value;
-
-  const mensaje =
-    document.getElementById(
-      'mensajeLogin'
-    );
-
-  const boton =
-    document.getElementById(
-      'btnLogin'
-    );
-
+  const usuario = $('txtUsuario').value.trim();
+  const clave = $('txtClave').value;
+  const boton = $('btnIngresar');
 
   if (!usuario || !clave) {
-
-    mensaje.innerHTML =
-      '<div class="alert alert-warning">' +
-      'Ingrese usuario y contraseña.' +
-      '</div>';
-
+    mostrarMensaje('Ingrese su usuario y contraseña.', 'error');
     return;
-
   }
-
 
   boton.disabled = true;
-
-  boton.textContent =
-    'Validando...';
-
-  mensaje.innerHTML = '';
-
+  boton.textContent = 'Validando…';
+  mostrarMensaje('Verificando credenciales…', 'info');
 
   google.script.run
+    .withSuccessHandler(function(r) {
+      boton.disabled = false;
+      boton.textContent = 'Ingresar';
 
-    .withSuccessHandler(
-      function(respuesta) {
-
-        boton.disabled = false;
-
-        boton.textContent =
-          'Ingresar';
-
-
-        if (
-          !respuesta ||
-          respuesta.estado !== true
-        ) {
-
-          mensaje.innerHTML =
-            '<div class="alert alert-danger">' +
-            esc(
-              respuesta &&
-              respuesta.mensaje
-                ? respuesta.mensaje
-                : 'Usuario o contraseña incorrectos.'
-            ) +
-            '</div>';
-
-          return;
-
-        }
-
-
-        tokenSesion =
-          respuesta.token;
-
-        usuarioSesion =
-          respuesta.usuario &&
-          respuesta.usuario.usuario
-            ? respuesta.usuario.usuario
-            : usuario;
-
-        rolSesion =
-          respuesta.usuario &&
-          respuesta.usuario.rol
-            ? respuesta.usuario.rol
-            : '';
-
-        dependenciaSesion =
-          respuesta.usuario &&
-          respuesta.usuario.dependencia
-            ? respuesta.usuario.dependencia
-            : '';
-
-
-        turnoAsignadoSesion =
-          respuesta.turnoAsignado ||
-          (
-            respuesta.usuario &&
-            respuesta.usuario.turnoAsignado
-          ) ||
-          '';
-
-
-        document
-          .getElementById(
-            'pantallaLogin'
-          )
-          .style.display =
-          'none';
-
-
-        document
-          .getElementById(
-            'aplicacion'
-          )
-          .style.display =
-          'block';
-
-
-        document
-          .getElementById(
-            'usuarioActual'
-          )
-          .innerHTML =
-          '<strong>' +
-          esc(usuarioSesion) +
-          '</strong><br>' +
-          '<small>' +
-          esc(rolSesion) +
-          ' — ' +
-          esc(dependenciaSesion) +
-          '</small>';
-
-
-        configurarPermisos();
-
-        mostrarSeccion(
-          'consulta'
-        );
-
-        mostrarToast(
-          'Sesión iniciada correctamente.'
-        );
-
-
-        /*
-         * BARRIDO DE CUMPLEAÑOS DEL DÍA.
-         */
-        iniciarBarridoCumpleanios_(
-          respuesta.cumpleanios
-        );
-
+      if (!r || r.estado !== true || !r.token) {
+        mostrarMensaje((r && r.mensaje) || 'Usuario o contraseña incorrectos.', 'error');
+        return;
       }
-    )
 
-    .withFailureHandler(
-      function(error) {
-
-        boton.disabled = false;
-
-        boton.textContent =
-          'Ingresar';
-
-        console.error(error);
-
-        mensaje.innerHTML =
-          '<div class="alert alert-danger">' +
-          esc(
-            error &&
-            error.message
-              ? error.message
-              : 'Error al iniciar sesión.'
-          ) +
-          '</div>';
-
-      }
-    )
-
-    .validarUsuario(
-      usuario,
-      clave
-    );
-
+      $('txtClave').value = '';
+      mostrarMensaje('');
+      const sesion = { token: r.token, usuario: r.usuario, modulos: r.modulos || [] };
+      guardarSesion(sesion);
+      enrutar(sesion);
+    })
+    .withFailureHandler(function(err) {
+      boton.disabled = false;
+      boton.textContent = 'Ingresar';
+      mostrarMensaje((err && err.message) || 'No fue posible validar el usuario.', 'error');
+    })
+    .validarUsuario(usuario, clave);
 }
 
-
-/* =====================================================
-   CERRAR SESIÓN
-   ===================================================== */
-
-function cerrarSesionCliente() {
-
-  cerrarAvisoCumpleanios_();
-
-  const botonCumple =
-    document.getElementById('botonCumpleanios');
-
-  if (botonCumple && botonCumple.parentNode) {
-    botonCumple.parentNode.removeChild(botonCumple);
+function cerrarSesion() {
+  const sesion = leerSesion();
+  borrarSesion();
+  if (sesion && sesion.token) {
+    google.script.run.withSuccessHandler(function() {}).withFailureHandler(function() {}).cerrarSesionCliente(sesion.token);
   }
-
-  cumpleaniosSesion = null;
-
-
-  if (!tokenSesion) {
-
-    location.reload();
-
-    return;
-
-  }
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function() {
-
-        tokenSesion = null;
-
-        usuarioSesion = null;
-
-        rolSesion = null;
-
-        dependenciaSesion = null;
-
-        funcionarioSeleccionado = null;
-
-        location.reload();
-
-      }
-    )
-
-    .withFailureHandler(
-      function() {
-
-        location.reload();
-
-      }
-    )
-
-    .cerrarSesionCliente(
-      tokenSesion
-    );
-
+  mostrarPantalla('pantallaLogin');
+  mostrarMensaje('');
+  $('txtUsuario').focus();
 }
 
-
-/* =====================================================
-   VALIDACIÓN DE SESIÓN
-   ===================================================== */
-
-function verificarSesionLocal() {
-
-  if (!tokenSesion) {
-
-    mostrarToast(
-      'La sesión no está disponible.',
-      'error'
-    );
-
-    return false;
-
-  }
-
-  return true;
-
-}
-
-
-/* =====================================================
-   PERMISOS
-   ===================================================== */
-
-function configurarPermisos() {
-
-  const elementos =
-    document.querySelectorAll(
-      '.soloAdministrador'
-    );
-
-
-  elementos.forEach(
-    function(elemento) {
-
-      if (
-        rolSesion ===
-        'ADMINISTRADOR'
-      ) {
-
-        elemento.style.display =
-          '';
-
-      } else {
-
-        elemento.style.display =
-          'none';
-
-      }
-
-    }
-  );
-
-
-  aplicarRestriccionTurnos();
-
-}
-
-
-/* =====================================================
-   NAVEGACIÓN
-   ===================================================== */
-
-function mostrarSeccion(
-  nombre
-) {
-
-  const mapa = {
-
-    consulta:
-      'seccionConsulta',
-
-    novedad:
-      'seccionNovedad',
-
-    turnos:
-      'seccionTurnos',
-
-    reportes:
-      'seccionReportes',
-
-    usuarios:
-      'seccionUsuarios'
-
-  };
-
-
-  const botones = {
-
-    consulta:
-      'menuConsulta',
-
-    novedad:
-      'menuNovedad',
-
-    turnos:
-      'menuTurnos',
-
-    reportes:
-      'menuReportes',
-
-    usuarios:
-      'menuUsuarios'
-
-  };
-
-
-  document
-    .querySelectorAll(
-      '.section'
-    )
-    .forEach(
-      function(seccion) {
-
-        seccion.classList.remove(
-          'active'
-        );
-
-      }
-    );
-
-
-  document
-    .querySelectorAll(
-      '.menu button'
-    )
-    .forEach(
-      function(boton) {
-
-        boton.classList.remove(
-          'active'
-        );
-
-      }
-    );
-
-
-  const seccion =
-    document.getElementById(
-      mapa[nombre]
-    );
-
-
-  if (!seccion) {
-    return;
-  }
-
-
-  seccion.classList.add(
-    'active'
-  );
-
-
-  const boton =
-    document.getElementById(
-      botones[nombre]
-    );
-
-
-  if (boton) {
-
-    boton.classList.add(
-      'active'
-    );
-
-  }
-
-
-  if (
-    nombre ===
-    'reportes'
-  ) {
-
-    cargarReportes();
-
-  }
-
-
-  if (
-    nombre ===
-    'usuarios' &&
-    rolSesion ===
-    'ADMINISTRADOR'
-  ) {
-
-    cargarUsuarios();
-
-  }
-
-}
-
-
-/* =====================================================
-   BUSCAR FUNCIONARIO
-   ===================================================== */
-
-function buscarFuncionario() {
-
-  if (
-    !verificarSesionLocal()
-  ) {
-    return;
-  }
-
-
-  const valor =
-    document
-      .getElementById(
-        'buscarValor'
-      )
-      .value
-      .trim();
-
-
-  const contenedor =
-    document.getElementById(
-      'resultadosBusqueda'
-    );
-
-
-  if (!valor) {
-
-    contenedor.innerHTML =
-      '<div class="empty">' +
-      'Ingrese cédula, nombre, grado, nivel o dependencia.' +
-      '</div>';
-
-    return;
-
-  }
-
-
-  contenedor.innerHTML =
-    '<div class="loading">' +
-    '🔄 Buscando funcionario...' +
-    '</div>';
-
-
-  document
-    .getElementById(
-      'fichaFuncionario'
-    )
-    .innerHTML = '';
-
-  document
-    .getElementById(
-      'historialFuncionario'
-    )
-    .innerHTML = '';
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          !respuesta ||
-          respuesta.estado !== true
-        ) {
-
-          contenedor.innerHTML =
-            '<div class="empty">' +
-            esc(
-              respuesta &&
-              respuesta.mensaje
-                ? respuesta.mensaje
-                : 'No se encontraron funcionarios.'
-            ) +
-            '</div>';
-
-          return;
-
-        }
-
-
-        const datos =
-          respuesta.datos ||
-          [];
-
-
-        if (!datos.length) {
-
-          contenedor.innerHTML =
-            '<div class="empty">' +
-            'No se encontraron funcionarios.' +
-            '</div>';
-
-          return;
-
-        }
-
-
-        let html =
-          '<div class="card">' +
-          '<div class="card-header">' +
-          'Funcionarios encontrados' +
-          '</div>' +
-          '<div class="card-body">';
-
-
-        datos.forEach(
-          function(funcionario) {
-
-            html +=
-              '<div class="employee-card">' +
-
-              '<div class="employee-name">' +
-              esc(
-                funcionario.funcionario ||
-                funcionario.FUNCIONARIO ||
-                ''
-              ) +
-              '</div>' +
-
-              '<div class="employee-meta">' +
-              'CC: ' +
-              esc(
-                funcionario.cedula ||
-                funcionario.CEDULA ||
-                ''
-              ) +
-              ' &nbsp; | &nbsp; ' +
-
-              'GR: ' +
-              esc(
-                funcionario.grado ||
-                funcionario.GR ||
-                ''
-              ) +
-              ' &nbsp; | &nbsp; ' +
-
-              'Turno: ' +
-              esc(
-                funcionario.turno ||
-                funcionario.TURNO ||
-                ''
-              ) +
-              '</div>' +
-
-              '<div class="mt-2">' +
-
-              '<button ' +
-              'type="button" ' +
-              'class="btn btn-sm btn-pol me-1" ' +
-              'onclick=\'seleccionarFuncionario(' +
-              JSON.stringify(
-                funcionario
-              ) +
-              ')\'>' +
-              'Seleccionar' +
-              '</button>' +
-
-              '</div>' +
-
-              '</div>';
-
-          }
-        );
-
-
-        html +=
-          '</div></div>';
-
-
-        contenedor.innerHTML =
-          html;
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        contenedor.innerHTML =
-          '<div class="alert alert-danger">' +
-          esc(
-            error &&
-            error.message
-              ? error.message
-              : 'Error al consultar funcionarios.'
-          ) +
-          '</div>';
-
-      }
-    )
-
-    .buscarFuncionario(
-      tokenSesion,
-      valor
-    );
-
-}
-
-
-/* =====================================================
-   SELECCIONAR FUNCIONARIO
-   ===================================================== */
-
-function seleccionarFuncionario(
-  funcionario
-) {
-
-  funcionarioSeleccionado =
-    funcionario;
-
-
-  const cedula =
-    funcionario.cedula ||
-    funcionario.CEDULA ||
-    '';
-
-
-  document
-    .getElementById(
-      'novedadCedula'
-    )
-    .value =
-    cedula;
-
-
-  document
-    .getElementById(
-      'novedadFuncionario'
-    )
-    .value =
-    funcionario.funcionario ||
-    funcionario.FUNCIONARIO ||
-    '';
-
-
-  cargarFicha(
-    cedula
-  );
-
-
-  mostrarSeccion(
-    'novedad'
-  );
-
-
-  mostrarToast(
-    'Funcionario seleccionado.'
-  );
-
-}
-
-
-/* =====================================================
-   FICHA FUNCIONARIO
-   ===================================================== */
-
-function cargarFicha(
-  cedula
-) {
-
-  const contenedor =
-    document.getElementById(
-      'fichaFuncionario'
-    );
-
-
-  contenedor.innerHTML =
-    '<div class="loading">' +
-    '🔄 Cargando ficha...' +
-    '</div>';
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          !respuesta ||
-          respuesta.estado !== true
-        ) {
-
-          contenedor.innerHTML =
-            '<div class="empty">' +
-            esc(
-              respuesta &&
-              respuesta.mensaje
-                ? respuesta.mensaje
-                : 'No se pudo cargar la ficha.'
-            ) +
-            '</div>';
-
-          return;
-
-        }
-
-
-        const funcionario =
-          respuesta.funcionario ||
-          respuesta.datos ||
-          {};
-
-
-        let html =
-          '<div class="card">' +
-          '<div class="card-header">' +
-          'Ficha del funcionario' +
-          '</div>' +
-          '<div class="card-body">';
-
-
-        html +=
-          '<div class="employee-card">' +
-
-          '<div class="employee-name">' +
-          esc(
-            funcionario.funcionario ||
-            funcionario.FUNCIONARIO ||
-            ''
-          ) +
-          '</div>' +
-
-          '<div class="employee-meta">' +
-          'Cédula: ' +
-          esc(
-            funcionario.cedula ||
-            funcionario.CEDULA ||
-            ''
-          ) +
-          ' | Nivel: ' +
-          esc(
-            funcionario.nivel ||
-            funcionario.NIV ||
-            ''
-          ) +
-          ' | Grado: ' +
-          esc(
-            funcionario.grado ||
-            funcionario.GR ||
-            ''
-          ) +
-          ' | Turno: ' +
-          esc(
-            funcionario.turno ||
-            funcionario.TURNO ||
-            ''
-          ) +
-          '</div>' +
-
-          '<div class="mt-2">' +
-          'Dependencia: ' +
-          '<strong>' +
-          esc(
-            funcionario.dependencia ||
-            funcionario.DEPENDENCIA ||
-            ''
-          ) +
-          '</strong>' +
-          '</div>' +
-
-          '</div>';
-
-
-        html +=
-          '</div></div>';
-
-
-        contenedor.innerHTML =
-          html;
-
-
-        cargarHistorial(
-          cedula
-        );
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        contenedor.innerHTML =
-          '<div class="alert alert-danger">' +
-          esc(
-            error &&
-            error.message
-              ? error.message
-              : 'Error cargando ficha.'
-          ) +
-          '</div>';
-
-      }
-    )
-
-    .obtenerFichaFuncionario(
-      tokenSesion,
-      cedula
-    );
-
-}
-
-
-/* =====================================================
-   HISTORIAL
-   ===================================================== */
-
-function cargarHistorial(
-  cedula
-) {
-
-  const contenedor =
-    document.getElementById(
-      'historialFuncionario'
-    );
-
-
-  contenedor.innerHTML =
-    '<div class="loading">' +
-    '🔄 Consultando historial...' +
-    '</div>';
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          !respuesta ||
-          respuesta.estado !== true
-        ) {
-
-          contenedor.innerHTML =
-            '<div class="empty">' +
-            'No fue posible consultar el historial.' +
-            '</div>';
-
-          return;
-
-        }
-
-
-        const historial =
-          respuesta.historial ||
-          respuesta.datos ||
-          [];
-
-
-        if (!historial.length) {
-
-          contenedor.innerHTML =
-            '<div class="card">' +
-            '<div class="card-header">' +
-            'Historial de novedades' +
-            '</div>' +
-            '<div class="card-body">' +
-            '<div class="empty">' +
-            'No registra novedades.' +
-            '</div>' +
-            '</div>' +
-            '</div>';
-
-          return;
-
-        }
-
-
-        let html =
-          '<div class="card">' +
-          '<div class="card-header">' +
-          'Historial de novedades' +
-          '</div>' +
-          '<div class="card-body">' +
-          '<div class="table-wrapper">' +
-          '<table class="table table-bordered">' +
-
-          '<thead>' +
-          '<tr>' +
-          '<th>GR</th>' +
-          '<th>NOVEDAD</th>' +
-          '<th>DÍAS</th>' +
-          '<th>FECHA INICIAL</th>' +
-          '<th>FECHA PRESENTACIÓN</th>' +
-          '</tr>' +
-          '</thead>' +
-
-          '<tbody>';
-
-
-        historial.forEach(
-          function(n) {
-
-            html +=
-              '<tr>' +
-
-              '<td>' +
-              esc(n.GR) +
-              '</td>' +
-
-              '<td>' +
-              '<span class="badge-novedad">' +
-              esc(n.NOVEDAD) +
-              '</span>' +
-              '</td>' +
-
-              '<td>' +
-              esc(n.Dias) +
-              '</td>' +
-
-              '<td>' +
-              esc(
-                formatearValor(
-                  n['Fecha INICIAL']
-                )
-              ) +
-              '</td>' +
-
-              '<td>' +
-              esc(
-                formatearValor(
-                  n['Fecha PRESENTACION']
-                )
-              ) +
-              '</td>' +
-
-              '</tr>';
-
-          }
-        );
-
-
-        html +=
-          '</tbody>' +
-          '</table>' +
-          '</div>' +
-          '</div>' +
-          '</div>';
-
-
-        contenedor.innerHTML =
-          html;
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        contenedor.innerHTML =
-          '<div class="alert alert-danger">' +
-          'Error consultando historial.' +
-          '</div>';
-
-      }
-    )
-
-    .obtenerHistorialFuncionario(
-      tokenSesion,
-      cedula
-    );
-
-}
-
-
-/* =====================================================
-   TIPO -> NOVEDAD
-   =====================================================
-
- * El nombre que realmente se guarda en la hoja NOVEDADES
- * es el del campo "Novedad" (texto libre). El campo "Tipo"
- * por sí solo no se guardaba en ningún lado: si el usuario
- * solo elegía el Tipo y dejaba "Novedad" vacío, el registro
- * se rechazaba (o guardaba en blanco) sin que fuera obvio
- * por qué. Ahora, al cambiar el Tipo, se copia su valor al
- * campo Novedad automáticamente; con "OTRA NOVEDAD" el
- * campo queda vacío para que el usuario escriba el nombre.
- */
-
-function alCambiarTipoNovedad() {
-
-  const tipo =
-    document
-      .getElementById('tipoNovedad')
-      .value;
-
-  const campoNovedad =
-    document.getElementById('novedadNombre');
-
-  if (tipo === 'OTRA NOVEDAD') {
-
-    campoNovedad.value = '';
-    campoNovedad.focus();
-
+document.addEventListener('DOMContentLoaded', function() {
+  $('formLogin').addEventListener('submit', function(ev) { ev.preventDefault(); iniciarSesion(); });
+  $('btnSalir').addEventListener('click', cerrarSesion);
+
+  $('btnOjo').addEventListener('click', function() {
+    const campo = $('txtClave');
+    const visible = campo.type === 'text';
+    campo.type = visible ? 'password' : 'text';
+    this.textContent = visible ? 'Mostrar' : 'Ocultar';
+  });
+
+  document.querySelectorAll('.modulo').forEach(function(tarjeta) {
+    tarjeta.addEventListener('click', function() {
+      const destino = RUTAS_MODULO[this.getAttribute('data-modulo')];
+      if (destino) window.location.href = destino;
+    });
+  });
+
+  // Aviso dejado por un módulo que devolvió al usuario al inicio
+  let aviso = '';
+  try { aviso = sessionStorage.getItem('jesep_aviso') || ''; sessionStorage.removeItem('jesep_aviso'); } catch (e) {}
+
+  // Si ya hay una sesión, se valida en el servidor antes de enrutar
+  const guardada = leerSesion();
+  if (guardada && guardada.token) {
+    mostrarPantalla('pantallaCarga');
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (!r || r.estado !== true) { borrarSesion(); mostrarPantalla('pantallaLogin'); return; }
+        guardada.usuario = r.usuario;
+        guardada.modulos = r.modulos || [];
+        guardarSesion(guardada);
+        enrutar(guardada);
+      })
+      .withFailureHandler(function() {
+        borrarSesion();
+        mostrarPantalla('pantallaLogin');
+        mostrarMensaje('Su sesión expiró. Ingrese nuevamente.', 'error');
+      })
+      .verificarSesion(guardada.token);
   } else {
-
-    campoNovedad.value = tipo;
-
+    if (aviso) mostrarMensaje(aviso, 'error');
+    $('txtUsuario').focus();
   }
-
-}
-
-
-/* =====================================================
-   REGISTRAR NOVEDAD
-   ===================================================== */
-
-function registrarNovedad() {
-
-  if (
-    !verificarSesionLocal()
-  ) {
-    return;
-  }
-
-
-  if (
-    !funcionarioSeleccionado
-  ) {
-
-    mostrarToast(
-      'Debe seleccionar primero un funcionario.',
-      'error'
-    );
-
-    return;
-
-  }
-
-
-  const cedula =
-    funcionarioSeleccionado.cedula ||
-    funcionarioSeleccionado.CEDULA ||
-    document
-      .getElementById(
-        'novedadCedula'
-      )
-      .value;
-
-
-  const novedad =
-    document
-      .getElementById(
-        'novedadNombre'
-      )
-      .value
-      .trim();
-
-
-  if (!novedad) {
-
-    mostrarToast(
-      'Ingrese la novedad.',
-      'error'
-    );
-
-    return;
-
-  }
-
-
-  const datos = {
-
-    cc:
-      cedula,
-
-    cedula:
-      cedula,
-
-    novedad:
-      novedad,
-
-    tipo:
-      document
-        .getElementById(
-          'tipoNovedad'
-        )
-        .value,
-
-    dias:
-      document
-        .getElementById(
-          'novedadDias'
-        )
-        .value,
-
-    fechaInicial:
-      document
-        .getElementById(
-          'fechaInicial'
-        )
-        .value,
-
-    fechaPresentacion:
-      document
-        .getElementById(
-          'fechaPresentacion'
-        )
-        .value
-
-  };
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          respuesta &&
-          respuesta.estado === true
-        ) {
-
-          mostrarToast(
-            respuesta.mensaje ||
-            'Novedad registrada correctamente.'
-          );
-
-          limpiarFormularioNovedad();
-
-          cargarHistorial(
-            cedula
-          );
-
-        } else {
-
-          mostrarToast(
-            respuesta &&
-            respuesta.mensaje
-              ? respuesta.mensaje
-              : 'No fue posible registrar la novedad.',
-            'error'
-          );
-
-        }
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        mostrarToast(
-          error &&
-          error.message
-            ? error.message
-            : 'Error registrando novedad.',
-          'error'
-        );
-
-      }
-    )
-
-    .registrarNovedad(
-      tokenSesion,
-      datos
-    );
-
-}
-
-
-/* =====================================================
-   LIMPIAR NOVEDAD
-   ===================================================== */
-
-function limpiarFormularioNovedad() {
-
-  document
-    .getElementById(
-      'novedadNombre'
-    )
-    .value = '';
-
-  document
-    .getElementById(
-      'novedadDias'
-    )
-    .value = '';
-
-  document
-    .getElementById(
-      'fechaInicial'
-    )
-    .value = '';
-
-  document
-    .getElementById(
-      'fechaPresentacion'
-    )
-    .value = '';
-
-}
-
-
-/* =====================================================
-   RESTRICCIÓN DE TURNOS SEGÚN USUARIO
-   =====================================================
-
- * Si el usuario es OPERADOR y tiene un turno asignado
- * (campo DEPENDENCIA = DISPONIBLE_X en USUARIOS), solo se
- * muestra el botón de ese turno y el select de reportes
- * queda limitado a ese mismo turno.
- *
- * Los administradores, y los operadores sin turno
- * asignado, ven todos los botones.
- */
-
-function aplicarRestriccionTurnos() {
-
-  const limpiar = function(valor) {
-    return String(valor || '')
-      .trim()
-      .toUpperCase();
-  };
-
-
-  const esOperadorRestringido =
-    rolSesion === 'OPERADOR' &&
-    limpiar(turnoAsignadoSesion) !== '';
-
-
-  /*
-   * Botones de la sección Turnos.
-   */
-  const botones =
-    document.querySelectorAll(
-      '.turn-buttons .turn-button'
-    );
-
-
-  botones.forEach(
-    function(boton) {
-
-      if (!esOperadorRestringido) {
-
-        boton.style.display = '';
-        return;
-
-      }
-
-
-      const filtroBoton =
-        limpiar(
-          boton.getAttribute(
-            'data-turno'
-          )
-        );
-
-
-      boton.style.display =
-        filtroBoton ===
-        limpiar(turnoAsignadoSesion)
-          ? ''
-          : 'none';
-
-    }
-  );
-
-
-  /*
-   * Select de turnos de la sección Reportes.
-   */
-  const selector =
-    document.getElementById(
-      'filtroReporte'
-    );
-
-
-  if (selector) {
-
-    const opciones =
-      selector.querySelectorAll(
-        'option'
-      );
-
-
-    opciones.forEach(
-      function(opcion) {
-
-        if (!esOperadorRestringido) {
-
-          opcion.style.display = '';
-          opcion.disabled = false;
-          return;
-
-        }
-
-
-        const coincide =
-          limpiar(
-            opcion.value
-          ) ===
-          limpiar(turnoAsignadoSesion);
-
-
-        opcion.style.display =
-          coincide ? '' : 'none';
-
-        opcion.disabled = !coincide;
-
-
-        if (
-          !coincide &&
-          selector.value ===
-          opcion.value
-        ) {
-
-          selector.value =
-            turnoAsignadoSesion;
-
-        }
-
-      }
-    );
-
-  }
-
-}
-
-
-/* =====================================================
-   CONSULTA POR TURNO
-   ===================================================== */
-
-/*
- * IMPORTANTE:
- * Esta es la ÚNICA función del HTML que maneja
- * los botones A, B, C, SEPRI, GURIN y NO APLICA.
- *
- * NO se llama consultarTurno().
- * De esta manera evitamos cualquier conflicto
- * con funciones antiguas.
- */
-
-function cargarTurno(
-  filtro
-) {
-
-  if (
-    !verificarSesionLocal()
-  ) {
-    return;
-  }
-
-
-  const contenedor =
-    document.getElementById(
-      'resultadoTurno'
-    );
-
-
-  ultimoTurnoConsultado =
-    filtro;
-
-
-  ultimoResultadoTurno =
-    null;
-
-
-  contenedor.innerHTML =
-    '<div class="loading">' +
-    '🔄 Consultando ' +
-    esc(filtro) +
-    '...' +
-    '</div>';
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        console.log(
-          'Respuesta consultarPorTurno:',
-          respuesta
-        );
-
-
-        if (
-          !respuesta ||
-          respuesta.estado !== true
-        ) {
-
-          contenedor.innerHTML =
-            '<div class="empty">' +
-            esc(
-              respuesta &&
-              respuesta.mensaje
-                ? respuesta.mensaje
-                : 'No se encontró información.'
-            ) +
-            '</div>';
-
-          return;
-
-        }
-
-
-        ultimoResultadoTurno =
-          respuesta;
-
-
-        renderTurno(
-          respuesta
-        );
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(
-          'Error consultarPorTurno:',
-          error
-        );
-
-
-        contenedor.innerHTML =
-          '<div class="alert alert-danger">' +
-          '<strong>Error:</strong> ' +
-          esc(
-            error &&
-            error.message
-              ? error.message
-              : 'Error consultando el turno.'
-          ) +
-          '</div>';
-
-      }
-    )
-
-    .consultarPorTurno(
-      tokenSesion,
-      filtro
-    );
-
-}
-
-
-/* =====================================================
-   RENDER TURNOS
-   ===================================================== */
-
-function renderTurno(
-  respuesta
-) {
-  const contenedor = document.getElementById('resultadoTurno');
-  const datos = respuesta.datos || {};
-  let funcionarios = datos.funcionarios || respuesta.funcionarios || [];
-  const filtro = datos.filtro || respuesta.filtro || ultimoTurnoConsultado || '';
-
-  if (!funcionarios.length) {
-    contenedor.innerHTML = '<div class="card"><div class="card-body"><div class="empty">No hay funcionarios registrados para ' + esc(filtro) + ' en la dependencia autorizada.</div></div></div>';
-    return;
-  }
-
-  // Refuerzo del orden: solo por grado y conservando el orden original dentro de cada grado.
-  const ORDEN_GRADOS_TURNO = ['BG','CR','TC','MY','CT','TE','ST','CM','SC','IJ','IT','SI','PT','PP','AXP','NO'];
-  const posicionGrado = {};
-  ORDEN_GRADOS_TURNO.forEach(function(g, i) { posicionGrado[g] = i; });
-  funcionarios = funcionarios.slice().sort(function(a, b) {
-    const ga = String(a.grado || a.GR || '').trim().toUpperCase();
-    const gb = String(b.grado || b.GR || '').trim().toUpperCase();
-    const pa = Object.prototype.hasOwnProperty.call(posicionGrado, ga) ? posicionGrado[ga] : 999;
-    const pb = Object.prototype.hasOwnProperty.call(posicionGrado, gb) ? posicionGrado[gb] : 999;
-    return pa - pb;
-  });
-
-  /*
-   * FUERZA EFECTIVA: conteo total por categoría.
-   * FUERZA DISPONIBLE: efectiva menos los funcionarios que
-   * tienen al menos un registro en la hoja NOVEDADES
-   * (ver FUERZA_DISPONIBLE_SOLO_ACTIVAS, igual que en Código.gs).
-   */
-  const CATEGORIAS_FUERZA = ['OF', 'NIV. EJE', 'PT', 'PP', 'AXP', 'NO UNI'];
-
-  const resumen = { OF:0, 'NIV. EJE':0, PT:0, PP:0, AXP:0, 'NO UNI':0 };
-  const conNovedad = { OF:0, 'NIV. EJE':0, PT:0, PP:0, AXP:0, 'NO UNI':0 };
-
-  const oficiales = { BG:true, CR:true, TC:true, MY:true, CT:true, TE:true, ST:true, CM:true };
-  const nivelEje = { SC:true, IJ:true, IT:true, SI:true };
-
-  funcionarios.forEach(function(f) {
-
-    const grado = String(f.grado || f.GR || '').trim().toUpperCase();
-    const nivel = String(f.nivel || f.NIV || '').trim().toUpperCase();
-
-    let categoria;
-
-    if (oficiales[grado] || nivel.indexOf('OFICIAL') !== -1) categoria = 'OF';
-    else if (grado === 'PT' || nivel === 'PT') categoria = 'PT';
-    else if (grado === 'PP' || nivel === 'PP') categoria = 'PP';
-    else if (grado === 'AXP' || nivel.indexOf('AXP') !== -1 || nivel.indexOf('AUXILIAR') !== -1) categoria = 'AXP';
-    else if (nivel.indexOf('NO UNI') !== -1 || nivel.indexOf('NO UNIFORM') !== -1 || nivel === 'NO UNIFORMADO' || nivel === 'NO UNIFORMADOS') categoria = 'NO UNI';
-    else if (nivelEje[grado] || nivel.indexOf('EJECUTIVO') !== -1) categoria = 'NIV. EJE';
-    else categoria = 'NO UNI';
-
-    resumen[categoria]++;
-
-    const restaDisponible = FUERZA_DISPONIBLE_SOLO_ACTIVAS
-      ? (f.tieneNovedadActiva === true)
-      : ((Number(f.totalNovedades) || (f.historialNovedades || []).length) > 0);
-
-    if (restaDisponible) conNovedad[categoria]++;
-  });
-
-  const disponible = {};
-  CATEGORIAS_FUERZA.forEach(function(c) {
-    disponible[c] = resumen[c] - conNovedad[c];
-  });
-
-  let html = '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><span>📋 Listado ' + esc(filtro) + '</span><div class="no-print"><button type="button" class="btn btn-sm btn-secondary me-1" onclick="imprimirTurno()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Descargar PDF</button></div></div></div><div class="card-body">';
-
-  html += '<div class="mb-1"><strong style="color:#01592F;font-size:15px;">FUERZA EFECTIVA</strong></div>';
-  html += '<div class="row g-2 mb-2">';
-  CATEGORIAS_FUERZA.forEach(function(c) { html += crearEstadistica(c, resumen[c]); });
-  html += '</div>';
-
-  html += '<div class="mb-1"><strong style="color:#173E56;font-size:15px;">FUERZA DISPONIBLE</strong> <small class="text-muted">(efectiva sin registros en novedades)</small></div>';
-  html += '<div class="row g-2 mb-3">';
-  CATEGORIAS_FUERZA.forEach(function(c) { html += crearEstadistica(c, disponible[c]); });
-  html += '</div>';
-
-  html += '<div class="table-wrapper"><table id="tablaTurno" class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>NIV</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
-
-  let ultimoGrado = null;
-  funcionarios.forEach(function(f, indice) {
-    const grado = String(f.grado || f.GR || '').trim().toUpperCase() || 'SIN GRADO';
-    if (grado !== ultimoGrado) {
-      html += '<tr class="grupo-grado"><td colspan="8"><strong>GRADO: ' + esc(grado) + '</strong></td></tr>';
-      ultimoGrado = grado;
-    }
-
-    const novedades = f.historialNovedades || [];
-    let novedadesHtml = '';
-    if (novedades.length) {
-      novedadesHtml = novedades.slice(0,5).map(function(n) {
-        return '<span class="badge-novedad">' + esc(n.NOVEDAD || n.novedad || '') + '</span>';
-      }).join('');
-      if (novedades.length > 5) novedadesHtml += '<span class="badge-novedad">+' + (novedades.length - 5) + '</span>';
-    } else {
-      novedadesHtml = '<span class="text-muted">Sin novedad</span>';
-    }
-
-    html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
-  });
-
-  html += '</tbody></table></div></div></div>';
-  contenedor.innerHTML = html;
-}
-
-
-/* =====================================================
-   ESTADÍSTICA
-   ===================================================== */
-
-function crearEstadistica(
-  etiqueta,
-  valor
-) {
-
-  return (
-    '<div class="col-md-4">' +
-
-    '<div class="stat-card">' +
-
-    '<div class="stat-number">' +
-    esc(valor) +
-    '</div>' +
-
-    '<div class="stat-label">' +
-    esc(etiqueta) +
-    '</div>' +
-
-    '</div>' +
-
-    '</div>'
-  );
-
-}
-
-
-/* =====================================================
-   IMPRIMIR TURNO
-   ===================================================== */
-
-function imprimirTurno() {
-
-  window.print();
-
-}
-
-
-/* =====================================================
-   PREVISUALIZAR REPORTE ACTUAL
-   ===================================================== */
-
-function previsualizarTurnoActual() {
-
-  if (
-    !ultimoTurnoConsultado
-  ) {
-
-    mostrarToast(
-      'Primero consulte un turno.',
-      'error'
-    );
-
-    return;
-
-  }
-
-
-  previsualizarReporteFiltro(
-    ultimoTurnoConsultado
-  );
-
-}
-
-
-/* =====================================================
-   PREVISUALIZAR REPORTE
-   ===================================================== */
-
-function previsualizarReporte() {
-
-  const filtro =
-    document
-      .getElementById(
-        'filtroReporte'
-      )
-      .value;
-
-
-  previsualizarReporteFiltro(
-    filtro
-  );
-
-}
-
-
-function previsualizarReporteFiltro(
-  filtro
-) {
-
-  const contenedor =
-    document.getElementById(
-      'resultadoReporte'
-    );
-
-
-  contenedor.innerHTML =
-    '<div class="loading">' +
-    '🔄 Generando previsualización...' +
-    '</div>';
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          !respuesta ||
-          respuesta.estado !== true
-        ) {
-
-          contenedor.innerHTML =
-            '<div class="alert alert-danger">' +
-            esc(
-              respuesta &&
-              respuesta.mensaje
-                ? respuesta.mensaje
-                : 'No se pudo generar la previsualización.'
-            ) +
-            '</div>';
-
-          return;
-
-        }
-
-
-        const html =
-          respuesta.html ||
-          respuesta.contenido ||
-          '';
-
-
-        contenedor.innerHTML =
-          '<div class="card">' +
-          '<div class="card-header">' +
-          'Previsualización — ' +
-          esc(filtro) +
-          '</div>' +
-          '<div class="card-body p-0">' +
-          '<iframe ' +
-          'class="report-frame" ' +
-          'id="frameReporte">' +
-          '</iframe>' +
-          '</div>' +
-          '</div>';
-
-
-        const frame =
-          document.getElementById(
-            'frameReporte'
-          );
-
-
-        frame.srcdoc =
-          html;
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        contenedor.innerHTML =
-          '<div class="alert alert-danger">' +
-          esc(
-            error &&
-            error.message
-              ? error.message
-              : 'Error generando reporte.'
-          ) +
-          '</div>';
-
-      }
-    )
-
-    .previsualizarReporteTurno(
-      tokenSesion,
-      filtro
-    );
-
-}
-
-
-/* =====================================================
-   IMPRIMIR REPORTE
-   ===================================================== */
-
-function imprimirReporte() {
-
-  const frame =
-    document.getElementById(
-      'frameReporte'
-    );
-
-
-  if (!frame) {
-
-    mostrarToast(
-      'Primero genere la previsualización.',
-      'error'
-    );
-
-    return;
-
-  }
-
-
-  frame.contentWindow.focus();
-
-  frame.contentWindow.print();
-
-}
-
-
-/* =====================================================
-   DESCARGA DIRECTA DEL REPORTE EN PDF
-
-   Igual que la descarga de Excel: el servidor arma el
-   PDF y lo devuelve en base64; el navegador lo baja de
-   una vez, sin pasar por Drive.
-   ===================================================== */
-
-function generarReporteDesdeTurno() {
-
-  if (!verificarSesionLocal()) {
-    return;
-  }
-
-  if (!ultimoTurnoConsultado) {
-    mostrarToast(
-      'Primero consulte un turno.',
-      'error'
-    );
-    return;
-  }
-
-  const selector = document.getElementById('filtroReporte');
-
-  if (selector) {
-    selector.value = ultimoTurnoConsultado;
-  }
-
-  descargarPDFReporte();
-
-}
-
-
-function descargarPDFReporte() {
-
-  if (!verificarSesionLocal()) {
-    return;
-  }
-
-  const selector = document.getElementById('filtroReporte');
-  const filtro = selector ? selector.value : '';
-
-  if (!filtro) {
-    mostrarToast(
-      'Seleccione un turno para generar el reporte.',
-      'error'
-    );
-    return;
-  }
-
-  const boton = document.getElementById('btnGenerarPDF');
-  const textoOriginal = boton ? boton.textContent : '';
-
-  if (boton) {
-    boton.disabled = true;
-    boton.textContent = '⏳ Generando...';
-  }
-
-  function restaurar() {
-    if (boton) {
-      boton.disabled = false;
-      boton.textContent = textoOriginal || '📄 Generar PDF';
-    }
-  }
-
-  mostrarToast('Generando PDF. Espere un momento...');
-
-  google.script.run
-
-    .withSuccessHandler(function(respuesta) {
-
-      restaurar();
-
-      if (!respuesta || respuesta.estado !== true) {
-        mostrarToast(
-          respuesta && respuesta.mensaje
-            ? respuesta.mensaje
-            : 'No fue posible generar el archivo PDF.',
-          'error'
-        );
-        return;
-      }
-
-      const datos = respuesta.datos || {};
-
-      if (!datos.contenido) {
-        mostrarToast(
-          'El servidor no devolvió el archivo.',
-          'error'
-        );
-        return;
-      }
-
-      descargarArchivoBase64_(
-        datos.contenido,
-        datos.nombre || 'Listado.pdf',
-        datos.mime || 'application/pdf'
-      );
-
-      mostrarToast(
-        'Archivo descargado: ' +
-        (datos.total || 0) +
-        ' funcionario(s).'
-      );
-
-    })
-
-    .withFailureHandler(function(error) {
-
-      restaurar();
-
-      console.error('Error descargando PDF:', error);
-
-      mostrarToast(
-        error && error.message
-          ? error.message
-          : 'Error generando el archivo PDF.',
-        'error'
-      );
-
-    })
-
-    .descargarReportePDF(
-      tokenSesion,
-      filtro
-    );
-}
-
-
-/* =====================================================
-   REPORTES
-   ===================================================== */
-
-function cargarReportes() {
-
-  if (
-    !verificarSesionLocal()
-  ) {
-    return;
-  }
-
-
-  const contenedor =
-    document.getElementById(
-      'listaReportes'
-    );
-
-
-  if (!contenedor) {
-    return;
-  }
-
-
-  contenedor.innerHTML =
-    '<div class="loading">' +
-    '🔄 Cargando reportes...' +
-    '</div>';
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          !respuesta ||
-          respuesta.estado !== true
-        ) {
-
-          contenedor.innerHTML =
-            '<div class="empty">' +
-            esc(
-              respuesta &&
-              respuesta.mensaje
-                ? respuesta.mensaje
-                : 'No fue posible cargar reportes.'
-            ) +
-            '</div>';
-
-          return;
-
-        }
-
-
-        const reportes =
-          respuesta.datos ||
-          respuesta.reportes ||
-          [];
-
-
-        if (!reportes.length) {
-
-          contenedor.innerHTML =
-            '<div class="empty">' +
-            'No existen reportes registrados.' +
-            '</div>';
-
-          return;
-
-        }
-
-
-        let html =
-          '<div class="table-wrapper">' +
-          '<table class="table table-bordered">' +
-
-          '<thead>' +
-          '<tr>' +
-          '<th>CONSECUTIVO</th>' +
-          '<th>FECHA</th>' +
-          '<th>USUARIO</th>' +
-          '<th>TURNO</th>' +
-          '<th>ARCHIVO</th>' +
-          '<th>URL</th>' +
-          '</tr>' +
-          '</thead>' +
-
-          '<tbody>';
-
-
-        reportes.forEach(
-          function(r) {
-
-            html +=
-              '<tr>' +
-
-              '<td>' +
-              esc(r.CONSECUTIVO) +
-              '</td>' +
-
-              '<td>' +
-              esc(
-                formatearValor(
-                  r.FECHA
-                )
-              ) +
-              '</td>' +
-
-              '<td>' +
-              esc(r.USUARIO) +
-              '</td>' +
-
-              '<td>' +
-              esc(r.TURNO) +
-              '</td>' +
-
-              '<td>' +
-              esc(r.ARCHIVO) +
-              '</td>' +
-
-              '<td>';
-
-            if (
-              r.URL
-            ) {
-
-              html +=
-                '<a ' +
-                'href="' +
-                esc(r.URL) +
-                '" ' +
-                'target="_blank" ' +
-                'rel="noopener">' +
-                'Abrir' +
-                '</a>';
-
-            } else {
-
-              html +=
-                '<span class="text-muted">' +
-                'Sin enlace' +
-                '</span>';
-
-            }
-
-            html +=
-              '</td>' +
-              '</tr>';
-
-          }
-        );
-
-
-        html +=
-          '</tbody>' +
-          '</table>' +
-          '</div>';
-
-
-        contenedor.innerHTML =
-          html;
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        contenedor.innerHTML =
-          '<div class="alert alert-danger">' +
-          esc(
-            error &&
-            error.message
-              ? error.message
-              : 'Error cargando reportes.'
-          ) +
-          '</div>';
-
-      }
-    )
-
-    .listarReportes(
-      tokenSesion,
-      100
-    );
-
-}
-
-
-/* =====================================================
-   USUARIOS
-   ===================================================== */
-
-function cargarUsuarios() {
-
-  if (
-    rolSesion !==
-    'ADMINISTRADOR'
-  ) {
-    return;
-  }
-
-
-  const contenedor =
-    document.getElementById(
-      'listaUsuarios'
-    );
-
-
-  contenedor.innerHTML =
-    '<div class="loading">' +
-    '🔄 Cargando usuarios...' +
-    '</div>';
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          !respuesta ||
-          respuesta.estado !== true
-        ) {
-
-          contenedor.innerHTML =
-            '<div class="alert alert-danger">' +
-            esc(
-              respuesta &&
-              respuesta.mensaje
-                ? respuesta.mensaje
-                : 'No se pudieron cargar los usuarios.'
-            ) +
-            '</div>';
-
-          return;
-
-        }
-
-
-        const usuarios =
-          respuesta.datos ||
-          respuesta.usuarios ||
-          [];
-
-
-        if (!usuarios.length) {
-
-          contenedor.innerHTML =
-            '<div class="empty">' +
-            'No existen usuarios registrados.' +
-            '</div>';
-
-          return;
-
-        }
-
-
-        let html =
-          '<div class="table-wrapper">' +
-          '<table class="table table-bordered">' +
-
-          '<thead>' +
-          '<tr>' +
-          '<th>USUARIO</th>' +
-          '<th>ROL</th>' +
-          '<th>DEPENDENCIA</th>' +
-          '<th>ESTADO</th>' +
-          '<th>ÚLTIMO ACCESO</th>' +
-          '<th>ACCIÓN</th>' +
-          '</tr>' +
-          '</thead>' +
-
-          '<tbody>';
-
-
-        usuarios.forEach(
-          function(u) {
-
-            const estado =
-              String(
-                u.ESTADO ||
-                ''
-              )
-              .toUpperCase();
-
-
-            html +=
-              '<tr>' +
-
-              '<td>' +
-              esc(u.USUARIO) +
-              '</td>' +
-
-              '<td>' +
-              esc(u.ROL) +
-              '</td>' +
-
-              '<td>' +
-              esc(u.DEPENDENCIA) +
-              '</td>' +
-
-              '<td>' +
-              esc(estado) +
-              '</td>' +
-
-              '<td>' +
-              esc(
-                formatearValor(
-                  u.ULTIMO_ACCESO
-                )
-              ) +
-              '</td>' +
-
-              '<td>';
-
-
-            if (
-              u.USUARIO !==
-              usuarioSesion
-            ) {
-
-              const nuevoEstado =
-                estado ===
-                'ACTIVO'
-                  ? 'INACTIVO'
-                  : 'ACTIVO';
-
-
-              html +=
-                '<button ' +
-                'type="button" ' +
-                'class="btn btn-sm ' +
-                (
-                  nuevoEstado ===
-                  'ACTIVO'
-                    ? 'btn-success'
-                    : 'btn-danger'
-                ) +
-                '" ' +
-                'onclick=\'cambiarEstadoUsuario(' +
-                JSON.stringify(
-                  u.USUARIO
-                ) +
-                ',' +
-                JSON.stringify(
-                  nuevoEstado
-                ) +
-                ')\'>' +
-                nuevoEstado +
-                '</button>';
-
-            } else {
-
-              html +=
-                '<span class="text-muted">' +
-                'Sesión actual' +
-                '</span>';
-
-            }
-
-
-            html +=
-              '</td>' +
-              '</tr>';
-
-          }
-        );
-
-
-        html +=
-          '</tbody>' +
-          '</table>' +
-          '</div>';
-
-
-        contenedor.innerHTML =
-          html;
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        contenedor.innerHTML =
-          '<div class="alert alert-danger">' +
-          esc(
-            error &&
-            error.message
-              ? error.message
-              : 'Error cargando usuarios.'
-          ) +
-          '</div>';
-
-      }
-    )
-
-    .listarUsuarios(
-      tokenSesion
-    );
-
-}
-
-
-/* =====================================================
-   CREAR USUARIO
-   ===================================================== */
-
-function crearUsuario() {
-
-  if (
-    rolSesion !==
-    'ADMINISTRADOR'
-  ) {
-    return;
-  }
-
-
-  const usuario =
-    document
-      .getElementById(
-        'nuevoUsuario'
-      )
-      .value
-      .trim();
-
-
-  const clave =
-    document
-      .getElementById(
-        'nuevaClave'
-      )
-      .value;
-
-
-  const rol =
-    document
-      .getElementById(
-        'nuevoRol'
-      )
-      .value;
-
-
-  const dependencia =
-    document
-      .getElementById(
-        'nuevaDependencia'
-      )
-      .value
-      .trim();
-
-
-  if (
-    !usuario ||
-    !clave ||
-    !rol ||
-    !dependencia
-  ) {
-
-    mostrarToast(
-      'Complete todos los campos.',
-      'error'
-    );
-
-    return;
-
-  }
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          respuesta &&
-          respuesta.estado === true
-        ) {
-
-          mostrarToast(
-            respuesta.mensaje ||
-            'Usuario creado correctamente.'
-          );
-
-
-          document
-            .getElementById(
-              'nuevoUsuario'
-            )
-            .value = '';
-
-          document
-            .getElementById(
-              'nuevaClave'
-            )
-            .value = '';
-
-          document
-            .getElementById(
-              'nuevaDependencia'
-            )
-            .value = '';
-
-
-          cargarUsuarios();
-
-        } else {
-
-          mostrarToast(
-            respuesta &&
-            respuesta.mensaje
-              ? respuesta.mensaje
-              : 'No fue posible crear el usuario.',
-            'error'
-          );
-
-        }
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        mostrarToast(
-          error &&
-          error.message
-            ? error.message
-            : 'Error creando usuario.',
-          'error'
-        );
-
-      }
-    )
-
-    .crearUsuario(
-      tokenSesion,
-      usuario,
-      clave,
-      rol,
-      dependencia
-    );
-
-}
-
-
-/* =====================================================
-   CAMBIAR ESTADO USUARIO
-   ===================================================== */
-
-function cambiarEstadoUsuario(
-  usuario,
-  nuevoEstado
-) {
-
-  if (
-    rolSesion !==
-    'ADMINISTRADOR'
-  ) {
-    return;
-  }
-
-
-  google.script.run
-
-    .withSuccessHandler(
-      function(respuesta) {
-
-        if (
-          respuesta &&
-          respuesta.estado === true
-        ) {
-
-          mostrarToast(
-            respuesta.mensaje ||
-            'Estado actualizado.'
-          );
-
-          cargarUsuarios();
-
-        } else {
-
-          mostrarToast(
-            respuesta &&
-            respuesta.mensaje
-              ? respuesta.mensaje
-              : 'No fue posible actualizar el estado.',
-            'error'
-          );
-
-        }
-
-      }
-    )
-
-    .withFailureHandler(
-      function(error) {
-
-        console.error(error);
-
-        mostrarToast(
-          error &&
-          error.message
-            ? error.message
-            : 'Error actualizando usuario.',
-          'error'
-        );
-
-      }
-    )
-
-    .cambiarEstadoUsuario(
-      tokenSesion,
-      usuario,
-      nuevoEstado
-    );
-
-}
-
-
-/* =====================================================
-   FORMATEAR VALOR
-   ===================================================== */
-
-function formatearValor(
-  valor
-) {
-
-  if (
-    valor === null ||
-    valor === undefined ||
-    valor === ''
-  ) {
-
-    return '';
-
-  }
-
-
-  if (
-    typeof valor ===
-    'string'
-  ) {
-
-    return valor;
-
-  }
-
-
-  try {
-
-    const fecha =
-      new Date(valor);
-
-
-    if (
-      !isNaN(
-        fecha.getTime()
-      )
-    ) {
-
-      return (
-        String(
-          fecha.getDate()
-        )
-        .padStart(2,'0') +
-        '/' +
-
-        String(
-          fecha.getMonth() + 1
-        )
-        .padStart(2,'0') +
-        '/' +
-
-        fecha.getFullYear()
-      );
-
-    }
-
-  } catch(e) {
-
-    console.warn(e);
-
-  }
-
-
-  return String(valor);
-
-}
-
-
-
-/* =====================================================
-   DESCARGA DIRECTA DEL ARCHIVO EXCEL (.xls)
-
-   El servidor devuelve el archivo en base64 y el
-   navegador lo descarga sin abrir Drive.
-   ===================================================== */
-
-function descargarExcelReporte() {
-
-  if (!verificarSesionLocal()) {
-    return;
-  }
-
-  const selector = document.getElementById('filtroReporte');
-  const filtro = selector ? selector.value : '';
-
-  if (!filtro) {
-    mostrarToast(
-      'Seleccione un turno para generar el reporte.',
-      'error'
-    );
-    return;
-  }
-
-  const boton = document.getElementById('btnGenerarExcel');
-  const textoOriginal = boton ? boton.textContent : '';
-
-  if (boton) {
-    boton.disabled = true;
-    boton.textContent = '⏳ Generando...';
-  }
-
-  function restaurar() {
-    if (boton) {
-      boton.disabled = false;
-      boton.textContent = textoOriginal || '📊 Descargar Excel';
-    }
-  }
-
-  google.script.run
-
-    .withSuccessHandler(function(respuesta) {
-
-      restaurar();
-
-      if (!respuesta || respuesta.estado !== true) {
-        mostrarToast(
-          respuesta && respuesta.mensaje
-            ? respuesta.mensaje
-            : 'No fue posible generar el archivo Excel.',
-          'error'
-        );
-        return;
-      }
-
-      const datos = respuesta.datos || {};
-
-      if (!datos.contenido) {
-        mostrarToast(
-          'El servidor no devolvió el archivo.',
-          'error'
-        );
-        return;
-      }
-
-      descargarArchivoBase64_(
-        datos.contenido,
-        datos.nombre || 'Listado.xls',
-        datos.mime || 'application/vnd.ms-excel'
-      );
-
-      mostrarToast(
-        'Archivo descargado: ' +
-        (datos.total || 0) +
-        ' funcionario(s).'
-      );
-
-    })
-
-    .withFailureHandler(function(error) {
-
-      restaurar();
-
-      console.error('Error descargando Excel:', error);
-
-      mostrarToast(
-        error && error.message
-          ? error.message
-          : 'Error generando el archivo Excel.',
-        'error'
-      );
-
-    })
-
-    .descargarReporteExcel(
-      tokenSesion,
-      filtro
-    );
-}
-
-
-/**
- * Convierte el base64 recibido en un archivo y dispara
- * la descarga en el navegador.
- */
-function descargarArchivoBase64_(base64, nombre, mime) {
-
-  try {
-
-    const binario = atob(base64);
-
-    const bytes = new Uint8Array(binario.length);
-
-    for (let i = 0; i < binario.length; i++) {
-      bytes[i] = binario.charCodeAt(i);
-    }
-
-    const blob = new Blob([bytes], { type: mime });
-
-    const url = URL.createObjectURL(blob);
-
-    const enlace = document.createElement('a');
-
-    enlace.href = url;
-    enlace.download = nombre;
-    enlace.style.display = 'none';
-
-    document.body.appendChild(enlace);
-    enlace.click();
-
-    setTimeout(function() {
-      document.body.removeChild(enlace);
-      URL.revokeObjectURL(url);
-    }, 2000);
-
-  } catch (error) {
-
-    console.error('Error al descargar el archivo:', error);
-
-    /*
-     * RESPALDO: si el navegador bloquea la descarga
-     * desde el marco de Apps Script, se abre en una
-     * pestaña nueva.
-     */
-    try {
-      window.open(
-        'data:' + mime + ';base64,' + base64,
-        '_blank'
-      );
-    } catch (errorRespaldo) {
-      mostrarToast(
-        'Su navegador bloqueó la descarga. Permita las ' +
-        'descargas para este sitio e intente de nuevo.',
-        'error'
-      );
-    }
-  }
-}
-
-
-/* =====================================================
-   CUMPLEAÑOS DEL DÍA (COLUMNA M)
-   ===================================================== */
-
-/**
- * Muestra la tarjeta flotante de cumpleaños del día.
- *
- * Se llama automáticamente al iniciar sesión y también
- * desde el botón 🎂 de la cabecera.
- *
- * Por cada integrante muestra:
- *   GRADO · NOMBRE · EDAD · DEPENDENCIA · TURNO
- */
-function mostrarCumpleaniosHoy_(info, forzar) {
-
-  cerrarAvisoCumpleanios_();
-
-  const datos = info || {};
-
-  const lista = datos.lista || [];
-
-  const total = lista.length;
-
-  /*
-   * Sin cumpleaños: en el ingreso automático no se
-   * muestra nada, pero si el usuario pulsa el botón 🎂
-   * sí se abre la tarjeta para informarlo.
-   */
-  if (total === 0 && forzar !== true) {
-    return;
-  }
-
-
-  /*
-   * Estilos propios de la tarjeta.
-   * Se inyectan una sola vez.
-   */
-  if (!document.getElementById('estilosCumpleanios')) {
-
-    const estilos = document.createElement('style');
-
-    estilos.id = 'estilosCumpleanios';
-
-    estilos.textContent =
-      '@keyframes cumpleEntra{' +
-      'from{opacity:0;transform:translateY(-18px) scale(.96);}' +
-      'to{opacity:1;transform:translateY(0) scale(1);}}' +
-
-      '#avisoCumpleanios{position:fixed;inset:0;z-index:3000;' +
-      'display:flex;align-items:center;justify-content:center;' +
-      'padding:18px;background:rgba(1,61,33,.55);' +
-      'font-family:Arial,Helvetica,sans-serif;}' +
-
-      '#avisoCumpleanios .cumple-caja{width:100%;max-width:560px;' +
-      'max-height:88vh;display:flex;flex-direction:column;' +
-      'background:#fff;border-radius:14px;overflow:hidden;' +
-      'box-shadow:0 18px 50px rgba(0,0,0,.35);' +
-      'animation:cumpleEntra .28s ease-out;}' +
-
-      '#avisoCumpleanios .cumple-cabecera{background:#01592F;' +
-      'color:#fff;padding:16px 20px;display:flex;' +
-      'align-items:center;justify-content:space-between;gap:12px;' +
-      'border-bottom:5px solid #C9A227;}' +
-
-      '#avisoCumpleanios .cumple-cabecera h3{margin:0;font-size:18px;}' +
-      '#avisoCumpleanios .cumple-cabecera small{opacity:.85;}' +
-
-      '#avisoCumpleanios .cumple-cerrar{background:transparent;' +
-      'border:0;color:#fff;font-size:26px;line-height:1;' +
-      'cursor:pointer;padding:0 4px;}' +
-
-      '#avisoCumpleanios .cumple-lista{padding:14px 20px;' +
-      'overflow:auto;}' +
-
-      '#avisoCumpleanios .cumple-item{border:1px solid #E3E8EA;' +
-      'border-left:5px solid #C9A227;border-radius:10px;' +
-      'padding:12px 14px;margin-bottom:10px;background:#FCFDFC;}' +
-
-      '#avisoCumpleanios .cumple-nombre{font-size:15px;' +
-      'font-weight:bold;color:#01592F;}' +
-
-      '#avisoCumpleanios .cumple-grado{display:inline-block;' +
-      'background:#01592F;color:#fff;border-radius:5px;' +
-      'padding:2px 8px;font-size:12px;font-weight:bold;' +
-      'margin-right:8px;}' +
-
-      '#avisoCumpleanios .cumple-edad{display:inline-block;' +
-      'background:#C9A227;color:#3a2f00;border-radius:20px;' +
-      'padding:2px 10px;font-size:12px;font-weight:bold;' +
-      'margin-top:8px;}' +
-
-      '#avisoCumpleanios .cumple-datos{margin-top:8px;' +
-      'display:flex;flex-wrap:wrap;gap:6px 18px;' +
-      'font-size:12px;color:#546E7A;}' +
-
-      '#avisoCumpleanios .cumple-datos span b{color:#263238;}' +
-
-      '#avisoCumpleanios .cumple-pie{padding:12px 20px;' +
-      'background:#F4F6F7;border-top:1px solid #E3E8EA;' +
-      'display:flex;justify-content:flex-end;gap:8px;}' +
-
-      '#avisoCumpleanios .cumple-vacio{text-align:center;' +
-      'padding:22px 10px;color:#546E7A;}' +
-
-      '#botonCumpleanios{position:fixed;right:18px;bottom:18px;' +
-      'z-index:2500;background:#C9A227;color:#3a2f00;border:0;' +
-      'border-radius:30px;padding:10px 16px;font-weight:bold;' +
-      'cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);}';
-
-    document.head.appendChild(estilos);
-  }
-
-
-  const aviso = document.createElement('div');
-
-  aviso.id = 'avisoCumpleanios';
-
-
-  let html = '';
-
-  html +=
-    '<div class="cumple-caja" role="dialog" aria-modal="true">';
-
-  html +=
-    '<div class="cumple-cabecera">' +
-    '<div>' +
-    '<h3>🎂 Cumpleaños de hoy</h3>' +
-    '<small>' +
-    esc(datos.fecha || '') +
-    ' — ' +
-    (total === 0
-      ? 'sin cumpleaños registrados'
-      : total + ' integrante' + (total === 1 ? '' : 's')) +
-    '</small>' +
-    '</div>' +
-    '<button type="button" class="cumple-cerrar" ' +
-    'onclick="cerrarAvisoCumpleanios_()" ' +
-    'aria-label="Cerrar">&times;</button>' +
-    '</div>';
-
-  html += '<div class="cumple-lista">';
-
-  if (total === 0) {
-
-    html +=
-      '<div class="cumple-vacio">' +
-      '<div style="font-size:34px;">📅</div>' +
-      '<p style="margin:8px 0 0;">' +
-      'Hoy no cumple años ningún integrante de la hoja.' +
-      '</p>' +
-      (datos.error
-        ? '<p style="margin:10px 0 0;color:#B71C1C;font-size:12px;">' +
-          'Aviso del servidor: ' + esc(datos.error) +
-          '</p>'
-        : '') +
-      '</div>';
-  }
-
-  lista.forEach(function(persona) {
-
-    html += '<div class="cumple-item">';
-
-    html += '<div class="cumple-nombre">';
-
-    if (persona.grado) {
-      html +=
-        '<span class="cumple-grado">' +
-        esc(persona.grado) +
-        '</span>';
-    }
-
-    html += esc(persona.nombre || '(sin nombre)');
-    html += '</div>';
-
-    if (persona.edad) {
-      html +=
-        '<div><span class="cumple-edad">Cumple ' +
-        persona.edad +
-        ' años</span></div>';
-    }
-
-    html += '<div class="cumple-datos">';
-
-    html +=
-      '<span><b>Dependencia:</b> ' +
-      esc(persona.dependencia || 'No registrada') +
-      '</span>';
-
-    html +=
-      '<span><b>Turno:</b> ' +
-      esc(persona.turno || 'No registrado') +
-      '</span>';
-
-    if (persona.cedula) {
-      html +=
-        '<span><b>Cédula:</b> ' +
-        esc(persona.cedula) +
-        '</span>';
-    }
-
-    if (persona.fechaNacimiento) {
-      html +=
-        '<span><b>Nacimiento:</b> ' +
-        esc(persona.fechaNacimiento) +
-        '</span>';
-    }
-
-    html += '</div>';
-    html += '</div>';
-  });
-
-  html += '</div>';
-
-  html +=
-    '<div class="cumple-pie">' +
-    '<span style="flex:1;font-size:11px;color:#78909C;' +
-    'align-self:center;">' +
-    'Hoja: ' + esc(datos.hoja || '?') +
-    ' · columna ' + esc(datos.columna || 'M') +
-    (datos.sinFecha
-      ? ' · ' + datos.sinFecha + ' sin fecha válida'
-      : '') +
-    '</span>' +
-    '<button type="button" class="btn btn-outline-secondary btn-sm" ' +
-    'onclick="actualizarCumpleanios()">Actualizar</button>' +
-    '<button type="button" class="btn btn-success btn-sm" ' +
-    'onclick="cerrarAvisoCumpleanios_()">Entendido</button>' +
-    '</div>';
-
-  html += '</div>';
-
-  aviso.innerHTML = html;
-
-
-  /*
-   * Cerrar al hacer clic por fuera de la tarjeta.
-   */
-  aviso.addEventListener('click', function(evento) {
-    if (evento.target === aviso) {
-      cerrarAvisoCumpleanios_();
-    }
-  });
-
-  document.body.appendChild(aviso);
-
-  document.addEventListener(
-    'keydown',
-    cerrarCumpleaniosConEscape_
-  );
-
-  crearBotonCumpleanios_(total);
-
-  if (total > 0) {
-    mostrarToast(
-      '🎂 Hoy cumplen años ' + total + ' integrante(s).'
-    );
-  }
-}
-
-
-/**
- * PRUEBA VISUAL.
- *
- * Abra la consola del navegador (F12) y escriba:
- *   probarCumpleanios()
- *
- * Muestra la tarjeta con datos de ejemplo, sin tocar
- * la hoja de cálculo. Sirve para verificar el diseño
- * cualquier día del año.
- */
-function probarCumpleanios() {
-
-  mostrarCumpleaniosHoy_({
-    fecha: '18/09/2026',
-    hoja: 'PRUEBA',
-    columna: 'M',
-    sinFecha: 0,
-    lista: [
-      {
-        grado: 'TE',
-        nombre: 'PEREZ GOMEZ JUAN CARLOS',
-        edad: 34,
-        dependencia: 'ASJUR',
-        turno: 'A',
-        cedula: '1020304050',
-        fechaNacimiento: '18/09/1992'
-      },
-      {
-        grado: 'PT',
-        nombre: 'ARIAS LOPEZ ANA MARIA',
-        edad: 27,
-        dependencia: 'GUTAH',
-        turno: 'B',
-        cedula: '1098765432',
-        fechaNacimiento: '18/09/1999'
-      }
-    ]
-  }, true);
-}
-
-
-function cerrarCumpleaniosConEscape_(evento) {
-
-  if (evento.key === 'Escape') {
-    cerrarAvisoCumpleanios_();
-  }
-}
-
-
-/**
- * Botón flotante para volver a abrir la tarjeta
- * durante la sesión.
- */
-function crearBotonCumpleanios_(total) {
-
-  let boton =
-    document.getElementById('botonCumpleanios');
-
-  if (!boton) {
-
-    boton = document.createElement('button');
-
-    boton.id = 'botonCumpleanios';
-    boton.type = 'button';
-
-    boton.onclick = function() {
-      mostrarCumpleaniosHoy_(cumpleaniosSesion, true);
-    };
-
-    document.body.appendChild(boton);
-  }
-
-  const cantidad = Number(total) || 0;
-
-  boton.textContent = '🎂 ' + cantidad;
-
-  boton.title =
-    cantidad > 0
-      ? 'Ver los ' + cantidad + ' cumpleaños de hoy'
-      : 'Hoy no hay cumpleaños — pulse para verificar';
-
-  boton.style.background =
-    cantidad > 0 ? '#C9A227' : '#B0BEC5';
-}
-
-
-/**
- * Arranca el barrido de cumpleaños al iniciar sesión.
- *
- * El botón flotante 🎂 SIEMPRE se crea, haya o no
- * cumpleaños, para que el usuario pueda verificar el
- * estado del barrido en cualquier momento.
- *
- * Si el servidor no envió el dato (por ejemplo, porque
- * el Código.gs desplegado todavía es el anterior), se
- * consulta aparte.
- */
-function iniciarBarridoCumpleanios_(info) {
-
-  if (info) {
-
-    cumpleaniosSesion = info;
-
-    crearBotonCumpleanios_(
-      (info.lista || []).length
-    );
-
-    if (info.error) {
-      mostrarToast(
-        'Cumpleaños: ' + info.error,
-        'error'
-      );
-    }
-
-    mostrarCumpleaniosHoy_(info, false);
-
-    return;
-  }
-
-  /*
-   * RESPALDO: el login no trajo el barrido.
-   */
-  crearBotonCumpleanios_(0);
-
-  google.script.run
-
-    .withSuccessHandler(function(respuesta) {
-
-      if (!respuesta || respuesta.estado !== true) {
-
-        mostrarToast(
-          respuesta && respuesta.mensaje
-            ? respuesta.mensaje
-            : 'No fue posible consultar los cumpleaños.',
-          'error'
-        );
-
-        return;
-      }
-
-      cumpleaniosSesion = respuesta.datos || null;
-
-      crearBotonCumpleanios_(
-        cumpleaniosSesion &&
-        cumpleaniosSesion.lista
-          ? cumpleaniosSesion.lista.length
-          : 0
-      );
-
-      mostrarCumpleaniosHoy_(cumpleaniosSesion, false);
-
-    })
-
-    .withFailureHandler(function(error) {
-
-      console.error('Cumpleaños:', error);
-
-      mostrarToast(
-        'No fue posible consultar los cumpleaños. ' +
-        'Verifique que el Código.gs esté actualizado y ' +
-        'vuelto a implementar.',
-        'error'
-      );
-
-    })
-
-    .consultarCumpleaniosHoy(
-      tokenSesion,
-      false
-    );
-}
-
-
-function cerrarAvisoCumpleanios_() {
-
-  const aviso =
-    document.getElementById('avisoCumpleanios');
-
-  if (aviso && aviso.parentNode) {
-    aviso.parentNode.removeChild(aviso);
-  }
-
-  document.removeEventListener(
-    'keydown',
-    cerrarCumpleaniosConEscape_
-  );
-}
-
-
-/**
- * Vuelve a consultar los cumpleaños sin cerrar sesión.
- *
- * Puede asociarse a un botón:
- *   <button onclick="actualizarCumpleanios()">🎂</button>
- */
-function actualizarCumpleanios() {
-
-  if (!verificarSesionLocal()) {
-    return;
-  }
-
-  mostrarToast('Consultando cumpleaños...');
-
-  google.script.run
-
-    .withSuccessHandler(function(respuesta) {
-
-      if (!respuesta || respuesta.estado !== true) {
-        mostrarToast(
-          respuesta && respuesta.mensaje
-            ? respuesta.mensaje
-            : 'No fue posible consultar los cumpleaños.',
-          'error'
-        );
-        return;
-      }
-
-      cumpleaniosSesion = respuesta.datos || null;
-
-      crearBotonCumpleanios_(
-        cumpleaniosSesion &&
-        cumpleaniosSesion.lista
-          ? cumpleaniosSesion.lista.length
-          : 0
-      );
-
-      mostrarCumpleaniosHoy_(cumpleaniosSesion, true);
-
-    })
-
-    .withFailureHandler(function(error) {
-
-      console.error(error);
-
-      mostrarToast(
-        'Error consultando los cumpleaños.',
-        'error'
-      );
-
-    })
-
-    .consultarCumpleaniosHoy(
-      tokenSesion,
-      true
-    );
-}
-
+});
 </script>
-
-
-
 </body>
-
 </html>
