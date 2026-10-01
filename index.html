@@ -26,7 +26,9 @@
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, Arial, sans-serif;
       color: var(--texto);
-      background: var(--gris);
+      /* Fondo configurado con FOND_1.jpg y un respaldo de color */
+      background: linear-gradient(rgba(243, 245, 244, 0.85), rgba(243, 245, 244, 0.85)), url('FOND_1.jpg') no-repeat center center fixed;
+      background-size: cover;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
@@ -48,7 +50,7 @@
       gap: 16px;
     }
 
-    .escudo { width: 54px; height: 54px; flex: 0 0 auto; }
+    .escudo { width: 54px; height: 54px; flex: 0 0 auto; object-fit: contain; }
 
     .franja h1 {
       margin: 0;
@@ -74,7 +76,8 @@
     .panel {
       width: 100%;
       max-width: 430px;
-      background: #fff;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(4px);
       border-radius: 10px;
       border: 1px solid var(--borde);
       box-shadow: 0 6px 22px rgba(1, 61, 32, .12);
@@ -199,7 +202,8 @@
 
     .modulo {
       text-align: left;
-      background: #fff;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(4px);
       border: 1px solid var(--borde);
       border-top: 5px solid var(--verde);
       border-radius: 10px;
@@ -241,11 +245,8 @@
 
   <header class="franja">
     <div class="franja-interna">
-      <!-- Marcador de escudo genérico: reemplazar por el escudo oficial (img) si se dispone del archivo autorizado -->
-      <svg class="escudo" viewBox="0 0 64 64" role="img" aria-label="Escudo institucional">
-        <path d="M32 3 6 12v19c0 15 11 25 26 30 15-5 26-15 26-30V12L32 3z" fill="#013d20" stroke="#C9A227" stroke-width="3"/>
-        <path d="M32 16l4.4 9.2 10.1 1.4-7.3 7 1.8 10-9-4.8-9 4.8 1.8-10-7.3-7 10.1-1.4L32 16z" fill="#C9A227"/>
-      </svg>
+      <!-- Escudo oficial incorporado desde el repositorio -->
+      <img src="ESC_PONAL.JPG" class="escudo" alt="Escudo institucional Policía Nacional de Colombia">
       <div>
         <h1>Policía Nacional de Colombia</h1>
         <p>Sistema de Gestión de Novedades — JESEP / GUTAH</p>
