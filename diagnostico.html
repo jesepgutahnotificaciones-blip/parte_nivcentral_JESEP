@@ -23,6 +23,7 @@
         <strong>NOVEDADES</strong> y <strong>LISTADO_BASE</strong>.
       </p>
       <button id="btn" class="btn btn-success" onclick="ejecutar()">▶ Ejecutar diagnóstico</button>
+      <button id="btnSimple" class="btn btn-primary" onclick="ejecutarSimple()">Diagnóstico simple (sin parámetros)</button>
       <button id="btnVer" class="btn btn-outline-secondary" onclick="verVersion()">Ver versión del servidor</button>
       <span id="estado" class="ms-3 text-muted"></span>
       <hr>
@@ -45,6 +46,67 @@
 const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbx7I9jamo7JDHXtgTLzwcPWxNHmzLncpC9h04hSHV18Le3VM7sMRdpcdi7ZrBe_NLll/exec';
 
 document.getElementById('urlMostrada').textContent = APPS_SCRIPT_API_URL;
+
+// Añade un parámetro único para que el navegador nunca sirva una respuesta vieja
+function urlSinCache(ruta) {
+  return APPS_SCRIPT_API_URL + ruta + '&_=' + Date.now() + Math.floor(Math.random() * 1000);
+}
+
+// Pide el reporte usando la URL base (sin ?accion=...).
+// El servidor detecta que no hay acción y devuelve el diagnóstico.
+function ejecutarSimple() {
+  const salida = document.getElementById('salida');
+  const estado = document.getElementById('estado');
+  const btn = document.getElementById('btnSimple');
+
+  btn.disabled = true;
+  estado.textContent = 'Consultando...';
+  salida.textContent = 'Esperando respuesta...';
+
+  const cb = '__simCb_' + Date.now();
+  const script = document.createElement('script');
+  let done = false;
+
+  const t = setTimeout(function() {
+    if (done) return;
+    done = true;
+    try { delete window[cb]; } catch (e) {}
+    if (script.parentNode) script.parentNode.removeChild(script);
+    btn.disabled = false;
+    estado.textContent = 'Sin respuesta.';
+  }, 90000);
+
+  window[cb] = function(r) {
+    if (done) return;
+    done = true;
+    clearTimeout(t);
+    try { delete window[cb]; } catch (e) {}
+    if (script.parentNode) script.parentNode.removeChild(script);
+    btn.disabled = false;
+    estado.textContent = '';
+
+    if (r && r.reporte) {
+      document.getElementById('versionActual').innerHTML =
+        '<div class="alert alert-success">Version desplegada: <strong>' + (r.version || '?') + '</strong></div>';
+      salida.textContent = r.reporte;
+    } else {
+      salida.textContent = 'El servidor NO devolvio un reporte.\n\n' + JSON.stringify(r, null, 2) +
+        '\n\nSi el mensaje dice "Accion no valida", el despliegue esta desactualizado: ' +
+        'pega el codigo nuevo y haz Implementar > Nueva version.';
+    }
+  };
+
+  script.onerror = function() {
+    if (done) return;
+    done = true;
+    clearTimeout(t);
+    btn.disabled = false;
+    estado.textContent = 'Error de red.';
+  };
+
+  script.src = urlSinCache('?callback=' + cb);
+  document.head.appendChild(script);
+}
 
 // Consulta la versión del servidor para saber si el despliegue está actualizado
 function verVersion() {
@@ -96,7 +158,7 @@ function verVersion() {
     estado.textContent = 'Error de red.';
   };
 
-  script.src = APPS_SCRIPT_API_URL + '?accion=version&callback=' + cb;
+  script.src = urlSinCache('?accion=version&callback=' + cb);
   document.head.appendChild(script);
 }
 
@@ -177,7 +239,7 @@ function ejecutar() {
   };
 
   // La accion viaja como parámetro normal de la URL
-  script.src = APPS_SCRIPT_API_URL + '?accion=diagnosticarEsquema&callback=' + cb;
+  script.src = urlSinCache('?accion=diagnosticarEsquema&callback=' + cb);
   document.head.appendChild(script);
 }
 
