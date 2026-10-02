@@ -130,8 +130,25 @@ function doGet(e) {
       case 'registrarHorarioFlexible':
         resultado = registrarHorarioFlexible(args[0], args[1]);
         break;
+      case 'diagnosticarEsquema':
+        resultado = diagnosticarEsquemaDataSafe();
+        break;
       default:
-        resultado = { estado: false, mensaje: 'Acción no válida: ' + accion };
+        resultado = {
+          estado: false,
+          mensaje: (accion ? ('Acción no válida: ' + accion)
+                           : 'Falta el parametro "accion". Abra el Web App con ?accion=<nombre>.'),
+          accionesValidas: [
+            'validarUsuario', 'verificarSesion', 'cerrarSesionCliente',
+            'buscarFuncionario', 'obtenerFichaFuncionario', 'obtenerHistorialFuncionario',
+            'registrarNovedad', 'consultarPorTurno', 'previsualizarReporteTurno',
+            'generarReporteTurno', 'listarReportes', 'listarUsuarios',
+            'crearUsuario', 'cambiarEstadoUsuario', 'listarFuncionarios',
+            'agregarFuncionario', 'eliminarFuncionario',
+            'cambiarTurnoFuncionario', 'registrarHorarioFlexible',
+            'diagnosticarEsquema'
+          ]
+        };
     }
   } catch (error) {
     resultado = { estado: false, mensaje: error.toString() };
@@ -485,6 +502,183 @@ function esUsuarioAdmin_(usuario) {
   return false;
 }
 
+/* =====================================================
+   ESQUEMA DE LA HOJA NOVEDADES
+
+   Columnas exigidas:
+     B -> CEDULA   (datos del funcionario)
+     E -> TIPO
+     F -> NOVEDAD  (concatenada con el dato de la columna E)
+     G -> DIAS
+     H -> FECHA INICIAL
+     I -> FECHA PRESENTACION
+   Las columnas restantes se completan automaticamente con
+   los datos del funcionario tomados de la hoja LISTADO_BASE.
+   ===================================================== */
+
+// Devuelve la letra de columna (A, B, C...) o '?' si el índice no es válido.
+// Evita que getColumnLetter(0) lance una excepción.
+function letraColumna_(indiceBase) {
+  var n = Number(indiceBase);
+  if (!n || n < 1 || n > 18278) return '?';
+  try {
+    return Utilities.getColumnLetter(n);
+  } catch (e) {
+    return '?';
+  }
+}
+
+function filaCabeceraNovedades_(hoja) {
+  var ultCol = hoja.getLastColumn();
+  if (!ultCol || ultCol < 1) return -1;
+
+  var maxFilas = Math.min(Math.max(hoja.getLastRow(), 1), 10);
+  var datos;
+  try {
+    datos = hoja.getRange(1, 1, maxFilas, ultCol).getDisplayValues();
+  } catch (e) {
+    return -1;
+  }
+
+  for (var i = 0; i < datos.length; i++) {
+    var cab = datos[i].map(normalizarCabColumna_);
+    var tieneCedula = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/], -1) !== -1;
+    var tieneTipo = idxColumnaBase_(cab, [/^TIPO$/], -1) !== -1;
+    if (tieneCedula || tieneTipo) return i;
+  }
+  return -1;
+}
+
+// Traduce el nombre de una columna de NOVEDADES a su equivalente en LISTADO_BASE
+var ALIAS_BASE_ = {
+  'CEDULA': [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/, /^N C$/],
+  'GR': [/^GR$/, /^GRADO$/],
+  'NIV': [/^NIV$/, /^NIVEL$/],
+  'FUNCIONARIO': [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/],
+  'DEPENDENCIA': [/^DEPENDENCIA$/],
+  'PERT': [/^PERT$/],
+  'TURNO': [/^TURNO$/],
+  'SEXO': [/^SEXO$/],
+  'ESTADO CIVIL': [/^ESTADO CIVIL$/],
+  'SITUACION LABORAL': [/^SITUACION LABORAL$/],
+  'CORREO ELECTRONICO': [/^CORREO ELECTRONICO$/, /^CORREO$/, /^EMAIL$/],
+  'FECHA NACIMIENTO': [/^FECHA NACIMIENTO$/, /^FECHA DE NACIMIENTO$/, /^FNAC$/],
+  'COMUNICADO OFICIAL': [/^COMUNICADO OFICIAL$/, /^COMUNICADO$/],
+  'MES': [/^MES$/, /^MES ANO$/],
+  'DIA': [/^DIA$/]
+};
+
+function indiceBasePorAlias_(cabecerasBase, nombreColumnaNoveldad) {
+  var clave = String(nombreColumnaNoveldad || '').trim().toUpperCase();
+  var alias = ALIAS_BASE_[clave];
+  if (!alias) {
+    // Sin alias: se busca el mismo nombre exacto en LISTADO_BASE
+    return idxColumnaBase_(cabecerasBase, [new RegExp('^' + clave.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$')], -1);
+  }
+  return idxColumnaBase_(cabecerasBase, alias, -1);
+}
+
+// Devuelve el renglón de LISTADO_BASE del funcionario (valores crudos)
+function renglonBasePorCedula_(cedula) {
+  var ss = abrirLibro_();
+  var hoja = ss.getSheetByName('LISTADO_BASE');
+  if (!hoja) return null;
+
+  var datos = hoja.getDataRange().getValues();
+  if (datos.length < 2) return null;
+
+  var cabeceras = datos[0];
+  var idxCedula = idxColumnaBase_(cabeceras, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/, /^N C$/], 0);
+  var cedulaIn = String(cedula || '').trim();
+
+  for (var i = 1; i < datos.length; i++) {
+    if (String(datos[i][idxCedula]).trim() === cedulaIn) {
+      return { cabeceras: cabeceras, valores: datos[i], fila: i + 1, hoja: hoja };
+    }
+  }
+  return null;
+}
+
+function mapaColumnasNovedades_(hoja) {
+  var fCab = filaCabeceraNovedades_(hoja);
+  if (fCab === -1) return null;
+
+  var cabeceras = hoja.getRange(fCab + 1, 1, 1, hoja.getLastColumn()).getDisplayValues()[0];
+  var cab = cabeceras.map(normalizarCabColumna_);
+
+  return {
+    filaCabecera: fCab,
+    cabeceras: cabeceras,
+    cabNorm: cab,
+    numCols: hoja.getLastColumn(),
+    // Respaldos = posiciones exigidas (B, E, F, G, H, I) -> indices 1,4,5,6,7,8
+    cedula: idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/], 1),
+    tipo: idxColumnaBase_(cab, [/^TIPO$/], 4),
+    novedad: idxColumnaBase_(cab, [/^NOVEDAD$/, /^NOMBRE NOVEDAD$/, /^NOMBRE DE LA NOVEDAD$/], 5),
+    dias: idxColumnaBase_(cab, [/^DIAS$/, /^N DIAS$/, /^DIAS DE NOVEDAD$/], 6),
+    fechaInicial: idxColumnaBase_(cab, [/^FECHA INICIAL$/, /^FECHA DE INICIO$/, /^INICIO$/], 7),
+    fechaPresentacion: idxColumnaBase_(cab, [/^FECHA PRESENTACION$/, /^FECHA DE PRESENTACION$/, /^PRESENTACION$/], 8),
+    descripcion: idxColumnaBase_(cab, [/^DESCRIPCION$/, /^DESCRIPCIÓN$/], -1),
+    observacion: idxColumnaBase_(cab, [/^OBSERVACION$/, /^OBSERVACIÓN$/], -1),
+    rv: idxColumnaBase_(cab, [/^RV$/], -1),
+    texto: idxColumnaBase_(cab, [/^TEXTO$/], -1),
+    fechaRegistro: idxColumnaBase_(cab, [/^FECHA REGISTRO$/, /^FECHA DE REGISTRO$/], -1)
+  };
+}
+
+function construirFilaNovedades_(m, datos) {
+  var fila = [];
+  for (var i = 0; i < m.numCols; i++) fila.push('');
+
+  var tipo = String(datos.tipo || '').trim();
+  var nombre = String(datos.novedad || '').trim();
+
+  // B = cédula
+  fila[m.cedula] = datos.cedula || datos.cc || '';
+
+  // E = Tipo ; F = Novedad concatenada con el dato de E
+  fila[m.tipo] = tipo;
+  fila[m.novedad] = tipo ? (tipo + ' - ' + nombre) : nombre;
+
+  // G / H / I
+  if (m.dias >= 0) fila[m.dias] = datos.dias === undefined || datos.dias === null ? '' : datos.dias;
+  if (m.fechaInicial >= 0) fila[m.fechaInicial] = datos.fechaInicial || '';
+  if (m.fechaPresentacion >= 0) fila[m.fechaPresentacion] = datos.fechaPresentacion || '';
+
+  // Columnas auxiliares (si existen en la hoja)
+  if (m.descripcion >= 0) fila[m.descripcion] = datos.descripcion || '';
+  if (m.observacion >= 0) fila[m.observacion] = datos.observacion || datos.descripcion || '';
+  if (m.rv >= 0) fila[m.rv] = datos.rv || '';
+  if (m.texto >= 0) fila[m.texto] = datos.texto || datos.descripcion || '';
+  if (m.fechaRegistro >= 0) fila[m.fechaRegistro] = new Date();
+
+  return fila;
+}
+
+// Rellena las columnas no usadas con los datos del funcionario en LISTADO_BASE
+function completarDesdeBase_(fila, m, base) {
+  if (!base) return;
+
+  var fijas = {};
+  [m.cedula, m.tipo, m.novedad, m.dias, m.fechaInicial, m.fechaPresentacion,
+   m.descripcion, m.observacion, m.rv, m.texto, m.fechaRegistro].forEach(function(k) {
+    if (k !== undefined && k >= 0) fijas[k] = true;
+  });
+
+  for (var c = 0; c < m.numCols; c++) {
+    if (fijas[c]) continue;
+
+    var nombreCol = m.cabNorm[c];
+    if (!nombreCol) continue;
+
+    var idxBase = indiceBasePorAlias_(base.cabeceras, nombreCol);
+    if (idxBase === -1 || idxBase >= base.valores.length) continue;
+
+    var valor = base.valores[idxBase];
+    fila[c] = (valor === null || valor === undefined) ? '' : valor;
+  }
+}
+
 function registrarNovedad(token, datosNovedad) {
   try {
     var tipo = String(datosNovedad.tipo || '').trim().toUpperCase();
@@ -510,22 +704,20 @@ function registrarNovedad(token, datosNovedad) {
     var hoja = ss.getSheetByName('NOVEDADES');
     if (!hoja) {
       hoja = ss.insertSheet('NOVEDADES');
-      hoja.appendRow(['CEDULA', 'NOVEDAD', 'TIPO', 'DESCRIPCION', 'Dias', 'Fecha INICIAL', 'Fecha PRESENTACION', 'Observacion', 'RV', 'TEXTO', 'FECHA_REGISTRO']);
+      hoja.appendRow(['CEDULA', '', '', '', 'TIPO', 'NOVEDAD', 'DIAS', 'FECHA INICIAL', 'FECHA PRESENTACION', 'OBSERVACION', 'RV', 'FECHA REGISTRO']);
     }
 
-    hoja.appendRow([
-      datosNovedad.cedula || datosNovedad.cc,
-      datosNovedad.novedad,
-      datosNovedad.tipo,
-      datosNovedad.descripcion,
-      datosNovedad.dias,
-      datosNovedad.fechaInicial,
-      datosNovedad.fechaPresentacion,
-      datosNovedad.observacion,
-      datosNovedad.rv,
-      datosNovedad.descripcion || '',
-      new Date()
-    ]);
+    var mapa = mapaColumnasNovedades_(hoja);
+    if (!mapa) {
+      return { estado: false, mensaje: 'No se pudo leer el encabezado de la hoja NOVEDADES.' };
+    }
+
+    var base = renglonBasePorCedula_(datosNovedad.cedula || datosNovedad.cc);
+
+    var fila = construirFilaNovedades_(mapa, datosNovedad);
+    completarDesdeBase_(fila, mapa, base);
+
+    hoja.appendRow(fila);
 
     return { estado: true, mensaje: 'Novedad registrada correctamente.' };
   } catch (err) {
@@ -570,36 +762,42 @@ function consultarPorTurno(token, filtro) {
         var cedulaFuncionario = String(obj.cedula || obj.CEDULA || '').trim();
         var novedadesCruzadas = [];
 
-        // Cruce con la hoja NOVEDADES (Concatenando columna E [índice 4] y F [índice 5])
+        // Cruce con la hoja NOVEDADES. La columna F (NOVEDAD) ya trae
+        // "TIPO - nombre" concatenado, por eso se usa directamente.
         if (datosNovedades.length > 1 && cedulaFuncionario !== '') {
-          var cabecerasNov = datosNovedades[0];
-          var idxCedulaNov = -1;
-          for (var c = 0; c < cabecerasNov.length; c++) {
-            var nombreCab = String(cabecerasNov[c]).toUpperCase();
-            if (nombreCab === 'CEDULA' || nombreCab === 'CC') {
-              idxCedulaNov = c;
-              break;
-            }
-          }
+          var cabecerasNov = datosNovedades[0].map(normalizarCabColumna_);
+          var idxCedulaNov = idxColumnaBase_(cabecerasNov, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/], -1);
+          var idxTipoNov = idxColumnaBase_(cabecerasNov, [/^TIPO$/], 4);
+          var idxNovedadNov = idxColumnaBase_(cabecerasNov, [/^NOVEDAD$/, /^NOMBRE NOVEDAD$/, /^NOMBRE DE LA NOVEDAD$/], 5);
+          var idxDiasNov = idxColumnaBase_(cabecerasNov, [/^DIAS$/, /^N DIAS$/], 6);
 
           if (idxCedulaNov !== -1) {
             for (var n = 1; n < datosNovedades.length; n++) {
               var filaNov = datosNovedades[n];
-              var cedulaNov = String(filaNov[idxCedulaNov]).trim();
-              if (cedulaNov === cedulaFuncionario) {
-                var valorE = filaNov[4] !== undefined && filaNov[4] !== null ? String(filaNov[4]).trim() : '';
-                var valorF = filaNov[5] !== undefined && filaNov[5] !== null ? String(filaNov[5]).trim() : '';
 
-                var concatenado = '';
-                if (valorE && valorF) {
-                  concatenado = valorE + ' - ' + valorF;
-                } else {
-                  concatenado = valorE + valorF;
-                }
+              var vCed = filaNov[idxCedulaNov];
+              var cedulaNov = (vCed === null || vCed === undefined) ? '' : String(vCed).trim();
+              if (cedulaNov !== cedulaFuncionario) continue;
 
-                if (concatenado) {
-                  novedadesCruzadas.push({ NOVEDAD: concatenado });
-                }
+              var vTipo = idxTipoNov !== -1 ? filaNov[idxTipoNov] : '';
+              var vNovedad = idxNovedadNov !== -1 ? filaNov[idxNovedadNov] : '';
+              var vDias = idxDiasNov !== -1 ? filaNov[idxDiasNov] : '';
+
+              var tipoNov = (vTipo === null || vTipo === undefined) ? '' : String(vTipo).trim();
+              var novedadNov = (vNovedad === null || vNovedad === undefined) ? '' : String(vNovedad).trim();
+              var diasNov = (vDias === null || vDias === undefined) ? '' : String(vDias).trim();
+
+              // F ya viene concatenada ("TIPO - nombre"); solo se une si viene separada
+              var concatenado = novedadNov || tipoNov;
+              if (novedadNov && tipoNov && novedadNov.indexOf(tipoNov) === -1) {
+                concatenado = tipoNov + ' - ' + novedadNov;
+              }
+              if (diasNov && diasNov !== '0') {
+                concatenado += (concatenado ? ' ' : '') + '(' + diasNov + ' días)';
+              }
+
+              if (concatenado) {
+                novedadesCruzadas.push({ NOVEDAD: concatenado });
               }
             }
           }
@@ -1097,10 +1295,10 @@ function cambiarTurnoFuncionario(token, cedula, nuevoTurno) {
         SpreadsheetApp.flush();
         return {
           estado: true,
-          mensaje: 'Turno actualizado de "' + turnoAnterior + '" a "' + turno + '" (columna ' + Utilities.getColumnLetter(idxTurno + 1) + ').',
+          mensaje: 'Turno actualizado de "' + turnoAnterior + '" a "' + turno + '" (columna ' + letraColumna_(idxTurno + 1) + ').',
           turnoAnterior: turnoAnterior,
           turnoNuevo: turno,
-          columna: Utilities.getColumnLetter(idxTurno + 1)
+          columna: letraColumna_(idxTurno + 1)
         };
       }
     }
@@ -1118,28 +1316,175 @@ function registrarHorarioFlexible(token, datosHorario) {
     var hoja = ss.getSheetByName('NOVEDADES');
     if (!hoja) {
       hoja = ss.insertSheet('NOVEDADES');
-      hoja.appendRow(['CEDULA', 'NOVEDAD', 'TIPO', 'DESCRIPCION', 'Dias', 'Fecha INICIAL', 'Fecha PRESENTACION', 'Observacion', 'RV', 'TEXTO', 'FECHA_REGISTRO']);
+      hoja.appendRow(['CEDULA', '', '', '', 'TIPO', 'NOVEDAD', 'DIAS', 'FECHA INICIAL', 'FECHA PRESENTACION', 'OBSERVACION', 'RV', 'FECHA REGISTRO']);
     }
 
-    var dias = Array.isArray(datosHorario.dias) ? datosHorario.dias.join(', ') : String(datosHorario.dias || '');
-    var descripcion = 'De ' + datosHorario.horaInicial + ' a ' + datosHorario.horaFinal + ' | Días: ' + dias;
+    var mapa = mapaColumnasNovedades_(hoja);
+    if (!mapa) {
+      return { estado: false, mensaje: 'No se pudo leer el encabezado de la hoja NOVEDADES.' };
+    }
 
-    hoja.appendRow([
-      datosHorario.cedula,
-      'HORARIO FLEXIBLE',
-      'HORARIO FLEXIBLE',
-      descripcion,
-      Array.isArray(datosHorario.dias) ? datosHorario.dias.length : '',
-      datosHorario.fechaInicial || '',
-      datosHorario.fechaPresentacion || '',
-      datosHorario.observacion || '',
-      datosHorario.rv || '',
-      descripcion,
-      new Date()
-    ]);
+    var listaDias = Array.isArray(datosHorario.dias) ? datosHorario.dias : [];
+    var diasTexto = listaDias.join(', ');
+    var numeroDias = listaDias.length;
+    var descripcion = 'De ' + datosHorario.horaInicial + ' a ' + datosHorario.horaFinal + ' | Días: ' + diasTexto;
+
+    var fila = construirFilaNovedades_(mapa, {
+      cedula: datosHorario.cedula || datosHorario.cc,
+      tipo: 'HORARIO FLEXIBLE',
+      novedad: descripcion,
+      dias: numeroDias,
+      fechaInicial: datosHorario.fechaInicial || '',
+      fechaPresentacion: datosHorario.fechaPresentacion || '',
+      descripcion: descripcion,
+      observacion: datosHorario.observacion || descripcion,
+      texto: descripcion,
+      rv: datosHorario.rv || ''
+    });
+
+    completarDesdeBase_(fila, mapa, renglonBasePorCedula_(datosHorario.cedula || datosHorario.cc));
+
+    hoja.appendRow(fila);
 
     return { estado: true, mensaje: 'Horario flexible registrado correctamente.' };
   } catch (err) {
     return { estado: false, mensaje: 'Error registrando horario: ' + err.message };
+  }
+}
+
+
+/* =====================================================
+   8. DIAGNÓSTICO
+   Ejecute esta función desde el editor de Apps Script para
+   revisar en qué columna cae cada dato en sus hojas reales.
+   ===================================================== */
+
+// Version segura: acumula el reporte y lo devuelve como dato.
+// No usa SpreadsheetApp.getUi() (falla en scripts independientes).
+function diagnosticarEsquemaData() {
+  var L = [];
+  function add(t) { L.push(String(t)); }
+
+  var ss;
+  try {
+    ss = abrirLibro_();
+    add('=== DIAGNOSTICO ===');
+    add('Libro: ' + ss.getName());
+  } catch (e) {
+    add('ERROR al abrir el libro: ' + e);
+    return { estado: false, reporte: L.join('\n') };
+  }
+
+  try {
+    var nombres = [];
+    var hojas = ss.getSheets();
+    for (var i = 0; i < hojas.length; i++) nombres.push(hojas[i].getName());
+    add('Hojas: ' + nombres.join(', '));
+  } catch (e) {
+    add('ERROR al listar hojas: ' + e);
+  }
+  add('');
+
+  var m = null;
+
+  // ---------- NOVEDADES ----------
+  add('=== NOVEDADES ===');
+  var nov = null;
+  try { nov = ss.getSheetByName('NOVEDADES'); } catch (e) { add('ERROR getSheetByName: ' + e); }
+
+  if (!nov) {
+    add('La hoja NOVEDADES no existe todavia.');
+  } else {
+    try { add('Filas: ' + nov.getLastRow() + ' | Columnas: ' + nov.getLastColumn()); }
+    catch (e) { add('ERROR getLastRow: ' + e); }
+
+    try { m = mapaColumnasNovedades_(nov); }
+    catch (e) { add('ERROR en mapaColumnasNovedades_: ' + e); m = null; }
+
+    if (!m) {
+      add('No se detecto fila de encabezados (se requiere una fila con CEDULA o TIPO).');
+    } else {
+      add('Fila de encabezados: ' + (m.filaCabecera + 1));
+      add('');
+      add('Campo         Detectada  Esperada  Estado');
+      add('CEDULA        ' + letraColumna_(m.cedula + 1) + '          B          ' + (m.cedula === 1 ? 'OK' : 'REVISAR'));
+      add('TIPO          ' + letraColumna_(m.tipo + 1) + '          E          ' + (m.tipo === 4 ? 'OK' : 'REVISAR'));
+      add('NOVEDAD       ' + letraColumna_(m.novedad + 1) + '          F          ' + (m.novedad === 5 ? 'OK' : 'REVISAR'));
+      add('DIAS          ' + letraColumna_(m.dias + 1) + '          G          ' + (m.dias === 6 ? 'OK' : 'REVISAR'));
+      add('FECHA INICIAL ' + letraColumna_(m.fechaInicial + 1) + '          H          ' + (m.fechaInicial === 7 ? 'OK' : 'REVISAR'));
+      add('FECHA PRESENT ' + letraColumna_(m.fechaPresentacion + 1) + '          I          ' + (m.fechaPresentacion === 8 ? 'OK' : 'REVISAR'));
+      add('');
+      add('Encabezados de NOVEDADES:');
+      for (var c = 0; c < m.cabeceras.length; c++) {
+        add('  ' + letraColumna_(c + 1) + ') ' + (m.cabeceras[c] || '(vacia)'));
+      }
+    }
+  }
+
+  add('');
+
+  // ---------- LISTADO_BASE ----------
+  add('=== LISTADO_BASE ===');
+  var base = null;
+  try { base = ss.getSheetByName('LISTADO_BASE'); } catch (e) { add('ERROR getSheetByName: ' + e); }
+
+  var cabBase = [];
+  var filasBase = 0;
+
+  if (!base) {
+    add('La hoja LISTADO_BASE no existe.');
+  } else {
+    try { add('Filas: ' + base.getLastRow() + ' | Columnas: ' + base.getLastColumn()); }
+    catch (e) { add('ERROR getLastRow: ' + e); }
+
+    try {
+      var d = base.getDataRange().getValues();
+      if (d && d.length > 0 && d[0]) { cabBase = d[0]; filasBase = d.length - 1; }
+    } catch (e) { add('ERROR al leer LISTADO_BASE: ' + e); }
+
+    if (!cabBase.length) {
+      add('LISTADO_BASE esta vacia o sin encabezados legibles.');
+    } else {
+      add('Encabezados: ' + cabBase.join(' | '));
+      add('Total funcionarios: ' + filasBase);
+      add('Columna TURNO: ' + letraColumna_(idxColumnaBase_(cabBase, [/^TURNO$/], 7) + 1) + '   (H = 8)');
+      add('Columna CEDULA: ' + letraColumna_(idxColumnaBase_(cabBase, [/^CEDULA$/, /^CC$/], 0) + 1) + '   (A = 1)');
+    }
+  }
+
+  add('');
+  add('=== Cruce NOVEDADES -> LISTADO_BASE ===');
+  if (m && cabBase.length) {
+    for (var c2 = 0; c2 < m.numCols; c2++) {
+      var nombre = m.cabNorm[c2] || '';
+      var destino = -1;
+      try { destino = indiceBasePorAlias_(cabBase, nombre); } catch (e) { destino = -1; }
+      add('  ' + letraColumna_(c2 + 1) + ') ' + (m.cabeceras[c2] || '(vacia)') +
+        '  <-  ' + (destino === -1 ? 'SIN COINCIDENCIA' : ('se llena desde col ' + letraColumna_(destino + 1))));
+    }
+  } else if (!m) {
+    add('  (no se pudo leer el esquema de NOVEDADES)');
+  } else {
+    add('  (no se pudo leer LISTADO_BASE)');
+  }
+
+  var reporte = L.join('\n');
+  try { Logger.log(reporte); } catch (e) {}
+  return { estado: true, reporte: reporte };
+}
+
+// Version para el editor: delega en la de datos.
+function diagnosticarEsquema() {
+  var res = diagnosticarEsquemaDataSafe();
+  try { Logger.log(res.reporte); } catch (e) {}
+  return res.reporte;
+}
+
+// Envoltura: nunca deja propagar una excepcion al editor.
+function diagnosticarEsquemaDataSafe() {
+  try {
+    return diagnosticarEsquemaData();
+  } catch (e) {
+    return { estado: false, reporte: 'ERROR inesperado: ' + e + '\n' + (e && e.stack ? e.stack : '') };
   }
 }

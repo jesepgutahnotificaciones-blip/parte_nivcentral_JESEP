@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diagnóstico — Esquema de hojas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f6f7; font-family: Arial, Helvetica, sans-serif; color: #263238; }
+    pre { background: #1f2a24; color: #cfe0d7; padding: 18px; border-radius: 8px; font-size: 13px;
+          white-space: pre-wrap; word-break: break-word; max-height: 75vh; overflow: auto; }
+    .url-box { font-family: Consolas, monospace; font-size: 12px; word-break: break-all; }
+  </style>
+</head>
+<body>
+<div class="container py-4">
+
+  <div class="card mb-3">
+    <div class="card-header">Diagnóstico del esquema de hojas</div>
+    <div class="card-body">
+      <p class="text-muted">
+        Esta página consulta el servidor y muestra en qué columna cae cada dato en tus hojas
+        <strong>NOVEDADES</strong> y <strong>LISTADO_BASE</strong>.
+      </p>
+      <button id="btn" class="btn btn-success" onclick="ejecutar()">▶ Ejecutar diagnóstico</button>
+      <span id="estado" class="ms-3 text-muted"></span>
+      <hr>
+      <p class="mb-1"><strong>URL del servidor:</strong></p>
+      <div id="urlMostrada" class="url-box text-muted"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Resultado</div>
+    <div class="card-body">
+      <pre id="salida">Pulse el botón para ejecutar el diagnóstico.</pre>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbx7I9jamo7JDHXtgTLzwcPWxNHmzLncpC9h04hSHV18Le3VM7sMRdpcdi7ZrBe_NLll/exec';
+
+document.getElementById('urlMostrada').textContent = APPS_SCRIPT_API_URL;
+
+function ejecutar() {
+  const salida = document.getElementById('salida');
+  const estado = document.getElementById('estado');
+  const btn = document.getElementById('btn');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Consultando...';
+  estado.textContent = '';
+  salida.textContent = 'Esperando respuesta del servidor...';
+
+  // Limpia cualquier callback previo
+  if (window.__diagCb) { try { delete window.__diagCb; } catch (e) {} }
+
+  const cb = '__diagCb_' + Date.now();
+  const script = document.createElement('script');
+  let finished = false;
+
+  const timeout = setTimeout(function() {
+    if (finished) return;
+    finished = true;
+    cleanup();
+    estado.textContent = 'Tiempo de espera agotado (90 s).';
+    salida.textContent =
+      'No hubo respuesta del servidor.\n\n' +
+      'Causas posibles:\n' +
+      '- La version desplegada no incluye la accion "diagnosticarEsquema".\n' +
+      '- Hay que volver a implementar (Implementar > Nueva version).\n' +
+      '- El script esta en un proyecto de Google Drive distinto al esperado.';
+    btn.disabled = false;
+    btn.textContent = '▶ Reintentar';
+  }, 90000);
+
+  function cleanup() {
+    clearTimeout(timeout);
+    try { delete window[cb]; } catch (e) {}
+    if (script.parentNode) script.parentNode.removeChild(script);
+  }
+
+  window[cb] = function(respuesta) {
+    if (finished) return;
+    finished = true;
+    cleanup();
+    btn.disabled = false;
+    btn.textContent = '▶ Ejecutar de nuevo';
+
+    if (!respuesta) {
+      estado.textContent = 'Respuesta vacía.';
+      salida.textContent = 'El servidor devolvió null.';
+      return;
+    }
+
+    if (respuesta.reporte) {
+      estado.textContent = 'Diagnóstico recibido.';
+      salida.textContent = respuesta.reporte;
+    } else {
+      estado.textContent = 'El servidor respondio:';
+      salida.textContent = JSON.stringify(respuesta, null, 2);
+    }
+  };
+
+  script.onerror = function() {
+    if (finished) return;
+    finished = true;
+    cleanup();
+    btn.disabled = false;
+    btn.textContent = '▶ Reintentar';
+    estado.textContent = 'No se pudo contactar el servidor.';
+    salida.textContent =
+      'Error de red al cargar el script.\n\n' +
+      'Verifique la URL:\n' + APPS_SCRIPT_API_URL;
+  };
+
+  // La accion viaja como parámetro normal de la URL
+  script.src = APPS_SCRIPT_API_URL + '?accion=diagnosticarEsquema&callback=' + cb;
+  document.head.appendChild(script);
+}
+
+ejecutar();
+</script>
+</body>
+</html>
