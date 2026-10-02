@@ -289,6 +289,40 @@
                 <label class="form-label">RV</label>
                 <input type="text" id="rvNovedad" class="form-control">
               </div>
+              <!-- Campos dinámicos para GH_JESEP -->
+              <div id="campoCambioTurno" class="col-md-6 hidden">
+                <label class="form-label">Nuevo Turno</label>
+                <select id="nuevoTurno" class="form-select">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="No Aplica">No Aplica</option>
+                </select>
+              </div>
+              <div id="camposHorarioFlexible" class="col-md-12 hidden">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Hora Inicial</label>
+                    <input type="time" id="horaInicial" class="form-control">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Hora Final</label>
+                    <input type="time" id="horaFinal" class="form-control">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Días de la Semana</label>
+                    <div class="checkbox-group">
+                      <label><input type="checkbox" class="diaSemana" value="Lunes"> L</label>
+                      <label><input type="checkbox" class="diaSemana" value="Martes"> M</label>
+                      <label><input type="checkbox" class="diaSemana" value="Miércoles"> X</label>
+                      <label><input type="checkbox" class="diaSemana" value="Jueves"> J</label>
+                      <label><input type="checkbox" class="diaSemana" value="Viernes"> V</label>
+                      <label><input type="checkbox" class="diaSemana" value="Sábado"> S</label>
+                      <label><input type="checkbox" class="diaSemana" value="Domingo"> D</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="mt-3">
               <button type="button" class="btn btn-pol" onclick="registrarNovedad()">💾 Guardar novedad</button>
@@ -760,6 +794,23 @@
     } else {
       filtroReporte.disabled = false;
     }
+
+    // Event listener para mostrar/ocultar campos dinámicos según el Tipo
+    tipoSelect.addEventListener('change', function() {
+      const campoCambioTurno = document.getElementById('campoCambioTurno');
+      const camposHorarioFlexible = document.getElementById('camposHorarioFlexible');
+      
+      if (this.value === 'CAMBIO DE TURNO') {
+        campoCambioTurno.classList.remove('hidden');
+        camposHorarioFlexible.classList.add('hidden');
+      } else if (this.value === 'HORARIO FLEXIBLE') {
+        camposHorarioFlexible.classList.remove('hidden');
+        campoCambioTurno.classList.add('hidden');
+      } else {
+        campoCambioTurno.classList.add('hidden');
+        camposHorarioFlexible.classList.add('hidden');
+      }
+    });
   }
 
   function mostrarSeccion(nombre) {
@@ -890,9 +941,10 @@
       mostrarToast('Ingrese la novedad.', 'error');
       return;
     }
+    const tipoNovedad = document.getElementById('tipoNovedad').value;
     const datos = {
       cc: cedula, cedula: cedula, novedad: novedad,
-      tipo: document.getElementById('tipoNovedad').value,
+      tipo: tipoNovedad,
       descripcion: document.getElementById('descripcionNovedad').value.trim(),
       dias: document.getElementById('novedadDias').value,
       fechaInicial: document.getElementById('fechaInicial').value,
@@ -900,6 +952,53 @@
       observacion: document.getElementById('observacionNovedad').value.trim(),
       rv: document.getElementById('rvNovedad').value.trim()
     };
+
+    // Manejar CAMBIO DE TURNO (GH_JESEP)
+    if (tipoNovedad === 'CAMBIO DE TURNO') {
+      const nuevoTurno = document.getElementById('nuevoTurno').value;
+      if (!nuevoTurno) {
+        mostrarToast('Seleccione el nuevo turno.', 'error');
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function(respuesta) {
+          if (respuesta && respuesta.estado === true) {
+            mostrarToast('Turno actualizado correctamente.');
+            // También registrar en NOVEDADES
+            datos.novedad = 'Cambio de turno a ' + nuevoTurno;
+            datos.tipo = 'CAMBIO DE TURNO';
+            google.script.run
+              .withSuccessHandler(function() {
+                limpiarFormularioNovedad();
+                cargarHistorial(cedula);
+              })
+              .withFailureHandler(function() {})
+              .registrarNovedad(tokenSesion, datos);
+          } else {
+            mostrarToast(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No fue posible actualizar el turno.', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          mostrarToast('Error actualizando turno.', 'error');
+        })
+        .cambiarTurnoFuncionario(tokenSesion, cedula, nuevoTurno);
+      return;
+    }
+
+    // Manejar HORARIO FLEXIBLE (GH_JESEP)
+    if (tipoNovedad === 'HORARIO FLEXIBLE') {
+      const horaInicial = document.getElementById('horaInicial').value;
+      const horaFinal = document.getElementById('horaFinal').value;
+      const dias = Array.from(document.querySelectorAll('.diaSemana:checked')).map(cb => cb.value);
+      
+      if (!horaInicial || !horaFinal || dias.length === 0) {
+        mostrarToast('Complete todos los campos de horario flexible.', 'error');
+        return;
+      }
+      
+      datos.novedad = 'Horario flexible: ' + horaInicial + ' - ' + horaFinal + ' (' + dias.join(', ') + ')';
+      datos.tipo = 'HORARIO FLEXIBLE';
+    }
 
     google.script.run
       .withSuccessHandler(function(respuesta) {
@@ -925,6 +1024,13 @@
     document.getElementById('descripcionNovedad').value = '';
     document.getElementById('observacionNovedad').value = '';
     document.getElementById('rvNovedad').value = '';
+    // Ocultar campos dinámicos
+    document.getElementById('campoCambioTurno').classList.add('hidden');
+    document.getElementById('camposHorarioFlexible').classList.add('hidden');
+    document.getElementById('nuevoTurno').value = '';
+    document.getElementById('horaInicial').value = '';
+    document.getElementById('horaFinal').value = '';
+    document.querySelectorAll('.diaSemana:checked').forEach(cb => cb.checked = false);
   }
 
   function cargarTurno(filtro) {
