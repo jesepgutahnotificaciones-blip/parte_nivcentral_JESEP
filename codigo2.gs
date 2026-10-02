@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r20';
+var VERSION_APP = 'JESEP-2026-10-02-r21';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -173,6 +173,9 @@ function doGet(e) {
       case 'diagnosticarEsquema':
         resultado = diagnosticarEsquemaDataSafe();
         break;
+      case 'diagnosticarCruce':
+        resultado = diagnosticarCruceDataSafe();
+        break;
       case 'version':
         resultado = versionApp();
         break;
@@ -183,7 +186,7 @@ function doGet(e) {
           mensaje: (accion ? ('Acción no válida: ' + accion)
                            : 'Falta el parametro "accion". Abra el Web App con ?accion=<nombre>.'),
           accionesValidas: [
-            'version', 'diagnosticarEsquema',
+            'version', 'diagnosticarEsquema', 'diagnosticarCruce',
             'validarUsuario', 'verificarSesion', 'cerrarSesionCliente',
             'buscarFuncionario', 'obtenerFichaFuncionario', 'obtenerHistorialFuncionario',
             'registrarNovedad', 'consultarPorTurno', 'previsualizarReporteTurno',
@@ -1689,8 +1692,108 @@ function registrarHorarioFlexible(token, datosHorario) {
    revisar en qué columna cae cada dato en sus hojas reales.
    ===================================================== */
 
+/* =====================================================
+   DIAGNÓSTICO DEL CRUCE LISTADO_BASE <-> NOVEDADES
+   Muestra los datos reales para verificar por qué no se cruzan.
+   ===================================================== */
+function diagnosticarCruceDataSafe() {
+  var L = [];
+  function add(x) { L.push(String(x)); }
+
+  try {
+    var ss = abrirLibro_();
+    add('VERSION ' + VERSION_APP);
+    add('LIBRO ' + ss.getName());
+    add('');
+
+    // ---------- LISTADO_BASE ----------
+    var base = ss.getSheetByName('LISTADO_BASE');
+    if (!base) {
+      add('ERROR: no existe LISTADO_BASE');
+      return { estado: false, version: VERSION_APP, reporte: L.join('\n') };
+    }
+    var dB = base.getDataRange().getValues();
+    var cabB = dB[0] || [];
+    var cabNB = cabB.map(normalizarCabColumna_);
+
+    add('=== LISTADO_BASE ===');
+    add('Filas de datos: ' + Math.max(0, dB.length - 1));
+    add('Columnas: ' + cabB.length);
+    add('');
+    add('Encabezados (letra = nombre):');
+    for (var c = 0; c < cabB.length; c++) {
+      add('  ' + letraColumna_(c + 1) + ' = ' + (cabB[c] === '' ? '(vacia)' : cabB[c]));
+    }
+
+    var iCed = idxColumnaBase_(cabNB, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/, /^N C$/], 0);
+    var iTur = idxColumnaBase_(cabNB, [/^TURNO$/], 7);
+    var iGrd = idxColumnaBase_(cabNB, [/^GR$/, /^GRADO$/], -1);
+    var iNom = idxColumnaBase_(cabNB, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/], -1);
+
+    add('');
+    add('Indices calculados:');
+    add('  CEDULA -> col ' + letraColumna_(iCed + 1));
+    add('  TURNO  -> col ' + letraColumna_(iTur + 1));
+    add('  GR     -> col ' + letraColumna_(iGrd + 1));
+    add('  NOMBRE -> col ' + letraColumna_(iNom + 1));
+
+    var cedulasBase = {};
+    add('');
+    add('Primeras 5 cedulas de LISTADO_BASE (como estan / normalizadas):');
+    for (var i = 1; i <= 5 && i < dB.length; i++) {
+      var crudo = dB[i][iCed];
+      add('  fila ' + (i + 1) + ': ["' + crudo + '"]  ->  "' + normalizaCedula_(crudo) + '"');
+      cedulasBase[normalizaCedula_(crudo)] = true;
+    }
+
+    // ---------- NOVEDADES ----------
+    add('');
+    add('=== NOVEDADES ===');
+    var nov = ss.getSheetByName('NOVEDADES');
+    if (!nov) {
+      add('ERROR: no existe la hoja NOVEDADES');
+      return { estado: false, version: VERSION_APP, reporte: L.join('\n') };
+    }
+    var dN = nov.getDataRange().getValues();
+    add('Filas de datos: ' + Math.max(0, dN.length - 1));
+    add('Columnas: ' + (dN[0] ? dN[0].length : 0));
+    add('');
+    add('Encabezados:');
+    var cabN = dN[0] || [];
+    for (var c2 = 0; c2 < cabN.length; c2++) {
+      add('  ' + letraColumna_(c2 + 1) + ' = ' + (cabN[c2] === '' ? '(vacia)' : cabN[c2]));
+    }
+
+    add('');
+    add('Primeras 5 filas de NOVEDADES (todas las columnas):');
+    var coincidencias = 0;
+    for (var n = 1; n <= 5 && n < dN.length; n++) {
+      var fila = dN[n];
+      var partes = [];
+      for (var k = 0; k < fila.length; k++) {
+        partes.push(letraColumna_(k + 1) + '=["' + fila[k] + '"]');
+      }
+      add('  fila ' + (n + 1) + ': ' + partes.join(' '));
+      var cedN = normalizaCedula_(fila[1]);
+      var hallada = cedulasBase[cedN] === true;
+      if (hallada) coincidencias++;
+      add('     -> cedula col B = "' + cedN + '"  |  ' + (hallada ? 'SI existe en LISTADO_BASE' : 'NO existe en LISTADO_BASE (muestra)'));
+    }
+
+    add('');
+    add('RESULTADO: ' + coincidencias + ' de ' + Math.min(5, Math.max(0, dN.length - 1)) +
+        ' filas de NOVEDADES coincidieron con la muestra de LISTADO_BASE.');
+    add('Si es 0, el problema son las cedulas. Si coincide, el problema esta en las columnas E/F.');
+
+  } catch (err) {
+    add('');
+    add('ERROR GENERAL: ' + err);
+  }
+
+  return { estado: true, version: VERSION_APP, reporte: L.join('\n') };
+}
+
 // Version segura: acumula el reporte y lo devuelve como dato.
-// No usa SpreadsheetApp.getUi() (falla en scripts independientes).
 function diagnosticarEsquemaData() {
   var L = [];
   function add(t) { L.push(String(t)); }
