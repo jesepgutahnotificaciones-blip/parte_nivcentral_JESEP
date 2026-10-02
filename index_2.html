@@ -1070,6 +1070,9 @@ function onTipoNovedadChange() {
     }
     const datos = {
       cc: cedula, cedula: cedula, novedad: novedad,
+      nombreFuncionario: funcionarioSeleccionado.funcionario || funcionarioSeleccionado.FUNCIONARIO ||
+                         funcionarioSeleccionado.nombres || funcionarioSeleccionado.NOMBRES ||
+                         funcionarioSeleccionado.apellidosYNombres || funcionarioSeleccionado['APELLIDOS Y NOMBRES'] || '',
       tipo: tipoNovedad,
       descripcion: document.getElementById('descripcionNovedad').value.trim(),
       dias: document.getElementById('novedadDias').value,
@@ -1155,6 +1158,7 @@ function onTipoNovedadChange() {
         .registrarHorarioFlexible(tokenSesion, {
           cc: cedula,
           cedula: cedula,
+          nombreFuncionario: datos.nombreFuncionario,
           horaInicial: horaInicial,
           horaFinal: horaFinal,
           dias: dias,

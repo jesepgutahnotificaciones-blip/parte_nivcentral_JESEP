@@ -706,6 +706,8 @@
     }
     const datos = {
       cc: cedula, cedula: cedula, novedad: novedad,
+      nombreFuncionario: funcionarioSeleccionado.funcionario || funcionarioSeleccionado.FUNCIONARIO ||
+                         funcionarioSeleccionado.nombres || funcionarioSeleccionado.NOMBRES || '',
       tipo: document.getElementById('tipoNovedad').value,
       descripcion: document.getElementById('descripcionNovedad').value.trim(),
       dias: document.getElementById('novedadDias').value,

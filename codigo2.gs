@@ -14,7 +14,11 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r9';
+var VERSION_APP = 'JESEP-2026-10-02-r10';
+
+// Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
+// Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
+var SEPARADOR_NOVEDAD = ' - ';
 
 function versionApp() {
   return { estado: true, version: VERSION_APP };
@@ -653,14 +657,20 @@ function construirFilaNovedades_(m, datos) {
   for (var i = 0; i < m.numCols; i++) fila.push('');
 
   var tipo = String(datos.tipo || '').trim();
-  var nombre = String(datos.novedad || '').trim();
+  // Nombre del funcionario elegido en la busqueda (es lo que va en la columna F)
+  var funcionario = String(datos.nombreFuncionario || '').trim();
+  // Texto de la novedad escrito por el usuario
+  var detalle = String(datos.novedad || '').trim();
 
   // B = cédula
   fila[m.cedula] = datos.cedula || datos.cc || '';
 
-  // E = Tipo ; F = Novedad concatenada con el dato de E
+  // E = Tipo
   fila[m.tipo] = tipo;
-  fila[m.novedad] = tipo ? (tipo + ' - ' + nombre) : nombre;
+
+  // F = Tipo concatenado con el nombre del funcionario seleccionado
+  if (tipo && funcionario) fila[m.novedad] = tipo + SEPARADOR_NOVEDAD + funcionario;
+  else fila[m.novedad] = funcionario || tipo || detalle;
 
   // G / H / I
   if (m.dias >= 0) fila[m.dias] = datos.dias === undefined || datos.dias === null ? '' : datos.dias;
@@ -668,10 +678,10 @@ function construirFilaNovedades_(m, datos) {
   if (m.fechaPresentacion >= 0) fila[m.fechaPresentacion] = datos.fechaPresentacion || '';
 
   // Columnas auxiliares (si existen en la hoja)
-  if (m.descripcion >= 0) fila[m.descripcion] = datos.descripcion || '';
-  if (m.observacion >= 0) fila[m.observacion] = datos.observacion || datos.descripcion || '';
+  if (m.descripcion >= 0) fila[m.descripcion] = detalle || datos.descripcion || '';
+  if (m.observacion >= 0) fila[m.observacion] = datos.observacion || detalle || datos.descripcion || '';
   if (m.rv >= 0) fila[m.rv] = datos.rv || '';
-  if (m.texto >= 0) fila[m.texto] = datos.texto || datos.descripcion || '';
+  if (m.texto >= 0) fila[m.texto] = detalle || datos.descripcion || '';
   if (m.fechaRegistro >= 0) fila[m.fechaRegistro] = new Date();
 
   return fila;
@@ -735,6 +745,18 @@ function registrarNovedad(token, datosNovedad) {
     }
 
     var base = renglonBasePorCedula_(datosNovedad.cedula || datosNovedad.cc);
+
+    // Si el navegador no envió el nombre del funcionario, se toma de LISTADO_BASE
+    if (!String(datosNovedad.nombreFuncionario || '').trim() && base) {
+      var idxNombre = idxColumnaBase_(base.cabeceras,
+        [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/, /^APELLIDOS$/], -1);
+      if (idxNombre !== -1 && idxNombre < base.valores.length) {
+        var vNombre = base.valores[idxNombre];
+        if (vNombre !== null && vNombre !== undefined && String(vNombre).trim() !== '') {
+          datosNovedad.nombreFuncionario = String(vNombre).trim();
+        }
+      }
+    }
 
     var fila = construirFilaNovedades_(mapa, datosNovedad);
     completarDesdeBase_(fila, mapa, base);
@@ -1350,6 +1372,7 @@ function registrarHorarioFlexible(token, datosHorario) {
 
     var fila = construirFilaNovedades_(mapa, {
       cedula: datosHorario.cedula || datosHorario.cc,
+      nombreFuncionario: datosHorario.nombreFuncionario || '',
       tipo: 'HORARIO FLEXIBLE',
       novedad: descripcion,
       dias: numeroDias,
