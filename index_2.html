@@ -214,6 +214,9 @@
 
     <main class="container-app">
 
+      <!-- AVISO DE PERMISOS DEL USUARIO CONECTADO -->
+      <div id="avisoPermisos" class="alert alert-secondary mb-3"></div>
+
       <!-- MENÚ -->
       <nav class="menu no-print">
         <button type="button" id="menuConsulta" onclick="mostrarSeccion('consulta')">🔎 Consulta</button>
@@ -750,7 +753,30 @@
     infoUsuario.innerHTML = '<strong>' + esc(usuarioSesion) + '</strong><br><small>' + esc(rolSesion) + (dependenciaSesion ? ' — ' + esc(dependenciaSesion) : '') + '</small>';
 
     configurarPermisos();
+    mostrarInfoPermisos();
     mostrarSeccion('consulta');
+  }
+
+  // Muestra un aviso con las novedades habilitadas para el usuario conectado,
+  // para que sea fácil verificar que los permisos se aplicaron.
+  function mostrarInfoPermisos() {
+    const aviso = document.getElementById('avisoPermisos');
+    if (!aviso) return;
+
+    const novedades = NOVEDADES_POR_USUARIO[usuarioId] || [];
+    if (usuarioId === 'UBL_JESEP') {
+      aviso.className = 'alert alert-primary';
+      aviso.innerHTML = '<strong>UBL_JESEP</strong> — Puede <strong>agregar y eliminar funcionarios</strong> de la hoja LISTADO_BASE (sección 👥 Funcionarios). No registra novedades.';
+    } else if (novedades.length) {
+      aviso.className = 'alert alert-success';
+      aviso.innerHTML = '<strong>Usuario:</strong> ' + esc(usuarioId) +
+        '<br>Tipos de novedad permitidos en <em>Registrar novedad</em>: ' +
+        novedades.map(function(n) { return '<span class="badge-novedad">' + esc(n) + '</span>'; }).join(' ');
+    } else {
+      aviso.className = 'alert alert-warning';
+      aviso.innerHTML = '<strong>Usuario:</strong> ' + esc(usuarioId) +
+        ' — No tiene tipos de novedad asignados. Verifique que el usuario en la hoja USUARIOS sea exactamente <code>' + esc(usuarioId) + '</code>.';
+    }
   }
 
   function cerrarSesion() {
