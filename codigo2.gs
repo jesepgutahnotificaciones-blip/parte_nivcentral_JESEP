@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r14';
+var VERSION_APP = 'JESEP-2026-10-02-r15';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -596,12 +596,27 @@ function responderBlob_(blob) {
   } else if (typeof ContentService.createOutput === 'function') {
     salida = ContentService.createOutput(blob);
   } else {
-    throw new Error('No se encontro un metodo de ContentService para enviar el archivo.');
+    throw new Error('ContentService no expone ningun metodo para enviar el archivo.');
   }
-  return salida.setHeaders({
-    'Content-Disposition': 'attachment; filename="' + blob.getName() + '"',
-    'Cache-Control': 'no-store, no-cache, must-revalidate'
-  });
+
+  // Algunos runtimes no ofrecen setHeaders ni setContentType.
+  // Se aplican solo si existen; el blob ya lleva su tipo de contenido.
+  try {
+    if (typeof salida.setHeaders === 'function') {
+      salida = salida.setHeaders({
+        'Content-Disposition': 'attachment; filename="' + blob.getName() + '"',
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
+      });
+    }
+  } catch (e) { /* se ignora */ }
+
+  try {
+    if (typeof salida.setContentType === 'function') {
+      salida = salida.setContentType(blob.getContentType());
+    }
+  } catch (e2) { /* se ignora */ }
+
+  return salida;
 }
 
 function servirArchivoReporte_(formato, filtro) {
@@ -976,6 +991,7 @@ function generarReporteTurno(token, filtro) {
 
     return {
       estado: true,
+      version: VERSION_APP,
       datos: {
         filtro: filtro,
         consecutivo: consecutivo,
@@ -986,7 +1002,11 @@ function generarReporteTurno(token, filtro) {
       }
     };
   } catch (err) {
-    return { estado: false, mensaje: 'Error generando reporte: ' + err.message };
+    return {
+      estado: false,
+      version: VERSION_APP,
+      mensaje: '[' + VERSION_APP + '] Error generando reporte: ' + err.message
+    };
   }
 }
 

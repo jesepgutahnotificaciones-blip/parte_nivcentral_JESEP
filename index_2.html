@@ -1449,38 +1449,43 @@ function onTipoNovedadChange() {
     descargarReporte_(formato, filtro);
   }
 
-  // Consulta la ruta de descarga y muestra que responde el servidor.
+  // Verifica que el servidor genere el PDF usando el mismo canal que usa
+// el botón "Generar PDF" (JSONP).
 function probarDescarga() {
     const filtro = document.getElementById('filtroReporte').value || 'A';
     const caja = document.getElementById('ultimoArchivo');
     if (caja) {
       caja.className = 'alert alert-warning mt-3';
-      caja.textContent = 'Probando descarga del turno ' + filtro + '...';
+      caja.textContent = 'Probando generación de PDF del turno ' + filtro + '...';
     }
 
-    const url = urlReporte_('pdf', filtro);
-    fetch(url, { redirect: 'follow' })
-      .then(function(r) { return r.text().then(function(txt) { return { ok: r.ok, status: r.status, txt: txt }; }); })
-      .then(function(res) {
+    google.script.run
+      .withSuccessHandler(function(r) {
         if (!caja) return;
-        if (res.txt.indexOf('%PDF') === 0) {
-          caja.className = 'alert alert-success mt-3';
-          caja.textContent = 'OK: el servidor devolvió un PDF válido (' + res.txt.length + ' bytes). ' +
-            'Si no se descargó solo, use el enlace de arriba.';
-          const enlace = document.createElement('a');
-          enlace.href = url; enlace.target = '_blank'; enlace.rel = 'noopener';
-          enlace.textContent = ' Abrir/descargar PDF manualmente';
-          caja.appendChild(enlace);
-        } else {
+        if (!r || r.estado !== true) {
           caja.className = 'alert alert-danger mt-3';
-          caja.textContent = 'El servidor NO devolvió un PDF. Respuesta: ' + res.txt.substring(0, 400);
+          caja.textContent = 'El servidor no generó el PDF: ' +
+            ((r && r.mensaje) || 'sin mensaje') + ' [versión ' + ((r && r.version) || '?') + ']';
+          return;
         }
+        const d = r.datos || {};
+        if (!d.pdfBase64) {
+          caja.className = 'alert alert-danger mt-3';
+          caja.textContent = 'El servidor respondió sin contenido de PDF. [versión ' + (r.version || '?') + ']';
+          return;
+        }
+        let kb = 0;
+        try { kb = Math.round(d.pdfBase64.length * 3 / 4 / 1024); } catch (e) {}
+        caja.className = 'alert alert-success mt-3';
+        caja.textContent = 'OK — el servidor generó un PDF válido (' + kb + ' KB). ' +
+          'Si al pulsar "Generar PDF" no se descarga, el problema es del navegador, no del servidor.';
       })
-      .catch(function(e) {
+      .withFailureHandler(function(e) {
         if (!caja) return;
         caja.className = 'alert alert-danger mt-3';
-        caja.textContent = 'Error de red al probar la descarga: ' + e.message;
-      });
+        caja.textContent = 'Error de red: ' + ((e && e.message) || 'fallo de red');
+      })
+      .generarReporteTurno(tokenSesion, filtro);
   }
 
   function cargarReportes() {
