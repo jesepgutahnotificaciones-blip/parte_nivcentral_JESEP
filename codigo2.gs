@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r8';
+var VERSION_APP = 'JESEP-2026-10-02-r9';
 
 function versionApp() {
   return { estado: true, version: VERSION_APP };
@@ -626,18 +626,20 @@ function mapaColumnasNovedades_(hoja) {
   var cabeceras = hoja.getRange(fCab + 1, 1, 1, hoja.getLastColumn()).getDisplayValues()[0];
   var cab = cabeceras.map(normalizarCabColumna_);
 
+  // Las columnas B, E, F, G, H e I usan la POSICION fija que exige el usuario,
+  // sin importar como esten rotuladas. Asi el dato siempre cae en la letra correcta.
+  // Las columnas auxiliares si se detectan por nombre; si no existen, quedan en -1.
   return {
     filaCabecera: fCab,
     cabeceras: cabeceras,
     cabNorm: cab,
     numCols: hoja.getLastColumn(),
-    // Respaldos = posiciones exigidas (B, E, F, G, H, I) -> indices 1,4,5,6,7,8
-    cedula: idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/], 1),
-    tipo: idxColumnaBase_(cab, [/^TIPO$/], 4),
-    novedad: idxColumnaBase_(cab, [/^NOVEDAD$/, /^NOMBRE NOVEDAD$/, /^NOMBRE DE LA NOVEDAD$/], 5),
-    dias: idxColumnaBase_(cab, [/^DIAS$/, /^N DIAS$/, /^DIAS DE NOVEDAD$/], 6),
-    fechaInicial: idxColumnaBase_(cab, [/^FECHA INICIAL$/, /^FECHA DE INICIO$/, /^INICIO$/], 7),
-    fechaPresentacion: idxColumnaBase_(cab, [/^FECHA PRESENTACION$/, /^FECHA DE PRESENTACION$/, /^PRESENTACION$/], 8),
+    cedula: 1,               // B
+    tipo: 4,                 // E
+    novedad: 5,              // F
+    dias: 6,                 // G
+    fechaInicial: 7,         // H
+    fechaPresentacion: 8,    // I
     descripcion: idxColumnaBase_(cab, [/^DESCRIPCION$/, /^DESCRIPCIÓN$/], -1),
     observacion: idxColumnaBase_(cab, [/^OBSERVACION$/, /^OBSERVACIÓN$/], -1),
     rv: idxColumnaBase_(cab, [/^RV$/], -1),
@@ -782,43 +784,40 @@ function consultarPorTurno(token, filtro) {
         var cedulaFuncionario = String(obj.cedula || obj.CEDULA || '').trim();
         var novedadesCruzadas = [];
 
-        // Cruce con la hoja NOVEDADES. La columna F (NOVEDAD) ya trae
-        // "TIPO - nombre" concatenado, por eso se usa directamente.
+        // Cruce con la hoja NOVEDADES usando las mismas posiciones fijas
+        // del registro: B = cedula, E = tipo, F = novedad, G = dias.
         if (datosNovedades.length > 1 && cedulaFuncionario !== '') {
-          var cabecerasNov = datosNovedades[0].map(normalizarCabColumna_);
-          var idxCedulaNov = idxColumnaBase_(cabecerasNov, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/], -1);
-          var idxTipoNov = idxColumnaBase_(cabecerasNov, [/^TIPO$/], 4);
-          var idxNovedadNov = idxColumnaBase_(cabecerasNov, [/^NOVEDAD$/, /^NOMBRE NOVEDAD$/, /^NOMBRE DE LA NOVEDAD$/], 5);
-          var idxDiasNov = idxColumnaBase_(cabecerasNov, [/^DIAS$/, /^N DIAS$/], 6);
+          var idxCedulaNov = 1;
+          var idxTipoNov = 4;
+          var idxNovedadNov = 5;
+          var idxDiasNov = 6;
 
-          if (idxCedulaNov !== -1) {
-            for (var n = 1; n < datosNovedades.length; n++) {
-              var filaNov = datosNovedades[n];
+          for (var n = 1; n < datosNovedades.length; n++) {
+            var filaNov = datosNovedades[n];
 
-              var vCed = filaNov[idxCedulaNov];
-              var cedulaNov = (vCed === null || vCed === undefined) ? '' : String(vCed).trim();
-              if (cedulaNov !== cedulaFuncionario) continue;
+            var vCed = filaNov[idxCedulaNov];
+            var cedulaNov = (vCed === null || vCed === undefined) ? '' : String(vCed).trim();
+            if (cedulaNov !== cedulaFuncionario) continue;
 
-              var vTipo = idxTipoNov !== -1 ? filaNov[idxTipoNov] : '';
-              var vNovedad = idxNovedadNov !== -1 ? filaNov[idxNovedadNov] : '';
-              var vDias = idxDiasNov !== -1 ? filaNov[idxDiasNov] : '';
+            var vTipo = filaNov[idxTipoNov];
+            var vNovedad = filaNov[idxNovedadNov];
+            var vDias = filaNov[idxDiasNov];
 
-              var tipoNov = (vTipo === null || vTipo === undefined) ? '' : String(vTipo).trim();
-              var novedadNov = (vNovedad === null || vNovedad === undefined) ? '' : String(vNovedad).trim();
-              var diasNov = (vDias === null || vDias === undefined) ? '' : String(vDias).trim();
+            var tipoNov = (vTipo === null || vTipo === undefined) ? '' : String(vTipo).trim();
+            var novedadNov = (vNovedad === null || vNovedad === undefined) ? '' : String(vNovedad).trim();
+            var diasNov = (vDias === null || vDias === undefined) ? '' : String(vDias).trim();
 
-              // F ya viene concatenada ("TIPO - nombre"); solo se une si viene separada
-              var concatenado = novedadNov || tipoNov;
-              if (novedadNov && tipoNov && novedadNov.indexOf(tipoNov) === -1) {
-                concatenado = tipoNov + ' - ' + novedadNov;
-              }
-              if (diasNov && diasNov !== '0') {
-                concatenado += (concatenado ? ' ' : '') + '(' + diasNov + ' días)';
-              }
+            // F ya viene concatenada ("TIPO - nombre"); solo se une si viene separada
+            var concatenado = novedadNov || tipoNov;
+            if (novedadNov && tipoNov && novedadNov.indexOf(tipoNov) === -1) {
+              concatenado = tipoNov + ' - ' + novedadNov;
+            }
+            if (diasNov && diasNov !== '0') {
+              concatenado += (concatenado ? ' ' : '') + '(' + diasNov + ' días)';
+            }
 
-              if (concatenado) {
-                novedadesCruzadas.push({ NOVEDAD: concatenado });
-              }
+            if (concatenado) {
+              novedadesCruzadas.push({ NOVEDAD: concatenado });
             }
           }
         }

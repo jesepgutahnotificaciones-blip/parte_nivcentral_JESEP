@@ -1000,9 +1000,24 @@
           contenedor.innerHTML = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="empty">No registra novedades.</div></div></div>';
           return;
         }
-        let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DESCRIPCIÓN</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th><th>OBSERVACIÓN</th><th>RV</th><th>TEXTO</th></tr></thead><tbody>';
+
+        // Esquema fijo de NOVEDADES:
+        // B(1)=cedula  E(4)=tipo  F(5)=novedad  G(6)=dias
+        // H(7)=fecha inicial  I(8)=fecha presentacion
+        const NOMBRES = ['CEDULA', '', '', '', 'TIPO', 'NOVEDAD', 'DIAS', 'FECHA INICIAL', 'FECHA PRESENTACION'];
+
+        let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>TIPO</th><th>NOVEDAD</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th></tr></thead><tbody>';
         historial.forEach(function(n) {
-          html += '<tr><td>' + esc(n.GR) + '</td><td><span class="badge-novedad">' + esc(n.NOVEDAD) + '</span></td><td>' + esc(n.DESCRIPCION) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(formatearValor(n['Fecha INICIAL'])) + '</td><td>' + esc(formatearValor(n['Fecha PRESENTACION'])) + '</td><td>' + esc(n.Observacion) + '</td><td>' + esc(n.RV) + '</td><td>' + esc(n.TEXTO) + '</td></tr>';
+          const tipo = n['TIPO'] || NOMBRES[4] || '';
+          const novedad = n['NOVEDAD'] || NOMBRES[5] || '';
+          const dias = n['DIAS'] || NOMBRES[6] || '';
+          const fIni = n['FECHA INICIAL'] || NOMBRES[7] || '';
+          const fPre = n['FECHA PRESENTACION'] || NOMBRES[8] || '';
+          html += '<tr><td><strong>' + esc(tipo) + '</strong></td>' +
+            '<td><span class="badge-novedad">' + esc(novedad) + '</span></td>' +
+            '<td>' + esc(dias) + '</td>' +
+            '<td>' + esc(formatearValor(fIni)) + '</td>' +
+            '<td>' + esc(formatearValor(fPre)) + '</td></tr>';
         });
         html += '</tbody></table></div></div></div>';
         contenedor.innerHTML = html;
