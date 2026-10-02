@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r19';
+var VERSION_APP = 'JESEP-2026-10-02-r20';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -885,6 +885,21 @@ function consultarPorTurno(token, filtro) {
     if (datosBase.length < 2) return { estado: false, mensaje: 'La hoja LISTADO_BASE está vacía.' };
 
     var cabecerasBase = datosBase[0];
+    var cabNormBase = cabecerasBase.map(normalizarCabColumna_);
+
+    // Índices reales de cada campo. Se buscan por encabezado normalizado para
+    // que funcionen tanto "CEDULA" como "Cédula", "GR"/"GRADO", etc.
+    var iCedula  = idxColumnaBase_(cabNormBase, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/, /^N C$/], 0);
+    var iTurno   = idxColumnaBase_(cabNormBase, [/^TURNO$/], 7);
+    var iGrado   = idxColumnaBase_(cabNormBase, [/^GR$/, /^GRADO$/], -1);
+    var iNombre  = idxColumnaBase_(cabNormBase, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/], -1);
+    var iDepend  = idxColumnaBase_(cabNormBase, [/^DEPENDENCIA$/], -1);
+
+    function valCampo_(fila, idx) {
+      if (idx === -1 || idx === undefined || idx >= fila.length) return '';
+      var v = fila[idx];
+      return (v === null || v === undefined) ? '' : v;
+    }
 
     // Leer hoja NOVEDADES para cruzar información
     var hojaNovedades = ss.getSheetByName('NOVEDADES');
@@ -900,12 +915,26 @@ function consultarPorTurno(token, filtro) {
       for (var j = 0; j < cabecerasBase.length; j++) {
         obj[cabecerasBase[j]] = datosBase[i][j];
       }
+      // Objetos con claves normalizadas, para que el resto del código
+      // no dependa de cómo estén escritos los encabezados.
+      var filaBase = {
+        cedula: valCampo_(datosBase[i], iCedula),
+        turno: valCampo_(datosBase[i], iTurno),
+        grado: valCampo_(datosBase[i], iGrado),
+        funcionario: valCampo_(datosBase[i], iNombre),
+        dependencia: valCampo_(datosBase[i], iDepend)
+      };
+      for (var j2 = 0; j2 < cabecerasBase.length; j2++) {
+        var claveNorm = normalizarCabColumna_(cabecerasBase[j2]).replace(/[^A-Z0-9]/g, '');
+        if (claveNorm && filaBase[claveNorm.toLowerCase()] === undefined) {
+          filaBase[claveNorm.toLowerCase()] = datosBase[i][j2];
+        }
+      }
 
-      var turnoFila = String(obj.turno || obj.TURNO || '').trim().toUpperCase();
+      var turnoFila = String(filaBase.turno || '').trim().toUpperCase();
       if (filtro === 'SEPRI' || turnoFila === String(filtro).trim().toUpperCase()) {
 
-        var cedulaFuncionario = String(obj.cedula || obj.CEDULA || '').trim();
-        var cedulaFuncionarioNorm = normalizaCedula_(obj.cedula || obj.CEDULA || '');
+        var cedulaFuncionarioNorm = normalizaCedula_(filaBase.cedula);
         var novedadesCruzadas = [];
 
         // Cruce con la hoja NOVEDADES usando las mismas posiciones fijas
@@ -948,6 +977,11 @@ function consultarPorTurno(token, filtro) {
         }
 
         obj.historialNovedades = novedadesCruzadas;
+        obj.cedula = filaBase.cedula;
+        obj.turno = filaBase.turno;
+        obj.grado = filaBase.grado;
+        obj.funcionario = filaBase.funcionario;
+        obj.dependencia = filaBase.dependencia;
         funcionarios.push(obj);
       }
     }
@@ -956,7 +990,17 @@ function consultarPorTurno(token, filtro) {
       estado: true,
       datos: {
         filtro: filtro,
-        funcionarios: funcionarios
+        funcionarios: funcionarios,
+        _diag: {
+          iCedula: iCedula + 1,
+          iTurno: iTurno + 1,
+          iGrado: iGrado + 1,
+          iNombre: iNombre + 1,
+          iDepend: iDepend + 1,
+          filasNovedades: Math.max(0, datosNovedades.length - 1),
+          conNovedades: funcionarios.filter(function(f) { return tieneNovedades_(f); }).length,
+          muestraCedulas: funcionarios.slice(0, 3).map(function(f) { return normalizaCedula_(f.cedula); })
+        }
       }
     };
   } catch (err) {
@@ -1060,21 +1104,11 @@ function construirHtmlReporte_(funcs, filtro, consecutivo) {
   html += '</tr></thead><tbody>';
 
   var n = 0;
-  var gradoPrevio = null;
 
+  // Sin filas separadoras: solo se resalta el color de los que tienen novedades.
   function filasDe_(lista, conNovedades) {
     for (var i = 0; i < lista.length; i++) {
       var f = lista[i];
-      var g = gradoDe_(f);
-
-      // Encabezado de grupo cada vez que cambia el GR
-      if (g !== gradoPrevio) {
-        gradoPrevio = g;
-        html += '<tr class="grupo' + (conNovedades ? ' oscuro' : '') + '"><td colspan="7">' +
-          (conNovedades ? 'CON NOVEDADES &middot; GRADO ' : 'SIN NOVEDADES &middot; GRADO ') +
-          escHtml_(g || 'SIN GRADO') + '</td></tr>';
-      }
-
       n++;
       var novedadesTexto = (f.historialNovedades || []).map(function(x) { return x.NOVEDAD; }).join(', ');
       html += '<tr' + (conNovedades ? ' class="nov"' : '') + '>';
@@ -1124,20 +1158,36 @@ function gradoDe_(f) {
   return String((f && (f.grado || f.GR)) || '').trim().toUpperCase();
 }
 
+// Orden jerárquico de grados exigido por la institución.
+var ORDEN_GRADOS_ = [
+  'MG', 'BG', 'CR', 'TC', 'MY', 'CT', 'TE', 'ST', 'CM', 'SC',
+  'IJ', 'IT', 'SI', 'PT', 'PP', 'AXP'
+];
+
+function indiceGrado_(grado) {
+  var g = String(grado || '').trim().toUpperCase();
+  for (var i = 0; i < ORDEN_GRADOS_.length; i++) {
+    if (ORDEN_GRADOS_[i] === g) return i;
+  }
+  return ORDEN_GRADOS_.length;   // los grados no listados van al final
+}
+
 function nombreDe_(f) {
   return String((f && (f.funcionario || f.FUNCIONARIO)) || '').trim().toUpperCase();
 }
 
-// Copia ordenada: sin novedades primero; dentro de cada grupo, por GR y luego nombre.
+// Copia ordenada: sin novedades primero; dentro de cada grupo, por la
+// jerarquia de grados exigida y luego por nombre.
 function ordenarParaReporte_(funcs) {
   return (funcs || []).slice().sort(function(a, b) {
     var na = tieneNovedades_(a) ? 1 : 0;
     var nb = tieneNovedades_(b) ? 1 : 0;
-    if (na !== nb) return na - nb;              // sin novedades arriba
-    var ga = gradoDe_(a), gb = gradoDe_(b);
-    if (ga !== gb) return ga < gb ? -1 : 1;     // por grado
+    if (na !== nb) return na - nb;                    // sin novedades arriba
+    var ia = indiceGrado_(gradoDe_(a));
+    var ib = indiceGrado_(gradoDe_(b));
+    if (ia !== ib) return ia - ib;                    // jerarquia de grados
     var xa = nombreDe_(a), xb = nombreDe_(b);
-    if (xa !== xb) return xa < xb ? -1 : 1;     // por nombre
+    if (xa !== xb) return xa < xb ? -1 : 1;           // por nombre
     return 0;
   });
 }
@@ -1170,15 +1220,8 @@ function generarExcelArchivo_(funcs, filtro, consecutivo) {
 
   var filas = [];
   var n = 0;
-  var gradoPrevio = null;
 
   ordenados.forEach(function(f) {
-    var g = gradoDe_(f);
-    // Fila de encabezado cada vez que cambia el GR
-    if (g !== gradoPrevio) {
-      gradoPrevio = g;
-      filas.push(['GRUPO', (tieneNovedades_(f) ? 'CON NOVEDADES - ' : 'SIN NOVEDADES - ') + 'GRADO ' + (g || 'SIN GRADO'), '', '', '', '', '']);
-    }
     n++;
     var novedadesTexto = (f.historialNovedades || []).map(function(x) { return x.NOVEDAD; }).join(', ');
     filas.push([
