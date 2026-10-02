@@ -88,6 +88,18 @@ function doGet(e) {
       case 'cambiarEstadoUsuario':
         resultado = cambiarEstadoUsuario(args[0], args[1], args[2]);
         break;
+      case 'listarFuncionarios':
+        resultado = listarFuncionarios(args[0]);
+        break;
+      case 'agregarFuncionario':
+        resultado = agregarFuncionario(args[0], args[1]);
+        break;
+      case 'eliminarFuncionario':
+        resultado = eliminarFuncionario(args[0], args[1]);
+        break;
+      case 'cambiarTurnoFuncionario':
+        resultado = cambiarTurnoFuncionario(args[0], args[1], args[2]);
+        break;
       default:
         resultado = { estado: false, mensaje: 'Acción no válida: ' + accion };
     }
@@ -794,5 +806,176 @@ function cambiarEstadoUsuario(token, usuario, nuevoEstado) {
     return { estado: false, mensaje: 'Usuario no encontrado.' };
   } catch (err) {
     return { estado: false, mensaje: 'Error actualizando estado: ' + err.message };
+  }
+}
+
+
+/* =====================================================
+   6. GESTIÓN DE FUNCIONARIOS (SOLO UBL_JESEP)
+   ===================================================== */
+
+function listarFuncionarios(token) {
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('LISTADO_BASE');
+    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
+
+    var datos = hoja.getDataRange().getValues();
+    if (datos.length < 2) return { estado: true, datos: [] };
+
+    var cabeceras = datos[0];
+    var funcionarios = [];
+
+    for (var i = 1; i < datos.length; i++) {
+      var obj = {};
+      for (var j = 0; j < cabeceras.length; j++) {
+        obj[cabeceras[j]] = datos[i][j];
+      }
+      funcionarios.push(obj);
+    }
+
+    return { estado: true, datos: funcionarios };
+  } catch (err) {
+    return { estado: false, mensaje: err.message };
+  }
+}
+
+function agregarFuncionario(token, datos) {
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('LISTADO_BASE');
+    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
+
+    // Verificar si ya existe la cédula
+    var datosExistentes = hoja.getDataRange().getValues();
+    var idxCedula = -1;
+    var cabeceras = datosExistentes[0];
+    for (var j = 0; j < cabeceras.length; j++) {
+      var c = String(cabeceras[j]).toUpperCase();
+      if (c === 'CEDULA' || c === 'CC') { idxCedula = j; break; }
+    }
+
+    if (idxCedula !== -1) {
+      for (var i = 1; i < datosExistentes.length; i++) {
+        if (String(datosExistentes[i][idxCedula]).trim() === String(datos.cedula).trim()) {
+          return { estado: false, mensaje: 'Ya existe un funcionario con esa cédula.' };
+        }
+      }
+    }
+
+    // Crear nueva fila con los datos
+    var nuevaFila = [];
+    nuevaFila[idxCedula !== -1 ? idxCedula : 0] = datos.cedula;
+    
+    // Buscar índices de columnas
+    var idxNivel = -1, idxGrado = -1, idxNombre = -1, idxDependencia = -1;
+    var idxPert = -1, idxTurno = -1, idxMes = -1, idxDia = -1;
+    var idxFechaNac = -1, idxCorreo = -1, idxSexo = -1, idxEstadoCivil = -1;
+    var idxSituacion = -1, idxComunicado = -1;
+
+    for (var j = 0; j < cabeceras.length; j++) {
+      var c = String(cabeceras[j]).toUpperCase();
+      if (c === 'NIV' || c === 'NIVEL') idxNivel = j;
+      else if (c === 'GR' || c === 'GRADO') idxGrado = j;
+      else if (c === 'FUNCIONARIO' || c === 'NOMBRE' || c === 'APELLIDOS Y NOMBRES') idxNombre = j;
+      else if (c === 'DEPENDENCIA') idxDependencia = j;
+      else if (c === 'PERT') idxPert = j;
+      else if (c === 'TURNO') idxTurno = j;
+      else if (c === 'MES') idxMes = j;
+      else if (c === 'DIA') idxDia = j;
+      else if (c === 'FECHA_NACIMIENTO' || c === 'FECHA NACIMIENTO') idxFechaNac = j;
+      else if (c === 'CORREO' || c === 'CORREO_ELECTRONICO' || c === 'EMAIL') idxCorreo = j;
+      else if (c === 'SEXO') idxSexo = j;
+      else if (c === 'ESTADO_CIVIL') idxEstadoCivil = j;
+      else if (c === 'SITUACION_LABORAL') idxSituacion = j;
+      else if (c === 'COMUNICADO' || c === 'COMUNICADO_OFICIAL') idxComunicado = j;
+    }
+
+    if (idxNivel !== -1) nuevaFila[idxNivel] = datos.nivel;
+    if (idxGrado !== -1) nuevaFila[idxGrado] = datos.grado;
+    if (idxNombre !== -1) nuevaFila[idxNombre] = datos.funcionario;
+    if (idxDependencia !== -1) nuevaFila[idxDependencia] = datos.dependencia;
+    if (idxPert !== -1) nuevaFila[idxPert] = datos.pert;
+    if (idxTurno !== -1) nuevaFila[idxTurno] = datos.turno;
+    if (idxMes !== -1) nuevaFila[idxMes] = datos.mes;
+    if (idxDia !== -1) nuevaFila[idxDia] = datos.dia;
+    if (idxFechaNac !== -1) nuevaFila[idxFechaNac] = datos.fechaNacimiento;
+    if (idxCorreo !== -1) nuevaFila[idxCorreo] = datos.correo;
+    if (idxSexo !== -1) nuevaFila[idxSexo] = datos.sexo;
+    if (idxEstadoCivil !== -1) nuevaFila[idxEstadoCivil] = datos.estadoCivil;
+    if (idxSituacion !== -1) nuevaFila[idxSituacion] = datos.situacionLaboral;
+    if (idxComunicado !== -1) nuevaFila[idxComunicado] = datos.comunicado;
+
+    hoja.appendRow(nuevaFila);
+
+    return { estado: true, mensaje: 'Funcionario agregado correctamente.' };
+  } catch (err) {
+    return { estado: false, mensaje: 'Error agregando funcionario: ' + err.message };
+  }
+}
+
+function eliminarFuncionario(token, cedula) {
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('LISTADO_BASE');
+    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
+
+    var datos = hoja.getDataRange().getValues();
+    var idxCedula = -1;
+    var cabeceras = datos[0];
+    for (var j = 0; j < cabeceras.length; j++) {
+      var c = String(cabeceras[j]).toUpperCase();
+      if (c === 'CEDULA' || c === 'CC') { idxCedula = j; break; }
+    }
+
+    if (idxCedula === -1) return { estado: false, mensaje: 'No se encontró la columna de cédula.' };
+
+    for (var i = 1; i < datos.length; i++) {
+      if (String(datos[i][idxCedula]).trim() === String(cedula).trim()) {
+        hoja.deleteRow(i + 1);
+        return { estado: true, mensaje: 'Funcionario eliminado correctamente.' };
+      }
+    }
+
+    return { estado: false, mensaje: 'Funcionario no encontrado.' };
+  } catch (err) {
+    return { estado: false, mensaje: 'Error eliminando funcionario: ' + err.message };
+  }
+}
+
+
+/* =====================================================
+   7. CAMBIO DE TURNO (SOLO GH_JESEP)
+   ===================================================== */
+
+function cambiarTurnoFuncionario(token, cedula, nuevoTurno) {
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('LISTADO_BASE');
+    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
+
+    var datos = hoja.getDataRange().getValues();
+    var idxCedula = -1, idxTurno = -1;
+    var cabeceras = datos[0];
+    
+    for (var j = 0; j < cabeceras.length; j++) {
+      var c = String(cabeceras[j]).toUpperCase();
+      if (c === 'CEDULA' || c === 'CC') idxCedula = j;
+      else if (c === 'TURNO') idxTurno = j;
+    }
+
+    if (idxCedula === -1) return { estado: false, mensaje: 'No se encontró la columna de cédula.' };
+    if (idxTurno === -1) return { estado: false, mensaje: 'No se encontró la columna de turno.' };
+
+    for (var i = 1; i < datos.length; i++) {
+      if (String(datos[i][idxCedula]).trim() === String(cedula).trim()) {
+        hoja.getRange(i + 1, idxTurno + 1).setValue(nuevoTurno);
+        return { estado: true, mensaje: 'Turno actualizado correctamente.' };
+      }
+    }
+
+    return { estado: false, mensaje: 'Funcionario no encontrado.' };
+  } catch (err) {
+    return { estado: false, mensaje: 'Error cambiando turno: ' + err.message };
   }
 }

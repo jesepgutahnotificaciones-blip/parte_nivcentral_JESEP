@@ -60,6 +60,9 @@
     .btn-dorado { background: var(--dorado); color: white; border: none; }
     .btn-dorado:hover { opacity: .9; color: white; }
 
+    .btn-danger { background: #b71c1c; color: white; border: none; }
+    .btn-danger:hover { background: #8e0000; color: white; }
+
     .section { display: none; }
     .section.active { display: block; }
 
@@ -168,6 +171,14 @@
     .toast-app.show { display: block; }
     .report-frame { width: 100%; min-height: 600px; border: 1px solid var(--gris-borde); border-radius: 8px; background: white; }
 
+    .hidden { display: none !important; }
+
+    .form-label { font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; }
+    .form-control, .form-select { border-radius: 6px; border: 1px solid var(--gris-borde); }
+
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+    .checkbox-group label { display: flex; align-items: center; gap: 5px; font-weight: normal; }
+
     @media print {
       body { background: white; }
       .no-print, .menu, .app-header, button, input, select, textarea { display: none !important; }
@@ -183,713 +194,1066 @@
 
 <body>
 
-<!-- =====================================================
-     APLICACIÓN (SIN LOGIN)
-     ===================================================== -->
+  <!-- APLICACIÓN -->
+  <div id="aplicacion" class="hidden">
 
-<div id="aplicacion">
-
-  <header class="app-header">
-    <div class="container-app">
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div>
-          <h3>POLICÍA NACIONAL</h3>
-          <small>Sistema de Gestión de Novedades — JESEP / GUTAH</small>
-        </div>
-        <div class="text-end">
-          <div id="usuarioActual"><strong>ADMINISTRADOR</strong><br><small>ADMINISTRADOR — GENERAL</small></div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="container-app">
-
-    <!-- MENÚ -->
-    <nav class="menu no-print">
-      <button type="button" id="menuConsulta" onclick="mostrarSeccion('consulta')">🔎 Consulta</button>
-      <button type="button" id="menuNovedad" onclick="mostrarSeccion('novedad')">📝 Registrar novedad</button>
-      <button type="button" id="menuTurnos" onclick="mostrarSeccion('turnos')">📋 Turnos</button>
-      <button type="button" id="menuReportes" onclick="mostrarSeccion('reportes')">📄 Reportes</button>
-      <button type="button" id="menuUsuarios" class="soloAdministrador" onclick="mostrarSeccion('usuarios')">👤 Usuarios</button>
-    </nav>
-
-    <!-- CONSULTA FUNCIONARIO -->
-    <section id="seccionConsulta" class="section active">
-      <div class="card">
-        <div class="card-header">🔎 Consulta de funcionario</div>
-        <div class="card-body">
-          <div class="row g-2">
-            <div class="col-md-9">
-              <input type="text" id="buscarValor" class="form-control" placeholder="Digite cédula, nombre, grado, nivel o dependencia" onkeydown="if(event.key === 'Enter'){ buscarFuncionario(); }">
-            </div>
-            <div class="col-md-3">
-              <button type="button" class="btn btn-pol w-100" onclick="buscarFuncionario()">🔎 Buscar</button>
-            </div>
+    <header class="app-header">
+      <div class="container-app">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h3>POLICÍA NACIONAL</h3>
+            <small>Sistema de Gestión de Novedades — JESEP / GUTAH</small>
+          </div>
+          <div class="text-end">
+            <div id="usuarioActual"><strong>—</strong><br><small>—</small></div>
+            <button type="button" class="btn btn-sm btn-outline-light mt-2" onclick="cerrarSesion()">Cerrar sesión</button>
           </div>
         </div>
       </div>
-      <div id="resultadosBusqueda"></div>
-      <div id="fichaFuncionario"></div>
-      <div id="historialFuncionario"></div>
-    </section>
+    </header>
 
-    <!-- REGISTRAR NOVEDAD -->
-    <section id="seccionNovedad" class="section">
-      <div class="card">
-        <div class="card-header">📝 Registrar novedad</div>
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-8">
-              <label class="form-label">Funcionario</label>
-              <input type="text" id="novedadFuncionario" class="form-control" readonly placeholder="Seleccione un funcionario mediante la consulta">
-              <input type="hidden" id="novedadCedula">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Tipo</label>
-              <select id="tipoNovedad" class="form-select">
-                <option value="SERVICIO">SERVICIO</option>
-                <option value="VACACIONES">VACACIONES</option>
-                <option value="PERMISO">PERMISO</option>
-                <option value="CITA MEDICA">CITA MEDICA</option>
-                <option value="LICENCIA">LICENCIA</option>
-                <option value="OTRA NOVEDAD">OTRA NOVEDAD</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Novedad</label>
-              <input type="text" id="novedadNombre" class="form-control" placeholder="Nombre de la novedad">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Días</label>
-              <input type="number" id="novedadDias" class="form-control" min="0">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Fecha inicial</label>
-              <input type="date" id="fechaInicial" class="form-control">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Fecha presentación</label>
-              <input type="date" id="fechaPresentacion" class="form-control">
-            </div>
-            <div class="col-md-12">
-              <label class="form-label">Descripción</label>
-              <textarea id="descripcionNovedad" class="form-control" rows="2" placeholder="Descripción de la novedad"></textarea>
-            </div>
-            <div class="col-md-12">
-              <label class="form-label">Observación</label>
-              <textarea id="observacionNovedad" class="form-control" rows="3" placeholder="Observación"></textarea>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">RV</label>
-              <input type="text" id="rvNovedad" class="form-control">
-            </div>
-          </div>
-          <div class="mt-3">
-            <button type="button" class="btn btn-pol" onclick="registrarNovedad()">💾 Guardar novedad</button>
-            <button type="button" class="btn btn-secondary" onclick="limpiarFormularioNovedad()">Limpiar</button>
-          </div>
-        </div>
-      </div>
-    </section>
+    <main class="container-app">
 
-    <!-- TURNOS -->
-    <section id="seccionTurnos" class="section">
-      <div class="card">
-        <div class="card-header">📋 Listado completo por turno</div>
-        <div class="card-body">
-          <p class="text-muted">Seleccione el grupo que desea consultar.</p>
-          <div class="turn-buttons">
-            <button type="button" class="turn-button" onclick="cargarTurno('A')"><strong>A</strong><span>Consultar Turno A</span></button>
-            <button type="button" class="turn-button" onclick="cargarTurno('B')"><strong>B</strong><span>Consultar Turno B</span></button>
-            <button type="button" class="turn-button" onclick="cargarTurno('C')"><strong>C</strong><span>Consultar Turno C</span></button>
-            <button type="button" class="turn-button" onclick="cargarTurno('SEPRI')"><strong>SEPRI</strong><span>Todos los turnos SEPRI</span></button>
-            <button type="button" class="turn-button" onclick="cargarTurno('GURIN')"><strong>GURIN</strong><span>Grupo GURIN</span></button>
-            <button type="button" class="turn-button" onclick="cargarTurno('NO APLICA')"><strong>N/A</strong><span>NO APLICA</span></button>
-          </div>
-        </div>
-      </div>
-      <div id="resultadoTurno"></div>
-    </section>
+      <!-- MENÚ -->
+      <nav class="menu no-print">
+        <button type="button" id="menuConsulta" onclick="mostrarSeccion('consulta')">🔎 Consulta</button>
+        <button type="button" id="menuNovedad" onclick="mostrarSeccion('novedad')">📝 Registrar novedad</button>
+        <button type="button" id="menuTurnos" onclick="mostrarSeccion('turnos')">📋 Turnos</button>
+        <button type="button" id="menuReportes" onclick="mostrarSeccion('reportes')">📄 Reportes</button>
+        <button type="button" id="menuUsuarios" class="soloAdministrador hidden" onclick="mostrarSeccion('usuarios')">👤 Usuarios</button>
+        <button type="button" id="menuFuncionarios" class="soloUBL hidden" onclick="mostrarSeccion('funcionarios')">👥 Funcionarios</button>
+      </nav>
 
-    <!-- REPORTES -->
-    <section id="seccionReportes" class="section">
-      <div class="card">
-        <div class="card-header">📄 Reportes</div>
-        <div class="card-body">
-          <div class="row g-2">
-            <div class="col-md-6">
-              <label class="form-label">Turno</label>
-              <select id="filtroReporte" class="form-select">
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="SEPRI">SEPRI</option>
-                <option value="GURIN">GURIN</option>
-                <option value="NO APLICA">NO APLICA</option>
-              </select>
-            </div>
-            <div class="col-md-6 d-flex align-items-end gap-2">
-              <button type="button" class="btn btn-pol" onclick="previsualizarReporte()">👁 Previsualizar</button>
-              <button type="button" class="btn btn-secondary" onclick="imprimirReporte()">🖨 Imprimir</button>
-              <button type="button" id="btnGenerarPDF" class="btn btn-danger" onclick="generarArchivoReporte('pdf')">📄 Generar PDF</button>
-              <button type="button" id="btnGenerarExcel" class="btn btn-success" onclick="generarArchivoReporte('excel')">📊 Generar Excel</button>
+      <!-- CONSULTA FUNCIONARIO -->
+      <section id="seccionConsulta" class="section active">
+        <div class="card">
+          <div class="card-header">🔎 Consulta de funcionario</div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-9">
+                <input type="text" id="buscarValor" class="form-control" placeholder="Digite cédula, nombre, grado, nivel o dependencia" onkeydown="if(event.key === 'Enter'){ buscarFuncionario(); }">
+              </div>
+              <div class="col-md-3">
+                <button type="button" class="btn btn-pol w-100" onclick="buscarFuncionario()">🔎 Buscar</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div id="resultadoReporte"></div>
-      <div class="card">
-        <div class="card-header">Historial de reportes</div>
-        <div class="card-body">
-          <button type="button" class="btn btn-pol mb-3" onclick="cargarReportes()">🔄 Actualizar</button>
-          <div id="listaReportes"></div>
-        </div>
-      </div>
-    </section>
+        <div id="resultadosBusqueda"></div>
+        <div id="fichaFuncionario"></div>
+        <div id="historialFuncionario"></div>
+      </section>
 
-    <!-- USUARIOS -->
-    <section id="seccionUsuarios" class="section soloAdministrador">
-      <div class="card">
-        <div class="card-header">👤 Administración de usuarios</div>
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-3"><label class="form-label">Usuario</label><input type="text" id="nuevoUsuario" class="form-control"></div>
-            <div class="col-md-3"><label class="form-label">Contraseña</label><input type="password" id="nuevaClave" class="form-control"></div>
-            <div class="col-md-3"><label class="form-label">Rol</label><select id="nuevoRol" class="form-select"><option value="OPERADOR">OPERADOR</option><option value="ADMINISTRADOR">ADMINISTRADOR</option></select></div>
-            <div class="col-md-3"><label class="form-label">Dependencia</label><input type="text" id="nuevaDependencia" class="form-control" placeholder="Ej. NIVEL_CENTRAL"></div>
+      <!-- REGISTRAR NOVEDAD -->
+      <section id="seccionNovedad" class="section">
+        <div class="card">
+          <div class="card-header">📝 Registrar novedad</div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label class="form-label">Funcionario</label>
+                <input type="text" id="novedadFuncionario" class="form-control" readonly placeholder="Seleccione un funcionario mediante la consulta">
+                <input type="hidden" id="novedadCedula">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Tipo</label>
+                <select id="tipoNovedad" class="form-select">
+                  <!-- Las opciones se generan dinámicamente según el usuario -->
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Novedad</label>
+                <input type="text" id="novedadNombre" class="form-control" placeholder="Nombre de la novedad">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Días</label>
+                <input type="number" id="novedadDias" class="form-control" min="0">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Fecha inicial</label>
+                <input type="date" id="fechaInicial" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Fecha presentación</label>
+                <input type="date" id="fechaPresentacion" class="form-control">
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Descripción</label>
+                <textarea id="descripcionNovedad" class="form-control" rows="2" placeholder="Descripción de la novedad"></textarea>
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Observación</label>
+                <textarea id="observacionNovedad" class="form-control" rows="3" placeholder="Observación"></textarea>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">RV</label>
+                <input type="text" id="rvNovedad" class="form-control">
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="button" class="btn btn-pol" onclick="registrarNovedad()">💾 Guardar novedad</button>
+              <button type="button" class="btn btn-secondary" onclick="limpiarFormularioNovedad()">Limpiar</button>
+            </div>
           </div>
-          <button type="button" class="btn btn-pol mt-3" onclick="crearUsuario()">➕ Crear usuario</button>
         </div>
-      </div>
-      <div id="listaUsuarios"></div>
-    </section>
+      </section>
 
-  </main>
-</div>
+      <!-- TURNOS -->
+      <section id="seccionTurnos" class="section">
+        <div class="card">
+          <div class="card-header">📋 Listado completo por turno</div>
+          <div class="card-body">
+            <p class="text-muted">Seleccione el grupo que desea consultar.</p>
+            <div class="turn-buttons" id="contenedorTurnos">
+              <!-- Los botones se generan dinámicamente según permisos -->
+            </div>
+          </div>
+        </div>
+        <div id="resultadoTurno"></div>
+      </section>
 
-<!-- TOAST -->
-<div id="toastApp" class="toast-app"></div>
+      <!-- REPORTES -->
+      <section id="seccionReportes" class="section">
+        <div class="card">
+          <div class="card-header">📄 Reportes</div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label">Turno</label>
+                <select id="filtroReporte" class="form-select">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="SEPRI">SEPRI</option>
+                  <option value="GURIN">GURIN</option>
+                  <option value="NO APLICA">NO APLICA</option>
+                </select>
+              </div>
+              <div class="col-md-6 d-flex align-items-end gap-2">
+                <button type="button" class="btn btn-pol" onclick="previsualizarReporte()">👁 Previsualizar</button>
+                <button type="button" class="btn btn-secondary" onclick="imprimirReporte()">🖨 Imprimir</button>
+                <button type="button" id="btnGenerarPDF" class="btn btn-danger" onclick="generarArchivoReporte('pdf')">📄 Generar PDF</button>
+                <button type="button" id="btnGenerarExcel" class="btn btn-success" onclick="generarArchivoReporte('excel')">📊 Generar Excel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="resultadoReporte"></div>
+        <div class="card">
+          <div class="card-header">Historial de reportes</div>
+          <div class="card-body">
+            <button type="button" class="btn btn-pol mb-3" onclick="cargarReportes()">🔄 Actualizar</button>
+            <div id="listaReportes"></div>
+          </div>
+        </div>
+      </section>
 
-<!-- JAVASCRIPT -->
-<script>
-const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbw_bg8NgycYtBtaOnmbEw-VlCzjOmtwPSfuo4YU4KomUqZeflfw1mStIaWC1jEJhvm6/exec';
+      <!-- USUARIOS (SOLO ADMIN) -->
+      <section id="seccionUsuarios" class="section soloAdministrador">
+        <div class="card">
+          <div class="card-header">👤 Administración de usuarios</div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-3"><label class="form-label">Usuario</label><input type="text" id="nuevoUsuario" class="form-control"></div>
+              <div class="col-md-3"><label class="form-label">Contraseña</label><input type="password" id="nuevaClave" class="form-control"></div>
+              <div class="col-md-3"><label class="form-label">Rol</label><select id="nuevoRol" class="form-select"><option value="OPERADOR">OPERADOR</option><option value="ADMINISTRADOR">ADMINISTRADOR</option></select></div>
+              <div class="col-md-3"><label class="form-label">Dependencia</label><input type="text" id="nuevaDependencia" class="form-control" placeholder="Ej. NIVEL_CENTRAL"></div>
+            </div>
+            <button type="button" class="btn btn-pol mt-3" onclick="crearUsuario()">➕ Crear usuario</button>
+          </div>
+        </div>
+        <div id="listaUsuarios"></div>
+      </section>
 
-(function configurarPuenteAPI() {
-  const TIMEOUT_MS = 90000;
-  function llamarAPI_(accion, argumentos, alExito, alFallar) {
-    const nombreCallback = '__cb_' + accion.replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
-    let finalizado = false;
+      <!-- FUNCIONARIOS (SOLO UBL_JESEP) -->
+      <section id="seccionFuncionarios" class="section soloUBL">
+        <div class="card">
+          <div class="card-header">👥 Gestión de Funcionarios (LISTADO_BASE)</div>
+          <div class="card-body">
+            <h5>Agregar Nuevo Funcionario</h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Cédula</label>
+                <input type="text" id="funcCedula" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">NIV</label>
+                <select id="funcNiv" class="form-select">
+                  <option value="OF">OF</option>
+                  <option value="NIV">NIV</option>
+                  <option value="EJE">EJE</option>
+                  <option value="PT">PT</option>
+                  <option value="PP">PP</option>
+                  <option value="NO UNI">NO UNI</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">GR</label>
+                <select id="funcGr" class="form-select">
+                  <option value="MG">MG</option>
+                  <option value="BG">BG</option>
+                  <option value="CR">CR</option>
+                  <option value="TC">TC</option>
+                  <option value="MY">MY</option>
+                  <option value="CT">CT</option>
+                  <option value="TE">TE</option>
+                  <option value="ST">ST</option>
+                  <option value="CM">CM</option>
+                  <option value="SC">SC</option>
+                  <option value="IJ">IJ</option>
+                  <option value="IT">IT</option>
+                  <option value="SI">SI</option>
+                  <option value="PT">PT</option>
+                  <option value="PP">PP</option>
+                  <option value="AXP">AXP</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Apellidos y Nombres</label>
+                <input type="text" id="funcNombre" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Dependencia</label>
+                <input type="text" id="funcDependencia" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">PERT</label>
+                <select id="funcPert" class="form-select">
+                  <option value="AP">AP</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Turno (Obligatorio)</label>
+                <select id="funcTurno" class="form-select">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="No Aplica">No Aplica</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Mes</label>
+                <select id="funcMes" class="form-select">
+                  <option value="ENERO">ENERO</option>
+                  <option value="FEBRERO">FEBRERO</option>
+                  <option value="MARZO">MARZO</option>
+                  <option value="ABRIL">ABRIL</option>
+                  <option value="MAYO">MAYO</option>
+                  <option value="JUNIO">JUNIO</option>
+                  <option value="JULIO">JULIO</option>
+                  <option value="AGOSTO">AGOSTO</option>
+                  <option value="SEPTIEMBRE">SEPTIEMBRE</option>
+                  <option value="OCTUBRE">OCTUBRE</option>
+                  <option value="NOVIEMBRE">NOVIEMBRE</option>
+                  <option value="DICIEMBRE">DICIEMBRE</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Día</label>
+                <select id="funcDia" class="form-select">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                  <option value="13">13</option>
+                  <option value="14">14</option>
+                  <option value="15">15</option>
+                  <option value="16">16</option>
+                  <option value="17">17</option>
+                  <option value="18">18</option>
+                  <option value="19">19</option>
+                  <option value="20">20</option>
+                  <option value="21">21</option>
+                  <option value="22">22</option>
+                  <option value="23">23</option>
+                  <option value="24">24</option>
+                  <option value="25">25</option>
+                  <option value="26">26</option>
+                  <option value="27">27</option>
+                  <option value="28">28</option>
+                  <option value="29">29</option>
+                  <option value="30">30</option>
+                  <option value="31">31</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Fecha Nacimiento</label>
+                <input type="date" id="funcFechaNac" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Correo Electrónico</label>
+                <input type="email" id="funcCorreo" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Sexo</label>
+                <select id="funcSexo" class="form-select">
+                  <option value="MASCULINO">MASCULINO</option>
+                  <option value="FEMENINO">FEMENINO</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Estado Civil</label>
+                <select id="funcEstadoCivil" class="form-select">
+                  <option value="CASADO">CASADO</option>
+                  <option value="UNION LIBRE">UNION LIBRE</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Situación Laboral</label>
+                <select id="funcSituacion" class="form-select">
+                  <option value="LABORANDO">LABORANDO</option>
+                  <option value="VACACIONES">VACACIONES</option>
+                  <option value="COMISION DEL SERVICIO">COMISION DEL SERVICIO</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Comunicado Oficial</label>
+                <input type="text" id="funcComunicado" class="form-control">
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="button" class="btn btn-pol" onclick="agregarFuncionario()">➕ Agregar Funcionario</button>
+              <button type="button" class="btn btn-secondary" onclick="limpiarFormularioFuncionario()">Limpiar</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">Lista de Funcionarios</div>
+          <div class="card-body">
+            <button type="button" class="btn btn-pol mb-3" onclick="cargarFuncionarios()">🔄 Actualizar</button>
+            <div id="listaFuncionarios"></div>
+          </div>
+        </div>
+      </section>
 
-    function limpiar() {
-      delete window[nombreCallback];
-      if (elementoScript.parentNode) elementoScript.parentNode.removeChild(elementoScript);
-      clearTimeout(idTimeout);
-    }
+    </main>
+  </div>
 
-    window[nombreCallback] = function(respuesta) {
-      if (finalizado) return;
-      finalizado = true;
-      limpiar();
-      if (respuesta && respuesta.__jsonp_error === true) {
-        if (alFallar) alFallar({ message: respuesta.mensaje || 'Se presentó un error en el servidor.' });
+  <!-- TOAST -->
+  <div id="toastApp" class="toast-app"></div>
+
+  <!-- JAVASCRIPT -->
+  <script>
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyK6jVq1oIGB7QumoQVidGuJJ1wVRco2Pre2b6npju8baGH2hZwgUaI3lBXAF1lrxs/exec';
+  const CLAVE_SESION = 'jesep_sesion';
+
+  (function configurarPuenteAPI() {
+    const TIMEOUT_MS = 90000;
+    function llamarAPI_(accion, argumentos, alExito, alFallar) {
+      const nombreCallback = '__cb_' + accion.replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+      let finalizado = false;
+
+      function limpiar() {
+        delete window[nombreCallback];
+        if (elementoScript.parentNode) elementoScript.parentNode.removeChild(elementoScript);
+        clearTimeout(idTimeout);
+      }
+
+      window[nombreCallback] = function(respuesta) {
+        if (finalizado) return;
+        finalizado = true;
+        limpiar();
+        if (respuesta && respuesta.__jsonp_error === true) {
+          if (alFallar) alFallar({ message: respuesta.mensaje || 'Se presentó un error en el servidor.' });
+          return;
+        }
+        if (alExito) alExito(respuesta);
+      };
+
+      const idTimeout = setTimeout(function() {
+        if (finalizado) return;
+        finalizado = true;
+        limpiar();
+        if (alFallar) alFallar({ message: 'Tiempo de espera agotado contactando el servidor.' });
+      }, TIMEOUT_MS);
+
+      const parametros = new URLSearchParams();
+      parametros.set('accion', accion);
+      parametros.set('callback', nombreCallback);
+      try {
+        parametros.set('args', JSON.stringify(argumentos || []));
+      } catch (e) {
+        finalizado = true;
+        clearTimeout(idTimeout);
+        if (alFallar) alFallar({ message: 'No fue posible preparar la solicitud.' });
         return;
       }
-      if (alExito) alExito(respuesta);
+
+      const elementoScript = document.createElement('script');
+      elementoScript.src = APPS_SCRIPT_API_URL + '?' + parametros.toString();
+      elementoScript.onerror = function() {
+        if (finalizado) return;
+        finalizado = true;
+        limpiar();
+        if (alFallar) alFallar({ message: 'No se pudo contactar el servidor.' });
+      };
+      document.head.appendChild(elementoScript);
+    }
+
+    function crearEjecutor_() {
+      let manejadorExito = null;
+      let manejadorFallo = null;
+      const base = {
+        withSuccessHandler: function(fn) { manejadorExito = fn; return proxyEjecutor; },
+        withFailureHandler: function(fn) { manejadorFallo = fn; return proxyEjecutor; },
+        withUserObject: function() { return proxyEjecutor; }
+      };
+      const proxyEjecutor = new Proxy(base, {
+        get: function(objetivo, propiedad) {
+          if (propiedad in objetivo) return objetivo[propiedad];
+          return function() {
+            const argumentos = Array.prototype.slice.call(arguments);
+            llamarAPI_(propiedad, argumentos, manejadorExito, manejadorFallo);
+          };
+        }
+      });
+      return proxyEjecutor;
+    }
+
+    window.google = window.google || {};
+    window.google.script = window.google.script || {};
+    Object.defineProperty(window.google.script, 'run', { get: crearEjecutor_, configurable: true });
+  })();
+
+  /* VARIABLES GLOBALES */
+  let tokenSesion = null;
+  let usuarioSesion = null;
+  let rolSesion = null;
+  let dependenciaSesion = '';
+  let turnoPermitido = '';
+  let funcionarioSeleccionado = null;
+  let ultimoTurnoConsultado = null;
+  let ultimoResultadoturno = null;
+  let ultimoReporteArchivos = null;
+
+  // Configuración de novedades por usuario
+  const NOVEDADES_POR_USUARIO = {
+    'SGSST_JESEP': ['EXCUSAS MEDICAS', 'RESTRICCIONES MEDICAS', 'LICENCIA DE MATERNIDAD'],
+    'VAC_JESEP': ['PLAN VACACIONAL', 'VACACIONES EXTRAORDINARIAS', 'PLAN REDUCCION', 'VACACIONES DE RETIRO'],
+    'PAS_JESEP': ['COMISIONES ESTUDIO', 'COMISION DE SERVICIO', 'LICENCIA DE PATERNIDAD', 'LICENCIA DE LUTO'],
+    'CIT_JESEP': ['SUSPENCION', 'CITACION JUDICIAL (PERMISO)'],
+    'HIS_JESEP': ['RETIROS 3 MESES DE ALTA', 'ELIMINAR USUARIO POR RETIRO'],
+    'PRO_JESEP': ['CURSO DE ASCENSO'],
+    'GH_JESEP': ['CAMBIO DE TURNO', 'HORARIO FLEXIBLE']
+  };
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Leer sesión guardada por index.html
+    const sesionGuardada = leerSesion();
+    if (sesionGuardada && sesionGuardada.token) {
+      tokenSesion = sesionGuardada.token;
+      usuarioSesion = sesionGuardada.usuario ? sesionGuardada.usuario.usuario : null;
+      rolSesion = sesionGuardada.usuario ? sesionGuardada.usuario.rol : null;
+      dependenciaSesion = sesionGuardada.usuario ? (sesionGuardada.usuario.dependencia || '') : '';
+      turnoPermitido = sesionGuardada.usuario ? (sesionGuardada.usuario.turnoPermitido || '') : '';
+
+      if (!usuarioSesion) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      mostrarAplicacion();
+    } else {
+      window.location.href = 'index.html';
+    }
+  });
+
+  function leerSesion() {
+    try { return JSON.parse(sessionStorage.getItem(CLAVE_SESION) || 'null'); } catch (e) { return null; }
+  }
+
+  function mostrarAplicacion() {
+    document.getElementById('aplicacion').classList.remove('hidden');
+
+    // Actualizar info de usuario
+    const infoUsuario = document.getElementById('usuarioActual');
+    infoUsuario.innerHTML = '<strong>' + esc(usuarioSesion) + '</strong><br><small>' + esc(rolSesion) + (dependenciaSesion ? ' — ' + esc(dependenciaSesion) : '') + '</small>';
+
+    configurarPermisos();
+    mostrarSeccion('consulta');
+  }
+
+  function cerrarSesion() {
+    try { sessionStorage.removeItem(CLAVE_SESION); } catch (e) {}
+    window.location.href = 'index.html';
+  }
+
+  function esc(valor) {
+    if (valor === null || valor === undefined) return '';
+    return String(valor).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function mostrarToast(mensaje, tipo = 'success') {
+    const toast = document.getElementById('toastApp');
+    toast.textContent = mensaje || '';
+    toast.style.background = tipo === 'error' ? '#b71c1c' : '#263238';
+    toast.classList.add('show');
+    setTimeout(function() { toast.classList.remove('show'); }, 3500);
+  }
+
+  function configurarPermisos() {
+    // Sección Usuarios: solo ADMIN
+    const esAdmin = rolSesion === 'ADMINISTRADOR';
+    const menuUsuarios = document.getElementById('menuUsuarios');
+    const seccionUsuarios = document.getElementById('seccionUsuarios');
+
+    if (esAdmin) {
+      menuUsuarios.classList.remove('hidden');
+      seccionUsuarios.classList.remove('hidden');
+    } else {
+      menuUsuarios.classList.add('hidden');
+      seccionUsuarios.classList.add('hidden');
+    }
+
+    // Sección Funcionarios: solo UBL_JESEP
+    const esUBL = usuarioSesion === 'UBL_JESEP';
+    const menuFuncionarios = document.getElementById('menuFuncionarios');
+    const seccionFuncionarios = document.getElementById('seccionFuncionarios');
+
+    if (esUBL) {
+      menuFuncionarios.classList.remove('hidden');
+      seccionFuncionarios.classList.remove('hidden');
+    } else {
+      menuFuncionarios.classList.add('hidden');
+      seccionFuncionarios.classList.add('hidden');
+    }
+
+    // Configurar Tipo de novedad según usuario
+    const tipoSelect = document.getElementById('tipoNovedad');
+    const novedades = NOVEDADES_POR_USUARIO[usuarioSesion] || ['SERVICIO', 'VACACIONES', 'PERMISO', 'CITA MEDICA', 'LICENCIA', 'OTRA NOVEDAD'];
+    tipoSelect.innerHTML = novedades.map(n => '<option value="' + n + '">' + n + '</option>').join('');
+
+    // Botones de turno: según turnoPermitido
+    const contenedorTurnos = document.getElementById('contenedorTurnos');
+    const todosLosTurnos = [
+      { valor: 'A', etiqueta: 'A', descripcion: 'Consultar Turno A' },
+      { valor: 'B', etiqueta: 'B', descripcion: 'Consultar Turno B' },
+      { valor: 'C', etiqueta: 'C', descripcion: 'Consultar Turno C' },
+      { valor: 'SEPRI', etiqueta: 'SEPRI', descripcion: 'Todos los turnos SEPRI' },
+      { valor: 'GURIN', etiqueta: 'GURIN', descripcion: 'Grupo GURIN' },
+      { valor: 'NO APLICA', etiqueta: 'N/A', descripcion: 'NO APLICA' }
+    ];
+
+    let html = '';
+    todosLosTurnos.forEach(function(t) {
+      if (turnoPermitido && turnoPermitido !== 'TODOS' && t.valor !== turnoPermitido) {
+        return;
+      }
+      html += '<button type="button" class="turn-button" onclick="cargarTurno(\'' + t.valor + '\')"><strong>' + t.etiqueta + '</strong><span>' + t.descripcion + '</span></button>';
+    });
+    contenedorTurnos.innerHTML = html;
+
+    // Filtro de reportes
+    const filtroReporte = document.getElementById('filtroReporte');
+    if (turnoPermitido && turnoPermitido !== 'TODOS') {
+      filtroReporte.value = turnoPermitido;
+      filtroReporte.disabled = true;
+    } else {
+      filtroReporte.disabled = false;
+    }
+  }
+
+  function mostrarSeccion(nombre) {
+    const mapa = { consulta: 'seccionConsulta', novedad: 'seccionNovedad', turnos: 'seccionTurnos', reportes: 'seccionReportes', usuarios: 'seccionUsuarios', funcionarios: 'seccionFuncionarios' };
+    const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', turnos: 'menuTurnos', reportes: 'menuReportes', usuarios: 'menuUsuarios', funcionarios: 'menuFuncionarios' };
+
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+    document.querySelectorAll('.menu button').forEach(function(b) { b.classList.remove('active'); });
+
+    const seccion = document.getElementById(mapa[nombre]);
+    if (seccion) seccion.classList.add('active');
+    const boton = document.getElementById(botones[nombre]);
+    if (boton) boton.classList.add('active');
+
+    if (nombre === 'reportes') cargarReportes();
+    if (nombre === 'usuarios') cargarUsuarios();
+    if (nombre === 'funcionarios') cargarFuncionarios();
+  }
+
+  function buscarFuncionario() {
+    const valor = document.getElementById('buscarValor').value.trim();
+    const contenedor = document.getElementById('resultadosBusqueda');
+    if (!valor) {
+      contenedor.innerHTML = '<div class="empty">Ingrese cédula, nombre, grado, nivel o dependencia.</div>';
+      return;
+    }
+    contenedor.innerHTML = '<div class="loading">🔄 Buscando funcionario...</div>';
+    document.getElementById('fichaFuncionario').innerHTML = '';
+    document.getElementById('historialFuncionario').innerHTML = '';
+
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          contenedor.innerHTML = '<div class="empty">' + esc(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No se encontraron funcionarios.') + '</div>';
+          return;
+        }
+        const datos = respuesta.datos || [];
+        if (!datos.length) {
+          contenedor.innerHTML = '<div class="empty">No se encontraron funcionarios.</div>';
+          return;
+        }
+        let html = '<div class="card"><div class="card-header">Funcionarios encontrados</div><div class="card-body">';
+        datos.forEach(function(funcionario) {
+          html += '<div class="employee-card">' +
+            '<div class="employee-name">' + esc(funcionario.funcionario || funcionario.FUNCIONARIO || '') + '</div>' +
+            '<div class="employee-meta">CC: ' + esc(funcionario.cedula || funcionario.CEDULA || '') + ' &nbsp; | &nbsp; GR: ' + esc(funcionario.grado || funcionario.GR || '') + ' &nbsp; | &nbsp; Turno: ' + esc(funcionario.turno || funcionario.TURNO || '') + '</div>' +
+            '<div class="mt-2"><button type="button" class="btn btn-sm btn-pol me-1" onclick=\'seleccionarFuncionario(' + JSON.stringify(funcionario) + ')\'>Seleccionar</button></div>' +
+            '</div>';
+        });
+        html += '</div></div>';
+        contenedor.innerHTML = html;
+      })
+      .withFailureHandler(function(error) {
+        contenedor.innerHTML = '<div class="alert alert-danger">' + esc(error && error.message ? error.message : 'Error al consultar.') + '</div>';
+      })
+      .buscarFuncionario(tokenSesion, valor);
+  }
+
+  function seleccionarFuncionario(funcionario) {
+    funcionarioSeleccionado = funcionario;
+    const cedula = funcionario.cedula || funcionario.CEDULA || '';
+    document.getElementById('novedadCedula').value = cedula;
+    document.getElementById('novedadFuncionario').value = funcionario.funcionario || funcionario.FUNCIONARIO || '';
+    cargarFicha(cedula);
+    mostrarSeccion('novedad');
+    mostrarToast('Funcionario seleccionado.');
+  }
+
+  function cargarFicha(cedula) {
+    const contenedor = document.getElementById('fichaFuncionario');
+    contenedor.innerHTML = '<div class="loading">🔄 Cargando ficha...</div>';
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          contenedor.innerHTML = '<div class="empty">No se pudo cargar la ficha.</div>';
+          return;
+        }
+        const funcionario = respuesta.funcionario || respuesta.datos || {};
+        let html = '<div class="card"><div class="card-header">Ficha del funcionario</div><div class="card-body">';
+        html += '<div class="employee-card">' +
+          '<div class="employee-name">' + esc(funcionario.funcionario || funcionario.FUNCIONARIO || '') + '</div>' +
+          '<div class="employee-meta">Cédula: ' + esc(funcionario.cedula || funcionario.CEDULA || '') + ' | Grado: ' + esc(funcionario.grado || funcionario.GR || '') + ' | Turno: ' + esc(funcionario.turno || funcionario.TURNO || '') + '</div>' +
+          '</div></div></div>';
+        contenedor.innerHTML = html;
+        cargarHistorial(cedula);
+      })
+      .withFailureHandler(function(error) {
+        contenedor.innerHTML = '<div class="alert alert-danger">Error cargando ficha.</div>';
+      })
+      .obtenerFichaFuncionario(tokenSesion, cedula);
+  }
+
+  function cargarHistorial(cedula) {
+    const contenedor = document.getElementById('historialFuncionario');
+    contenedor.innerHTML = '<div class="loading">🔄 Consultando historial...</div>';
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          contenedor.innerHTML = '<div class="empty">No fue posible consultar el historial.</div>';
+          return;
+        }
+        const historial = respuesta.historial || respuesta.datos || [];
+        if (!historial.length) {
+          contenedor.innerHTML = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="empty">No registra novedades.</div></div></div>';
+          return;
+        }
+        let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DESCRIPCIÓN</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th><th>OBSERVACIÓN</th><th>RV</th><th>TEXTO</th></tr></thead><tbody>';
+        historial.forEach(function(n) {
+          html += '<tr><td>' + esc(n.GR) + '</td><td><span class="badge-novedad">' + esc(n.NOVEDAD) + '</span></td><td>' + esc(n.DESCRIPCION) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(formatearValor(n['Fecha INICIAL'])) + '</td><td>' + esc(formatearValor(n['Fecha PRESENTACION'])) + '</td><td>' + esc(n.Observacion) + '</td><td>' + esc(n.RV) + '</td><td>' + esc(n.TEXTO) + '</td></tr>';
+        });
+        html += '</tbody></table></div></div></div>';
+        contenedor.innerHTML = html;
+      })
+      .withFailureHandler(function(error) {
+        contenedor.innerHTML = '<div class="alert alert-danger">Error consultando historial.</div>';
+      })
+      .obtenerHistorialFuncionario(tokenSesion, cedula);
+  }
+
+  function registrarNovedad() {
+    if (!funcionarioSeleccionado) {
+      mostrarToast('Debe seleccionar primero un funcionario.', 'error');
+      return;
+    }
+    const cedula = funcionarioSeleccionado.cedula || funcionarioSeleccionado.CEDULA || document.getElementById('novedadCedula').value;
+    const novedad = document.getElementById('novedadNombre').value.trim();
+    if (!novedad) {
+      mostrarToast('Ingrese la novedad.', 'error');
+      return;
+    }
+    const datos = {
+      cc: cedula, cedula: cedula, novedad: novedad,
+      tipo: document.getElementById('tipoNovedad').value,
+      descripcion: document.getElementById('descripcionNovedad').value.trim(),
+      dias: document.getElementById('novedadDias').value,
+      fechaInicial: document.getElementById('fechaInicial').value,
+      fechaPresentacion: document.getElementById('fechaPresentacion').value,
+      observacion: document.getElementById('observacionNovedad').value.trim(),
+      rv: document.getElementById('rvNovedad').value.trim()
     };
 
-    const idTimeout = setTimeout(function() {
-      if (finalizado) return;
-      finalizado = true;
-      limpiar();
-      if (alFallar) alFallar({ message: 'Tiempo de espera agotado contactando el servidor.' });
-    }, TIMEOUT_MS);
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (respuesta && respuesta.estado === true) {
+          mostrarToast(respuesta.mensaje || 'Novedad registrada correctamente.');
+          limpiarFormularioNovedad();
+          cargarHistorial(cedula);
+        } else {
+          mostrarToast(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No fue posible registrar.', 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        mostrarToast('Error registrando novedad.', 'error');
+      })
+      .registrarNovedad(tokenSesion, datos);
+  }
 
-    const parametros = new URLSearchParams();
-    parametros.set('accion', accion);
-    parametros.set('callback', nombreCallback);
-    try {
-      parametros.set('args', JSON.stringify(argumentos || []));
-    } catch (e) {
-      finalizado = true;
-      clearTimeout(idTimeout);
-      if (alFallar) alFallar({ message: 'No fue posible preparar la solicitud.' });
+  function limpiarFormularioNovedad() {
+    document.getElementById('novedadNombre').value = '';
+    document.getElementById('novedadDias').value = '';
+    document.getElementById('fechaInicial').value = '';
+    document.getElementById('fechaPresentacion').value = '';
+    document.getElementById('descripcionNovedad').value = '';
+    document.getElementById('observacionNovedad').value = '';
+    document.getElementById('rvNovedad').value = '';
+  }
+
+  function cargarTurno(filtro) {
+    if (turnoPermitido && turnoPermitido !== 'TODOS' && filtro !== turnoPermitido) {
+      mostrarToast('No tiene permiso para consultar este turno.', 'error');
       return;
     }
 
-    const elementoScript = document.createElement('script');
-    elementoScript.src = APPS_SCRIPT_API_URL + '?' + parametros.toString();
-    elementoScript.onerror = function() {
-      if (finalizado) return;
-      finalizado = true;
-      limpiar();
-      if (alFallar) alFallar({ message: 'No se pudo contactar el servidor.' });
-    };
-    document.head.appendChild(elementoScript);
+    const contenedor = document.getElementById('resultadoTurno');
+    ultimoTurnoConsultado = filtro;
+    ultimoResultadoturno = null;
+    contenedor.innerHTML = '<div class="loading">🔄 Consultando ' + esc(filtro) + '...</div>';
+
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          contenedor.innerHTML = '<div class="empty">' + esc(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No se encontró información.') + '</div>';
+          return;
+        }
+        ultimoResultadoturno = respuesta;
+        renderTurno(respuesta);
+      })
+      .withFailureHandler(function(error) {
+        contenedor.innerHTML = '<div class="alert alert-danger">Error consultando el turno.</div>';
+      })
+      .consultarPorTurno(tokenSesion, filtro);
   }
 
-  function crearEjecutor_() {
-    let manejadorExito = null;
-    let manejadorFallo = null;
-    const base = {
-      withSuccessHandler: function(fn) { manejadorExito = fn; return proxyEjecutor; },
-      withFailureHandler: function(fn) { manejadorFallo = fn; return proxyEjecutor; },
-      withUserObject: function() { return proxyEjecutor; }
-    };
-    const proxyEjecutor = new Proxy(base, {
-      get: function(objetivo, propiedad) {
-        if (propiedad in objetivo) return objetivo[propiedad];
-        return function() {
-          const argumentos = Array.prototype.slice.call(arguments);
-          llamarAPI_(propiedad, argumentos, manejadorExito, manejadorFallo);
-        };
+  function renderTurno(respuesta) {
+    const contenedor = document.getElementById('resultadoTurno');
+    const datos = respuesta.datos || {};
+    let funcionarios = datos.funcionarios || respuesta.funcionarios || [];
+    const filtro = datos.filtro || respuesta.filtro || ultimoTurnoConsultado || '';
+
+    if (!funcionarios.length) {
+      contenedor.innerHTML = '<div class="card"><div class="card-body"><div class="empty">No hay funcionarios registradados para ' + esc(filtro) + '.</div></div></div>';
+      return;
+    }
+
+    // Categorías: OF, EJE, PT, PP, AXP, NO UNI (NIV eliminado)
+    const categorias = ['OF', 'EJE', 'PT', 'PP', 'AXP', 'NO UNI'];
+    let fuerzaDisponible = {};
+    let fuerzaEfectiva = {};
+    let totalDisponible = 0;
+    let totalEfectiva = 0;
+
+    categorias.forEach(cat => {
+      fuerzaDisponible[cat] = 0;
+      fuerzaEfectiva[cat] = 0;
+    });
+
+    funcionarios.forEach(f => {
+      let nivelRaw = String(f.nivel || f.NIV || f.categoria || f.CATEGORIA || '').trim().toUpperCase();
+      let gradoRaw = String(f.grado || f.GR || '').trim().toUpperCase();
+      
+      let catAsignada = 'NO UNI';
+      if (nivelRaw && categorias.includes(nivelRaw)) {
+        catAsignada = nivelRaw;
+      } else {
+        if (gradoRaw.includes('OF') || gradoRaw.includes('TENIENTE') || gradoRaw.includes('CAPITAN') || gradoRaw.includes('MAYOR') || gradoRaw.includes('CORONEL') || gradoRaw.includes('GENERAL')) {
+          catAsignada = 'OF';
+        } else if (gradoRaw.includes('PT') || gradoRaw.includes('PATRULLERO')) {
+          catAsignada = 'PT';
+        } else if (gradoRaw.includes('SI') || gradoRaw.includes('EJECUTIVO') || gradoRaw.includes('INTENDENTE') || gradoRaw.includes('COMISARIO')) {
+          catAsignada = 'EJE';
+        } else if (gradoRaw.includes('PP') || gradoRaw.includes('PATRULLERO DE POLICIA') || gradoRaw.includes('AUXILIAR')) {
+          catAsignada = 'PP';
+        } else if (gradoRaw.includes('AXP') || gradoRaw.includes('APOYO')) {
+          catAsignada = 'AXP';
+        }
+      }
+
+      fuerzaDisponible[catAsignada]++;
+      totalDisponible++;
+
+      const novedades = f.historialNovedades || [];
+      if (novedades.length === 0) {
+        fuerzaEfectiva[catAsignada]++;
+        totalEfectiva++;
       }
     });
-    return proxyEjecutor;
-  }
 
-  window.google = window.google || {};
-  window.google.script = window.google.script || {};
-  Object.defineProperty(window.google.script, 'run', { get: crearEjecutor_, configurable: true });
-})();
-
-/* VARIABLES GLOBALES */
-let tokenSesion = 'MODO_SIN_LOGIN';
-let usuarioSesion = 'ADMINISTRADOR';
-let rolSesion = 'ADMINISTRADOR';
-let dependenciaSesion = '';
-let funcionarioSeleccionado = null;
-let ultimoTurnoConsultado = null;
-let ultimoResultadoturno = null;
-let ultimoReporteArchivos = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-  configurarPermisos();
-  mostrarSeccion('consulta');
-});
-
-function esc(valor) {
-  if (valor === null || valor === undefined) return '';
-  return String(valor).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
-
-function mostrarToast(mensaje, tipo = 'success') {
-  const toast = document.getElementById('toastApp');
-  toast.textContent = mensaje || '';
-  toast.style.background = tipo === 'error' ? '#b71c1c' : '#263238';
-  toast.classList.add('show');
-  setTimeout(function() { toast.classList.remove('show'); }, 3500);
-}
-
-function configurarPermisos() {
-  document.querySelectorAll('.soloAdministrador').forEach(function(el) {
-    el.style.display = '';
-  });
-}
-
-function mostrarSeccion(nombre) {
-  const mapa = { consulta: 'seccionConsulta', novedad: 'seccionNovedad', turnos: 'seccionTurnos', reportes: 'seccionReportes', usuarios: 'seccionUsuarios' };
-  const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', turnos: 'menuTurnos', reportes: 'menuReportes', usuarios: 'menuUsuarios' };
-
-  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
-  document.querySelectorAll('.menu button').forEach(function(b) { b.classList.remove('active'); });
-
-  const seccion = document.getElementById(mapa[nombre]);
-  if (seccion) seccion.classList.add('active');
-  const boton = document.getElementById(botones[nombre]);
-  if (boton) boton.classList.add('active');
-
-  if (nombre === 'reportes') cargarReportes();
-  if (nombre === 'usuarios') cargarUsuarios();
-}
-
-function buscarFuncionario() {
-  const valor = document.getElementById('buscarValor').value.trim();
-  const contenedor = document.getElementById('resultadosBusqueda');
-  if (!valor) {
-    contenedor.innerHTML = '<div class="empty">Ingrese cédula, nombre, grado, nivel o dependencia.</div>';
-    return;
-  }
-  contenedor.innerHTML = '<div class="loading">🔄 Buscando funcionario...</div>';
-  document.getElementById('fichaFuncionario').innerHTML = '';
-  document.getElementById('historialFuncionario').innerHTML = '';
-
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (!respuesta || respuesta.estado !== true) {
-        contenedor.innerHTML = '<div class="empty">' + esc(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No se encontraron funcionarios.') + '</div>';
-        return;
-      }
-      const datos = respuesta.datos || [];
-      if (!datos.length) {
-        contenedor.innerHTML = '<div class="empty">No se encontraron funcionarios.</div>';
-        return;
-      }
-      let html = '<div class="card"><div class="card-header">Funcionarios encontrados</div><div class="card-body">';
-      datos.forEach(function(funcionario) {
-        html += '<div class="employee-card">' +
-          '<div class="employee-name">' + esc(funcionario.funcionario || funcionario.FUNCIONARIO || '') + '</div>' +
-          '<div class="employee-meta">CC: ' + esc(funcionario.cedula || funcionario.CEDULA || '') + ' &nbsp; | &nbsp; GR: ' + esc(funcionario.grado || funcionario.GR || '') + ' &nbsp; | &nbsp; Turno: ' + esc(funcionario.turno || funcionario.TURNO || '') + '</div>' +
-          '<div class="mt-2"><button type="button" class="btn btn-sm btn-pol me-1" onclick=\'seleccionarFuncionario(' + JSON.stringify(funcionario) + ')\'>Seleccionar</button></div>' +
-          '</div>';
-      });
-      html += '</div></div>';
-      contenedor.innerHTML = html;
-    })
-    .withFailureHandler(function(error) {
-      contenedor.innerHTML = '<div class="alert alert-danger">' + esc(error && error.message ? error.message : 'Error al consultar.') + '</div>';
-    })
-    .buscarFuncionario(tokenSesion, valor);
-}
-
-function seleccionarFuncionario(funcionario) {
-  funcionarioSeleccionado = funcionario;
-  const cedula = funcionario.cedula || funcionario.CEDULA || '';
-  document.getElementById('novedadCedula').value = cedula;
-  document.getElementById('novedadFuncionario').value = funcionario.funcionario || funcionario.FUNCIONARIO || '';
-  cargarFicha(cedula);
-  mostrarSeccion('novedad');
-  mostrarToast('Funcionario seleccionado.');
-}
-
-function cargarFicha(cedula) {
-  const contenedor = document.getElementById('fichaFuncionario');
-  contenedor.innerHTML = '<div class="loading">🔄 Cargando ficha...</div>';
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (!respuesta || respuesta.estado !== true) {
-        contenedor.innerHTML = '<div class="empty">No se pudo cargar la ficha.</div>';
-        return;
-      }
-      const funcionario = respuesta.funcionario || respuesta.datos || {};
-      let html = '<div class="card"><div class="card-header">Ficha del funcionario</div><div class="card-body">';
-      html += '<div class="employee-card">' +
-        '<div class="employee-name">' + esc(funcionario.funcionario || funcionario.FUNCIONARIO || '') + '</div>' +
-        '<div class="employee-meta">Cédula: ' + esc(funcionario.cedula || funcionario.CEDULA || '') + ' | Grado: ' + esc(funcionario.grado || funcionario.GR || '') + ' | Turno: ' + esc(funcionario.turno || funcionario.TURNO || '') + '</div>' +
-        '</div></div></div>';
-      contenedor.innerHTML = html;
-      cargarHistorial(cedula);
-    })
-    .withFailureHandler(function(error) {
-      contenedor.innerHTML = '<div class="alert alert-danger">Error cargando ficha.</div>';
-    })
-    .obtenerFichaFuncionario(tokenSesion, cedula);
-}
-
-function cargarHistorial(cedula) {
-  const contenedor = document.getElementById('historialFuncionario');
-  contenedor.innerHTML = '<div class="loading">🔄 Consultando historial...</div>';
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (!respuesta || respuesta.estado !== true) {
-        contenedor.innerHTML = '<div class="empty">No fue posible consultar el historial.</div>';
-        return;
-      }
-      const historial = respuesta.historial || respuesta.datos || [];
-      if (!historial.length) {
-        contenedor.innerHTML = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="empty">No registra novedades.</div></div></div>';
-        return;
-      }
-      let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DESCRIPCIÓN</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th><th>OBSERVACIÓN</th><th>RV</th><th>TEXTO</th></tr></thead><tbody>';
-      historial.forEach(function(n) {
-        html += '<tr><td>' + esc(n.GR) + '</td><td><span class="badge-novedad">' + esc(n.NOVEDAD) + '</span></td><td>' + esc(n.DESCRIPCION) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(formatearValor(n['Fecha INICIAL'])) + '</td><td>' + esc(formatearValor(n['Fecha PRESENTACION'])) + '</td><td>' + esc(n.Observacion) + '</td><td>' + esc(n.RV) + '</td><td>' + esc(n.TEXTO) + '</td></tr>';
-      });
-      html += '</tbody></table></div></div></div>';
-      contenedor.innerHTML = html;
-    })
-    .withFailureHandler(function(error) {
-      contenedor.innerHTML = '<div class="alert alert-danger">Error consultando historial.</div>';
-    })
-    .obtenerHistorialFuncionario(tokenSesion, cedula);
-}
-
-function registrarNovedad() {
-  if (!funcionarioSeleccionado) {
-    mostrarToast('Debe seleccionar primero un funcionario.', 'error');
-    return;
-  }
-  const cedula = funcionarioSeleccionado.cedula || funcionarioSeleccionado.CEDULA || document.getElementById('novedadCedula').value;
-  const novedad = document.getElementById('novedadNombre').value.trim();
-  if (!novedad) {
-    mostrarToast('Ingrese la novedad.', 'error');
-    return;
-  }
-  const datos = {
-    cc: cedula, cedula: cedula, novedad: novedad,
-    tipo: document.getElementById('tipoNovedad').value,
-    descripcion: document.getElementById('descripcionNovedad').value.trim(),
-    dias: document.getElementById('novedadDias').value,
-    fechaInicial: document.getElementById('fechaInicial').value,
-    fechaPresentacion: document.getElementById('fechaPresentacion').value,
-    observacion: document.getElementById('observacionNovedad').value.trim(),
-    rv: document.getElementById('rvNovedad').value.trim()
-  };
-
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (respuesta && respuesta.estado === true) {
-        mostrarToast(respuesta.mensaje || 'Novedad registrada correctamente.');
-        limpiarFormularioNovedad();
-        cargarHistorial(cedula);
-      } else {
-        mostrarToast(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No fue posible registrar.', 'error');
-      }
-    })
-    .withFailureHandler(function(error) {
-      mostrarToast('Error registrando novedad.', 'error');
-    })
-    .registrarNovedad(tokenSesion, datos);
-}
-
-function limpiarFormularioNovedad() {
-  document.getElementById('novedadNombre').value = '';
-  document.getElementById('novedadDias').value = '';
-  document.getElementById('fechaInicial').value = '';
-  document.getElementById('fechaPresentacion').value = '';
-  document.getElementById('descripcionNovedad').value = '';
-  document.getElementById('observacionNovedad').value = '';
-  document.getElementById('rvNovedad').value = '';
-}
-
-function cargarTurno(filtro) {
-  const contenedor = document.getElementById('resultadoTurno');
-  ultimoTurnoConsultado = filtro;
-  ultimoResultadoturno = null;
-  contenedor.innerHTML = '<div class="loading">🔄 Consultando ' + esc(filtro) + '...</div>';
-
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (!respuesta || respuesta.estado !== true) {
-        contenedor.innerHTML = '<div class="empty">' + esc(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No se encontró información.') + '</div>';
-        return;
-      }
-      ultimoResultadoturno = respuesta;
-      renderTurno(respuesta);
-    })
-    .withFailureHandler(function(error) {
-      contenedor.innerHTML = '<div class="alert alert-danger">Error consultando el turno.</div>';
-    })
-    .consultarPorTurno(tokenSesion, filtro);
-}
-
-function renderTurno(respuesta) {
-  const contenedor = document.getElementById('resultadoTurno');
-  const datos = respuesta.datos || {};
-  let funcionarios = datos.funcionarios || respuesta.funcionarios || [];
-  const filtro = datos.filtro || respuesta.filtro || ultimoTurnoConsultado || '';
-
-  if (!funcionarios.length) {
-    contenedor.innerHTML = '<div class="card"><div class="card-body"><div class="empty">No hay funcionarios registrados para ' + esc(filtro) + '.</div></div></div>';
-    return;
-  }
-
-  // Categorías requeridas: OF, NIV, EJE, PT, PP, AXP, NO UNI
-  const categorias = ['OF', 'NIV', 'EJE', 'PT', 'PP', 'AXP', 'NO UNI'];
-  let fuerzaDisponible = {};
-  let fuerzaEfectiva = {};
-  let totalDisponible = 0;
-  let totalEfectiva = 0;
-
-  categorias.forEach(cat => {
-    fuerzaDisponible[cat] = 0;
-    fuerzaEfectiva[cat] = 0;
-  });
-
-  funcionarios.forEach(f => {
-    // Normalizar nivel (NIV o similar) o grado para asignación de categoría
-    let nivelRaw = String(f.nivel || f.NIV || f.categoria || f.CATEGORIA || '').trim().toUpperCase();
-    let gradoRaw = String(f.grado || f.GR || '').trim().toUpperCase();
+    let html = '<div class="card mb-3"><div class="card-header bg-white">📊 <strong>CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + esc(filtro) + '</strong></div><div class="card-body">';
+    html += '<div class="row g-2 mb-3">';
     
-    let catAsignada = 'NO UNI';
-    if (nivelRaw && categorias.includes(nivelRaw)) {
-      catAsignada = nivelRaw;
-    } else {
-      // Inferencia por grado o texto si no está especificado explícitamente en el nivel
-      if (gradoRaw.includes('OF') || gradoRaw.includes('TENIENTE') || gradoRaw.includes('CAPITAN') || gradoRaw.includes('MAYOR') || gradoRaw.includes('CORONEL') || gradoRaw.includes('GENERAL')) {
-        catAsignada = 'OF';
-      } else if (gradoRaw.includes('PT') || gradoRaw.includes('PATRULLERO')) {
-        catAsignada = 'PT';
-      } else if (gradoRaw.includes('SI') || gradoRaw.includes('EJECUTIVO') || gradoRaw.includes('INTENDENTE') || gradoRaw.includes('COMISARIO')) {
-        catAsignada = 'EJE';
-      } else if (gradoRaw.includes('PP') || gradoRaw.includes('PATRULLERO DE POLICIA') || gradoRaw.includes('AUXILIAR')) {
-        catAsignada = 'PP';
-      } else if (gradoRaw.includes('AXP') || gradoRaw.includes('APOYO')) {
-        catAsignada = 'AXP';
-      } else if (gradoRaw.includes('NIV')) {
-        catAsignada = 'NIV';
-      }
-    }
+    categorias.forEach(cat => {
+      let disp = fuerzaDisponible[cat];
+      let efec = fuerzaEfectiva[cat];
+      let etiqueta = cat === 'EJE' ? 'Nivel EJEC' : cat;
+      html += '<div class="col-6 col-md-3 col-lg">';
+      html += '<div class="stat-card">';
+      html += '<div class="stat-label">' + etiqueta + '</div>';
+      html += '<div class="stat-number">' + efec + ' <small class="text-muted fs-6">/ ' + disp + '</small></div>';
+      html += '<div class="text-muted" style="font-size: 11px;">Efectiva / Total</div>';
+      html += '</div></div>';
+    });
 
-    fuerzaDisponible[catAsignada]++;
-    totalDisponible++;
-
-    // Verificar si tiene novedad activa
-    const novedades = f.historialNovedades || [];
-    if (novedades.length === 0) {
-      fuerzaEfectiva[catAsignada]++;
-      totalEfectiva++;
-    }
-  });
-
-  let html = '<div class="card mb-3"><div class="card-header bg-white">📊 <strong>CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + esc(filtro) + '</strong></div><div class="card-body">';
-  html += '<div class="row g-2 mb-3">';
-  
-  categorias.forEach(cat => {
-    let disp = fuerzaDisponible[cat];
-    let efec = fuerzaEfectiva[cat];
     html += '<div class="col-6 col-md-3 col-lg">';
-    html += '<div class="stat-card">';
-    html += '<div class="stat-label">' + cat + '</div>';
-    html += '<div class="stat-number">' + efec + ' <small class="text-muted fs-6">/ ' + disp + '</small></div>';
-    html += '<div class="text-muted" style="font-size: 11px;">Efectiva / Total</div>';
+    html += '<div class="stat-card" style="border-top-color: var(--dorado);">';
+    html += '<div class="stat-label">En formacion</div>';
+    html += '<div class="stat-number" style="color: var(--dorado);">' + totalEfectiva + ' <small class="text-muted fs-6">/ ' + totalDisponible + '</small></div>';
+    html += '<div class="text-muted" style="font-size: 11px;">Total Efectiva / Total</div>';
     html += '</div></div>';
-  });
 
-  html += '<div class="col-6 col-md-3 col-lg">';
-  html += '<div class="stat-card" style="border-top-color: var(--dorado);">';
-  html += '<div class="stat-label">TOTAL</div>';
-  html += '<div class="stat-number" style="color: var(--dorado);">' + totalEfectiva + ' <small class="text-muted fs-6">/ ' + totalDisponible + '</small></div>';
-  html += '<div class="text-muted" style="font-size: 11px;">Total Efectiva / Total</div>';
-  html += '</div></div>';
+    html += '</div>';
+    html += '</div></div>';
 
-  html += '</div>'; // fin row
-  html += '</div></div>'; // fin card
+    html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
+    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
-  // Tabla detallada
-  html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
-  html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>NIV</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
+    funcionarios.forEach(function(f, indice) {
+      const novedades = f.historialNovedades || [];
+      let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">S/N</span>';
+      html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+    });
+    html += '</tbody></table></div></div></div>';
+    contenedor.innerHTML = html;
+  }
 
-  funcionarios.forEach(function(f, indice) {
-    const novedades = f.historialNovedades || [];
-    let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">Sin novedades</span>';
-    html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
-  });
-  html += '</tbody></table></div></div></div>';
-  contenedor.innerHTML = html;
-}
+  function previsualizarReporte() {
+    const filtro = document.getElementById('filtroReporte').value;
+    const contenedor = document.getElementById('resultadoReporte');
+    contenedor.innerHTML = '<div class="loading">🔄 Generando previsualización...</div>';
 
-function previsualizarReporte() {
-  const filtro = document.getElementById('filtroReporte').value;
-  const contenedor = document.getElementById('resultadoReporte');
-  contenedor.innerHTML = '<div class="loading">🔄 Generando previsualización...</div>';
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          contenedor.innerHTML = '<div class="alert alert-danger">No se pudo generar la previsualización.</div>';
+          return;
+        }
+        contenedor.innerHTML = '<div class="card"><div class="card-header">Previsualización — ' + esc(filtro) + '</div><div class="card-body p-0"><iframe class="report-frame" id="frameReporte"></iframe></div></div>';
+        document.getElementById('frameReporte').srcdoc = respuesta.html || respuesta.contenido || '';
+      })
+      .withFailureHandler(function(error) {
+        contenedor.innerHTML = '<div class="alert alert-danger">Error generando reporte.</div>';
+      })
+      .previsualizarReporteTurno(tokenSesion, filtro);
+  }
 
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (!respuesta || respuesta.estado !== true) {
-        contenedor.innerHTML = '<div class="alert alert-danger">No se pudo generar la previsualización.</div>';
-        return;
-      }
-      contenedor.innerHTML = '<div class="card"><div class="card-header">Previsualización — ' + esc(filtro) + '</div><div class="card-body p-0"><iframe class="report-frame" id="frameReporte"></iframe></div></div>';
-      document.getElementById('frameReporte').srcdoc = respuesta.html || respuesta.contenido || '';
-    })
-    .withFailureHandler(function(error) {
-      contenedor.innerHTML = '<div class="alert alert-danger">Error generando reporte.</div>';
-    })
-    .previsualizarReporteTurno(tokenSesion, filtro);
-}
+  function imprimirReporte() {
+    const frame = document.getElementById('frameReporte');
+    if (!frame) { mostrarToast('Primero genere la previsualización.', 'error'); return; }
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  }
 
-function imprimirReporte() {
-  const frame = document.getElementById('frameReporte');
-  if (!frame) { mostrarToast('Primero genere la previsualización.', 'error'); return; }
-  frame.contentWindow.focus();
-  frame.contentWindow.print();
-}
+  function generarReporteDesdeTurno() {
+    if (!ultimoTurnoConsultado) { mostrarToast('Primero consulte un turno.', 'error'); return; }
+    document.getElementById('filtroReporte').value = ultimoTurnoConsultado;
+    generarArchivoReporte('pdf');
+  }
 
-function generarReporteDesdeTurno() {
-  if (!ultimoTurnoConsultado) { mostrarToast('Primero consulte un turno.', 'error'); return; }
-  document.getElementById('filtroReporte').value = ultimoTurnoConsultado;
-  generarArchivoReporte('pdf');
-}
+  function generarArchivoReporte(formato) {
+    const filtro = document.getElementById('filtroReporte').value;
+    mostrarToast('Generando archivos...');
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          mostrarToast('No fue posible generar los archivos.', 'error');
+          return;
+        }
+        const datos = respuesta.datos || respuesta;
+        ultimoReporteArchivos = { urlPDF: datos.urlPDF || '', urlExcel: datos.urlExcel || '' };
+        const url = formato === 'pdf' ? datos.urlPDF : datos.urlExcel;
+        if (url && url !== '#') {
+          window.open(url, '_blank', 'noopener');
+        } else {
+          mostrarToast('La URL del archivo no está disponible.', 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        mostrarToast('Error generando los archivos.', 'error');
+      })
+      .generarReporteTurno(tokenSesion, filtro);
+  }
 
-function generarArchivoReporte(formato) {
-  const filtro = document.getElementById('filtroReporte').value;
-  mostrarToast('Generando archivos...');
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (!respuesta || respuesta.estado !== true) {
-        mostrarToast('No fue posible generar los archivos.', 'error');
-        return;
-      }
-      const datos = respuesta.datos || respuesta;
-      ultimoReporteArchivos = { urlPDF: datos.urlPDF || '', urlExcel: datos.urlExcel || '' };
-      window.open(formato === 'pdf' ? datos.urlPDF : datos.urlExcel, '_blank', 'noopener');
-    })
-    .withFailureHandler(function(error) {
-      mostrarToast('Error generando los archivos.', 'error');
-    })
-    .generarReporteTurno(tokenSesion, filtro);
-}
+  function cargarReportes() {
+    const contenedor = document.getElementById('listaReportes');
+    if (!contenedor) return;
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="empty">No hay reportes.</div>'; return; }
+        const reportes = respuesta.datos || respuesta.reportes || [];
+        let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>CONSECUTIVO</th><th>FECHA</th><th>USUARIO</th><th>TURNO</th><th>URL</th></tr></thead><tbody>';
+        reportes.forEach(r => {
+          html += '<tr><td>' + esc(r.CONSECUTIVO) + '</td><td>' + esc(formatearValor(r.FECHA)) + '</td><td>' + esc(r.USUARIO) + '</td><td>' + esc(r.TURNO) + '</td><td>' + (r.URL ? '<a href="' + esc(r.URL) + '" target="_blank">Abrir</a>' : '') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        contenedor.innerHTML = html;
+      })
+      .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando reportes.</div>'; })
+      .listarReportes(tokenSesion, 100);
+  }
 
-function cargarReportes() {
-  const contenedor = document.getElementById('listaReportes');
-  if (!contenedor) return;
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="empty">No hay reportes.</div>'; return; }
-      const reportes = respuesta.datos || respuesta.reportes || [];
-      let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>CONSECUTIVO</th><th>FECHA</th><th>USUARIO</th><th>TURNO</th><th>URL</th></tr></thead><tbody>';
-      reportes.forEach(r => {
-        html += '<tr><td>' + esc(r.CONSECUTIVO) + '</td><td>' + esc(formatearValor(r.FECHA)) + '</td><td>' + esc(r.USUARIO) + '</td><td>' + esc(r.TURNO) + '</td><td>' + (r.URL ? '<a href="' + esc(r.URL) + '" target="_blank">Abrir</a>' : '') + '</td></tr>';
-      });
-      html += '</tbody></table></div>';
-      contenedor.innerHTML = html;
-    })
-    .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando reportes.</div>'; })
-    .listarReportes(tokenSesion, 100);
-}
+  function cargarUsuarios() {
+    const contenedor = document.getElementById('listaUsuarios');
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando usuarios.</div>'; return; }
+        const usuarios = respuesta.datos || respuesta.usuarios || [];
+        let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>USUARIO</th><th>ROL</th><th>DEPENDENCIA</th><th>ESTADO</th></tr></thead><tbody>';
+        usuarios.forEach(u => {
+          html += '<tr><td>' + esc(u.USUARIO) + '</td><td>' + esc(u.ROL) + '</td><td>' + esc(u.DEPENDENCIA) + '</td><td>' + esc(u.ESTADO) + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        contenedor.innerHTML = html;
+      })
+      .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando usuarios.</div>'; })
+      .listarUsuarios(tokenSesion);
+  }
 
-function cargarUsuarios() {
-  const contenedor = document.getElementById('listaUsuarios');
-  google.script.run
-    .withSuccessHandler(function(respuesta) {
-      if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando usuarios.</div>'; return; }
-      const usuarios = respuesta.datos || respuesta.usuarios || [];
-      let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>USUARIO</th><th>ROL</th><th>DEPENDENCIA</th><th>ESTADO</th></tr></thead><tbody>';
-      usuarios.forEach(u => {
-        html += '<tr><td>' + esc(u.USUARIO) + '</td><td>' + esc(u.ROL) + '</td><td>' + esc(u.DEPENDENCIA) + '</td><td>' + esc(u.ESTADO) + '</td></tr>';
-      });
-      html += '</tbody></table></div>';
-      contenedor.innerHTML = html;
-    })
-    .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando usuarios.</div>'; })
-    .listarUsuarios(tokenSesion);
-}
+  function crearUsuario() {
+    const usuario = document.getElementById('nuevoUsuario').value.trim();
+    const clave = document.getElementById('nuevaClave').value;
+    const rol = document.getElementById('nuevoRol').value;
+    const dependencia = document.getElementById('nuevaDependencia').value.trim();
+    if (!usuario || !clave || !rol || !dependencia) { mostrarToast('Complete todos los campos.', 'error'); return; }
 
-function crearUsuario() {
-  const usuario = document.getElementById('nuevoUsuario').value.trim();
-  const clave = document.getElementById('nuevaClave').value;
-  const rol = document.getElementById('nuevoRol').value;
-  const dependencia = document.getElementById('nuevaDependencia').value.trim();
-  if (!usuario || !clave || !rol || !dependencia) { mostrarToast('Complete todos los campos.', 'error'); return; }
+    google.script.run
+      .withSuccessHandler(res => {
+        mostrarToast(res.mensaje || 'Usuario creado.');
+        cargarUsuarios();
+      })
+      .withFailureHandler(() => mostrarToast('Error creando usuario.', 'error'))
+      .crearUsuario(tokenSesion, usuario, clave, rol, dependencia);
+  }
 
-  google.script.run
-    .withSuccessHandler(res => {
-      mostrarToast(res.mensaje || 'Usuario creado.');
-      cargarUsuarios();
-    })
-    .withFailureHandler(() => mostrarToast('Error creando usuario.', 'error'))
-    .crearUsuario(tokenSesion, usuario, clave, rol, dependencia);
-}
+  function cambiarEstadoUsuario(usuario, nuevoEstado) {
+    google.script.run
+      .withSuccessHandler(() => { mostrarToast('Estado actualizado.'); cargarUsuarios(); })
+      .withFailureHandler(() => mostrarToast('Error.', 'error'))
+      .cambiarEstadoUsuario(tokenSesion, usuario, nuevoEstado);
+  }
 
-function cambiarEstadoUsuario(usuario, nuevoEstado) {
-  google.script.run
-    .withSuccessHandler(() => { mostrarToast('Estado actualizado.'); cargarUsuarios(); })
-    .withFailureHandler(() => mostrarToast('Error.', 'error'))
-    .cambiarEstadoUsuario(tokenSesion, usuario, nuevoEstado);
-}
+  // ========== FUNCIONES PARA UBL_JESEP ==========
 
-function formatearValor(valor) {
-  if (valor === null || valor === undefined || valor === '') return '';
-  if (typeof valor === 'string') return valor;
-  try {
-    const fecha = new Date(valor);
-    if (!isNaN(fecha.getTime())) {
-      return String(fecha.getDate()).padStart(2,'0') + '/' + String(fecha.getMonth() + 1).padStart(2,'0') + '/' + fecha.getFullYear();
+  function cargarFuncionarios() {
+    const contenedor = document.getElementById('listaFuncionarios');
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando funcionarios.</div>'; return; }
+        const funcionarios = respuesta.datos || respuesta.funcionarios || [];
+        let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>CÉDULA</th><th>NIV</th><th>GR</th><th>NOMBRE</th><th>DEPENDENCIA</th><th>TURNO</th><th>ACCIONES</th></tr></thead><tbody>';
+        funcionarios.forEach(f => {
+          html += '<tr><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td><button type="button" class="btn btn-sm btn-danger" onclick="eliminarFuncionario(\'' + esc(f.cedula || f.CEDULA) + '\')">Eliminar</button></td></tr>';
+        });
+        html += '</tbody></table></div>';
+        contenedor.innerHTML = html;
+      })
+      .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando funcionarios.</div>'; })
+      .listarFuncionarios(tokenSesion);
+  }
+
+  function agregarFuncionario() {
+    const datos = {
+      cedula: document.getElementById('funcCedula').value.trim(),
+      nivel: document.getElementById('funcNiv').value,
+      grado: document.getElementById('funcGr').value,
+      funcionario: document.getElementById('funcNombre').value.trim(),
+      dependencia: document.getElementById('funcDependencia').value.trim(),
+      pert: document.getElementById('funcPert').value,
+      turno: document.getElementById('funcTurno').value,
+      mes: document.getElementById('funcMes').value,
+      dia: document.getElementById('funcDia').value,
+      fechaNacimiento: document.getElementById('funcFechaNac').value,
+      correo: document.getElementById('funcCorreo').value.trim(),
+      sexo: document.getElementById('funcSexo').value,
+      estadoCivil: document.getElementById('funcEstadoCivil').value,
+      situacionLaboral: document.getElementById('funcSituacion').value,
+      comunicado: document.getElementById('funcComunicado').value.trim()
+    };
+
+    if (!datos.cedula || !datos.funcionario || !datos.turno) {
+      mostrarToast('Complete los campos obligatorios (Cédula, Nombre, Turno).', 'error');
+      return;
     }
-  } catch(e) {}
-  return String(valor);
-}
-</script>
+
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (respuesta && respuesta.estado === true) {
+          mostrarToast(respuesta.mensaje || 'Funcionario agregado correctamente.');
+          limpiarFormularioFuncionario();
+          cargarFuncionarios();
+        } else {
+          mostrarToast(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No fue posible agregar.', 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        mostrarToast('Error agregando funcionario.', 'error');
+      })
+      .agregarFuncionario(tokenSesion, datos);
+  }
+
+  function eliminarFuncionario(cedula) {
+    if (!confirm('¿Está seguro de eliminar este funcionario?')) return;
+
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (respuesta && respuesta.estado === true) {
+          mostrarToast('Funcionario eliminado correctamente.');
+          cargarFuncionarios();
+        } else {
+          mostrarToast('No fue posible eliminar.', 'error');
+        }
+      })
+      .withFailureHandler(() => mostrarToast('Error eliminando funcionario.', 'error'))
+      .eliminarFuncionario(tokenSesion, cedula);
+  }
+
+  function limpiarFormularioFuncionario() {
+    document.getElementById('funcCedula').value = '';
+    document.getElementById('funcNombre').value = '';
+    document.getElementById('funcDependencia').value = '';
+    document.getElementById('funcCorreo').value = '';
+    document.getElementById('funcComunicado').value = '';
+  }
+
+  function formatearValor(valor) {
+    if (valor === null || valor === undefined || valor === '') return '';
+    if (typeof valor === 'string') return valor;
+    try {
+      const fecha = new Date(valor);
+      if (!isNaN(fecha.getTime())) {
+        return String(fecha.getDate()).padStart(2,'0') + '/' + String(fecha.getMonth() + 1).padStart(2,'0') + '/' + fecha.getFullYear();
+      }
+    } catch(e) {}
+    return String(valor);
+  }
+  </script>
 
 </body>
 </html>
