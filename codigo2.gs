@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r16';
+var VERSION_APP = 'JESEP-2026-10-02-r17';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -1128,8 +1128,13 @@ function generarExcelBlob_(funcs, filtro, consecutivo) {
       }
     }
 
-    // Exporta a xlsx binario real
-    return libro.getAs(MimeType.EXCEL).setName('Reporte_Turno_' + filtro + '_' + consecutivo + '.xlsx');
+    // Exporta a xlsx binario real.
+    // La clase Spreadsheet NO tiene getAs(): hay que obtener el archivo
+    // de Drive y convertirlo desde ahi.
+    var archivo = DriveApp.getFileById(libro.getId());
+    var excelBlob = archivo.getAs(MimeType.EXCEL);
+    excelBlob.setName('Reporte_Turno_' + filtro + '_' + consecutivo + '.xlsx');
+    return excelBlob;
   } finally {
     // La hoja temporal se descarta; nunca queda visible en Drive
     try { DriveApp.getFileById(libro.getId()).setTrashed(true); } catch (e) {}
