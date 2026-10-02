@@ -517,33 +517,70 @@
       '&_=' + Date.now();
   }
 
-  function descargarReporte_(formato, filtro) {
-    const url = urlReporte_(formato, filtro);
-
-    // 1) Enlace visible: si el navegador no dispara la descarga solo,
-    //    el usuario puede pulsarlo manualmente.
-    mostrarEnlaceDescarga_(formato, filtro, url);
-
-    // 2) Intento automatico en un iframe oculto (no abre pestana).
-    const marco = document.createElement('iframe');
-    marco.style.display = 'none';
-    marco.src = url;
-    marco.onerror = function() { /* el enlace visible cubre el fallback */ };
-    document.body.appendChild(marco);
-    setTimeout(function() {
-      try { document.body.removeChild(marco); } catch (e) {}
-    }, 60000);
+  // Convierte base64 en Blob y dispara la descarga. Nada se guarda en Drive:
+  // el archivo existe solo en la memoria del navegador.
+  function descargarBase64_(base64, mimeType, nombreArchivo) {
+    const binario = atob(base64);
+    const bytes = new Uint8Array(binario.length);
+    for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombreArchivo;
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
   }
 
-  function mostrarEnlaceDescarga_(formato, filtro, url) {
+  function mostrarEnlaceDescarga_(formato, filtro) {
     const caja = document.getElementById('ultimoArchivo');
     if (!caja) return;
     const ext = (formato === 'pdf') ? 'PDF' : 'Excel';
+    const url = urlReporte_(formato, filtro);
     caja.className = 'alert alert-info mt-3';
     caja.innerHTML =
-      'Si la descarga no inició automáticamente, use este enlace: ' +
+      'Si el archivo no se descargó, use este enlace directo: ' +
       '<a href="' + url + '" target="_blank" rel="noopener" class="alert-link">' +
       'Descargar ' + ext + ' del turno ' + esc(filtro) + '</a>';
+  }
+
+  // Descarga principal: pide el archivo en base64 por el canal JSONP
+  // (el mismo que usa el login, ya verificado) y lo guarda como Blob.
+  function descargarReporte_(formato, filtro) {
+    mostrarToast('Generando ' + (formato === 'pdf' ? 'PDF' : 'Excel') + '...');
+
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          mostrarToast((respuesta && respuesta.mensaje) || 'No se pudo generar el archivo.', 'error');
+          mostrarEnlaceDescarga_(formato, filtro);
+          return;
+        }
+        const datos = respuesta.datos || {};
+        try {
+          if (formato === 'pdf') {
+            if (!datos.pdfBase64) throw new Error('El servidor no devolvió el PDF.');
+            descargarBase64_(datos.pdfBase64, 'application/pdf',
+              datos.nombrePDF || ('Reporte_' + filtro + '.pdf'));
+          } else {
+            if (!datos.excelBase64) throw new Error('El servidor no devolvió el Excel.');
+            descargarBase64_(datos.excelBase64,
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              datos.nombreExcel || ('Reporte_' + filtro + '.xlsx'));
+          }
+          mostrarToast('Archivo descargado: ' + (datos.nombrePDF || datos.nombreExcel || ''));
+        } catch (e) {
+          mostrarToast('Error al descargar: ' + e.message, 'error');
+          mostrarEnlaceDescarga_(formato, filtro);
+        }
+      })
+      .withFailureHandler(function(error) {
+        mostrarToast('Error: ' + ((error && error.message) || 'fallo de red'), 'error');
+        mostrarEnlaceDescarga_(formato, filtro);
+      })
+      .generarReporteTurno(tokenSesion, filtro);
   }
 
   function esc(valor) {

@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r12';
+var VERSION_APP = 'JESEP-2026-10-02-r14';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -76,8 +76,10 @@ function doGet(e) {
       return servirArchivoReporte_(String(p.formato || 'pdf').toLowerCase(),
                                   String(p.filtro || 'A'));
     } catch (err) {
+      // Incluye la versión en el texto para identificar siempre el código desplegado
       return ContentService
-        .createTextOutput('No se pudo generar el archivo.\n\n' + (err && err.message ? err.message : err))
+        .createTextOutput('[VERSION ' + VERSION_APP + ']\nNo se pudo generar el archivo.\n\n' +
+          (err && err.message ? err.message : err))
         .setMimeType(ContentService.MimeType.TEXT);
     }
   }
@@ -193,7 +195,12 @@ function doGet(e) {
         };
     }
   } catch (error) {
-    resultado = { estado: false, version: VERSION_APP, mensaje: error.toString() };
+    // El mensaje incluye la versión para saber siempre qué código falló
+    resultado = {
+      estado: false,
+      version: VERSION_APP,
+      mensaje: '[' + VERSION_APP + '] ' + error.toString()
+    };
   }
 
   return responder_(resultado);
@@ -578,6 +585,25 @@ function letraColumna_(indiceBase) {
    guarda en la carpeta de descargas del usuario.
    No se crea ningún archivo en Drive.
    ===================================================== */
+// createTextOutput() acepta un Blob y conserva su tipo de contenido.
+// No se llama a setMimeType porque solo acepta el enumerado MimeType
+// y el .xlsx no existe en ese enumerado. Tampoco se usa createOutput(),
+// que no está disponible en todos los runtimes.
+function responderBlob_(blob) {
+  var salida;
+  if (typeof ContentService.createTextOutput === 'function') {
+    salida = ContentService.createTextOutput(blob);
+  } else if (typeof ContentService.createOutput === 'function') {
+    salida = ContentService.createOutput(blob);
+  } else {
+    throw new Error('No se encontro un metodo de ContentService para enviar el archivo.');
+  }
+  return salida.setHeaders({
+    'Content-Disposition': 'attachment; filename="' + blob.getName() + '"',
+    'Cache-Control': 'no-store, no-cache, must-revalidate'
+  });
+}
+
 function servirArchivoReporte_(formato, filtro) {
   var resultado = consultarPorTurno('MODO_SIN_LOGIN', filtro);
   if (!resultado.estado) {
@@ -604,15 +630,8 @@ function servirArchivoReporte_(formato, filtro) {
     blob.setContentType('application/pdf');
   }
 
-  // createOutput(blob) toma el tipo de contenido del propio blob.
-  // No se usa setMimeType porque solo acepta el enum MimeType y el .xlsx
-  // no existe en ese enumerado.
-  return ContentService
-    .createOutput(blob)
-    .setHeaders({
-      'Content-Disposition': 'attachment; filename="' + blob.getName() + '"',
-      'Cache-Control': 'no-store, no-cache, must-revalidate'
-    });
+  // El blob ya lleva su propio tipo de contenido; se delega en responderBlob_.
+  return responderBlob_(blob);
 }
 
 function filaCabeceraNovedades_(hoja) {
