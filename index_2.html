@@ -391,11 +391,13 @@
                 <button type="button" class="btn btn-secondary" onclick="imprimirReporte()">🖨 Imprimir</button>
                 <button type="button" id="btnGenerarPDF" class="btn btn-danger" onclick="generarArchivoReporte('pdf')">📄 Generar PDF</button>
                 <button type="button" id="btnGenerarExcel" class="btn btn-success" onclick="generarArchivoReporte('excel')">📊 Generar Excel</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="probarDescarga()">🔧 Probar descarga</button>
               </div>
             </div>
           </div>
         </div>
         <div id="resultadoReporte"></div>
+        <div id="ultimoArchivo"></div>
         <div class="card">
           <div class="card-header">Historial de reportes</div>
           <div class="card-body">
@@ -787,20 +789,40 @@
   // Descarga el archivo directamente desde Apps Script.
   // El servidor responde con Content-Disposition: attachment, asi que el
   // navegador guarda el archivo sin pasar por Drive ni por base64.
-  function descargarReporte_(formato, filtro) {
-    const url = APPS_SCRIPT_API_URL +
+  function urlReporte_(formato, filtro) {
+    return APPS_SCRIPT_API_URL +
       '?accion=descargarReporte' +
       '&formato=' + encodeURIComponent(formato) +
       '&filtro=' + encodeURIComponent(filtro) +
       '&_=' + Date.now();
+  }
 
+  function descargarReporte_(formato, filtro) {
+    const url = urlReporte_(formato, filtro);
+
+    // 1) Enlace visible como respaldo
+    mostrarEnlaceDescarga_(formato, filtro, url);
+
+    // 2) Intento automatico en iframe oculto
     const marco = document.createElement('iframe');
     marco.style.display = 'none';
     marco.src = url;
+    marco.onerror = function() {};
     document.body.appendChild(marco);
     setTimeout(function() {
       try { document.body.removeChild(marco); } catch (e) {}
-    }, 120000);
+    }, 60000);
+  }
+
+  function mostrarEnlaceDescarga_(formato, filtro, url) {
+    const caja = document.getElementById('ultimoArchivo');
+    if (!caja) return;
+    const ext = (formato === 'pdf') ? 'PDF' : 'Excel';
+    caja.className = 'alert alert-info mt-3';
+    caja.innerHTML =
+      'Si la descarga no inició automáticamente, use este enlace: ' +
+      '<a href="' + url + '" target="_blank" rel="noopener" class="alert-link">' +
+      'Descargar ' + ext + ' del turno ' + esc(filtro) + '</a>';
   }
 
   function esc(valor) {
@@ -1387,6 +1409,40 @@ function onTipoNovedadChange() {
 
     mostrarToast('Descargando ' + (formato === 'pdf' ? 'PDF' : 'Excel') + ' del turno ' + filtro + '...');
     descargarReporte_(formato, filtro);
+  }
+
+  // Consulta la ruta de descarga y muestra que responde el servidor.
+function probarDescarga() {
+    const filtro = document.getElementById('filtroReporte').value || 'A';
+    const caja = document.getElementById('ultimoArchivo');
+    if (caja) {
+      caja.className = 'alert alert-warning mt-3';
+      caja.textContent = 'Probando descarga del turno ' + filtro + '...';
+    }
+
+    const url = urlReporte_('pdf', filtro);
+    fetch(url, { redirect: 'follow' })
+      .then(function(r) { return r.text().then(function(txt) { return { ok: r.ok, status: r.status, txt: txt }; }); })
+      .then(function(res) {
+        if (!caja) return;
+        if (res.txt.indexOf('%PDF') === 0) {
+          caja.className = 'alert alert-success mt-3';
+          caja.textContent = 'OK: el servidor devolvió un PDF válido (' + res.txt.length + ' bytes). ' +
+            'Si no se descargó solo, use el enlace de arriba.';
+          const enlace = document.createElement('a');
+          enlace.href = url; enlace.target = '_blank'; enlace.rel = 'noopener';
+          enlace.textContent = ' Abrir/descargar PDF manualmente';
+          caja.appendChild(enlace);
+        } else {
+          caja.className = 'alert alert-danger mt-3';
+          caja.textContent = 'El servidor NO devolvió un PDF. Respuesta: ' + res.txt.substring(0, 400);
+        }
+      })
+      .catch(function(e) {
+        if (!caja) return;
+        caja.className = 'alert alert-danger mt-3';
+        caja.textContent = 'Error de red al probar la descarga: ' + e.message;
+      });
   }
 
   function cargarReportes() {
