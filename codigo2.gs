@@ -20,6 +20,33 @@ function abrirLibro_() {
    ENRUTADOR PRINCIPAL (JSONP PARA GITHUB PAGES / WEB APP)
    ===================================================== */
 
+/* =====================================================
+   ENRUTADO DE MÓDULOS POR USUARIO
+   - index_1: módulo de turnos / novedades generales (DISPONIBLE_*)
+   - index_2: módulo por área (SGSST, VAC, PAS, CIT, HIS, PRO, UBL, GH)
+   - ADMINISTRADOR: acceso a ambos
+   ===================================================== */
+function modulosDeUsuario_(usuarioId, rol) {
+  var id = String(usuarioId || '').trim().toUpperCase();
+  var esAdmin = (String(rol || '').trim().toUpperCase() === 'ADMINISTRADOR');
+
+  // Administradores: ven los dos módulos y el selector de módulo se los muestra
+  if (esAdmin) return ['index_1', 'index_2'];
+
+  // Usuarios del módulo de áreas JESEP -> solo index_2
+  var usuariosArea = {
+    'SGSST_JESEP': 1, 'VAC_JESEP': 1, 'PAS_JESEP': 1, 'CIT_JESEP': 1,
+    'HIS_JESEP': 1, 'PRO_JESEP': 1, 'UBL_JESEP': 1, 'GH_JESEP': 1
+  };
+  if (usuariosArea[id]) return ['index_2'];
+
+  // Usuarios de turnos DISPONIBLE_* -> solo index_1
+  if (id.indexOf('DISPONIBLE_') === 0) return ['index_1'];
+
+  // Cualquier otro OPERADOR -> solo index_1 (comportamiento previo)
+  return ['index_1'];
+}
+
 function doGet(e) {
   var p = (e && e.parameter) ? e.parameter : {};
   var accion = p.accion;
@@ -241,25 +268,25 @@ function validarUsuario(usuarioIngresado, claveIngresada) {
       var rolUsuario = String((idxRol >= 0 && row[idxRol]) ? row[idxRol] : 'OPERADOR').trim().toUpperCase();
       var turnoPermitido = idxTurno >= 0 && row[idxTurno] ? String(row[idxTurno]).trim().toUpperCase() : '';
 
+      // Identificador normalizado del usuario (sin espacios, en mayúsculas)
+      var usuarioId = String(row[idxUser] || '').trim().toUpperCase();
+
       // Determinar turno permitido basado en el nombre de usuario si no está en la hoja
       if (!turnoPermitido) {
-        var userUpper = userIn.toUpperCase();
-        if (userUpper.indexOf('DISPONIBLE_A') !== -1) turnoPermitido = 'A';
-        else if (userUpper.indexOf('DISPONIBLE_B') !== -1) turnoPermitido = 'B';
-        else if (userUpper.indexOf('DISPONIBLE_C') !== -1) turnoPermitido = 'C';
+        if (usuarioId.indexOf('DISPONIBLE_A') !== -1) turnoPermitido = 'A';
+        else if (usuarioId.indexOf('DISPONIBLE_B') !== -1) turnoPermitido = 'B';
+        else if (usuarioId.indexOf('DISPONIBLE_C') !== -1) turnoPermitido = 'C';
       }
 
-      // Asignar módulos según el rol o permisos institucionales
-      var modulosAsignados = ['index_1', 'index_2'];
-      if (rolUsuario === 'OPERADOR') {
-        modulosAsignados = ['index_1'];
-      }
+      // Asignar módulos según el usuario y el rol
+      var modulosAsignados = modulosDeUsuario_(usuarioId, rolUsuario);
 
       return {
         estado: true,
         token: 'SESION_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
         usuario: {
           usuario: row[idxUser],
+          usuarioId: usuarioId,
           rol: rolUsuario,
           dependencia: (idxDep >= 0 && row[idxDep]) ? row[idxDep] : 'GENERAL',
           turnoPermitido: turnoPermitido
@@ -397,8 +424,88 @@ function obtenerHistorialFuncionario(token, cedula) {
    3. REGISTRO DE NOVEDADES
    ===================================================== */
 
+// Novedades habilitadas por cada usuario del módulo index_2.
+// Debe coincidir con NOVEDADES_POR_USUARIO del front-end.
+function novedadesPermitidasDe_(usuarioId) {
+  var mapa = {
+    'SGSST_JESEP': ['EXCUSAS MEDICAS', 'RESTRICCIONES MEDICAS', 'LICENCIA DE MATERNIDAD'],
+    'VAC_JESEP': ['PLAN VACACIONAL', 'VACACIONES EXTRAORDINARIAS', 'PLAN REDUCCION', 'VACACIONES DE RETIRO'],
+    'PAS_JESEP': ['COMISIONES ESTUDIO', 'COMISION DE SERVICIO', 'LICENCIA DE PATERNIDAD', 'LICENCIA DE LUTO'],
+    'CIT_JESEP': ['SUSPENCION', 'CITACION JUDICIAL (PERMISO)'],
+    'HIS_JESEP': ['RETIROS 3 MESES DE ALTA', 'ELIMINAR USUARIO POR RETIRO'],
+    'PRO_JESEP': ['CURSO DE ASCENSO'],
+    'GH_JESEP': ['CAMBIO DE TURNO', 'HORARIO FLEXIBLE']
+  };
+  return mapa[String(usuarioId || '').trim().toUpperCase()] || null;
+}
+
+/* Normaliza el identificador de usuario (mayúsculas, sin espacios sobrantes) */
+function normalizarUsuario_(v) {
+  return String(v === null || v === undefined ? '' : v)
+    .replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+// Consulta el ROL real del usuario directamente en la hoja USUARIOS,
+// para no confiar en el rol que envía el cliente.
+function esUsuarioAdmin_(usuario) {
+  var id = normalizarUsuario_(usuario);
+  if (!id) return false;
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('USUARIOS');
+    if (!hoja) return false;
+
+    var datos = hoja.getDataRange().getDisplayValues();
+    if (datos.length < 2) return false;
+
+    var filaCab = -1, idxUser = -1, idxRol = -1, i;
+    for (i = 0; i < Math.min(datos.length, 10); i++) {
+      var cab = datos[i].map(normalizarCab_);
+      var u = buscarCab_(cab, /USUARIO|USER|LOGIN/);
+      var c = buscarCab_(cab, /CLAVE|CONTRASE|PASS|HASH/, /SALT/);
+      if (u !== -1 && c !== -1) {
+        filaCab = i; idxUser = u;
+        idxRol = buscarCab_(cab, /^ROL|PERFIL/);
+        break;
+      }
+    }
+    if (filaCab === -1) return false;
+
+    for (i = filaCab + 1; i < datos.length; i++) {
+      if (normalizarUsuario_(datos[i][idxUser]) === id) {
+        var rol = idxRol >= 0 ? String(datos[i][idxRol] || '').trim().toUpperCase() : '';
+        return (rol === 'ADMINISTRADOR' || rol === 'ADMIN');
+      }
+    }
+  } catch (e) {
+    return false;
+  }
+  return false;
+}
+
 function registrarNovedad(token, datosNovedad) {
   try {
+    var tipo = String(datosNovedad.tipo || '').trim().toUpperCase();
+
+    // ADMINISTRADOR puede registrar cualquier novedad
+    var esAdmin = esUsuarioAdmin_(datosNovedad.usuario);
+
+    if (!esAdmin) {
+      var permitidas = novedadesPermitidasDe_(datosNovedad.usuario);
+      if (!permitidas) {
+        return { estado: false, mensaje: 'Su usuario no tiene novedades habilitadas.' };
+      }
+      var coincide = permitidas.some(function(n) { return n.toUpperCase() === tipo; });
+      if (!coincide) {
+        return {
+          estado: false,
+          mensaje: 'El tipo "' + datosNovedad.tipo + '" no está habilitado para su usuario.'
+        };
+      }
+    }
+
     var ss = abrirLibro_();
     var hoja = ss.getSheetByName('NOVEDADES');
     if (!hoja) {

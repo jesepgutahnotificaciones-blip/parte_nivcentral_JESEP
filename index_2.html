@@ -681,6 +681,7 @@
   /* VARIABLES GLOBALES */
   let tokenSesion = null;
   let usuarioSesion = null;
+  let usuarioId = '';
   let rolSesion = null;
   let dependenciaSesion = '';
   let turnoPermitido = '';
@@ -689,7 +690,7 @@
   let ultimoResultadoturno = null;
   let ultimoReporteArchivos = null;
 
-  // Configuración de novedades por usuario
+  // Configuración de novedades por usuario (clave = ID normalizado en mayúsculas)
   const NOVEDADES_POR_USUARIO = {
     'SGSST_JESEP': ['EXCUSAS MEDICAS', 'RESTRICCIONES MEDICAS', 'LICENCIA DE MATERNIDAD'],
     'VAC_JESEP': ['PLAN VACACIONAL', 'VACACIONES EXTRAORDINARIAS', 'PLAN REDUCCION', 'VACACIONES DE RETIRO'],
@@ -700,12 +701,28 @@
     'GH_JESEP': ['CAMBIO DE TURNO', 'HORARIO FLEXIBLE']
   };
 
+  // UBL_JESEP no registra novedades: administra el LISTADO_BASE
+  const USUARIOS_SIN_NOVEDADES = ['UBL_JESEP'];
+
+  /* Normaliza el identificador de usuario para comparar sin tildes,
+     sin espacios sobrantes y en mayúsculas (ej. " sgsst_jesep " -> "SGSST_JESEP") */
+  function idUsuarioNormalizado_(valor) {
+    return String(valor === null || valor === undefined ? '' : valor)
+      .trim()
+      .toUpperCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     // Leer sesión guardada por index.html
     const sesionGuardada = leerSesion();
     if (sesionGuardada && sesionGuardada.token) {
       tokenSesion = sesionGuardada.token;
       usuarioSesion = sesionGuardada.usuario ? sesionGuardada.usuario.usuario : null;
+      // Se usa el identificador normalizado para todas las comparaciones de permisos
+      usuarioId = idUsuarioNormalizado_(
+        (sesionGuardada.usuario && sesionGuardada.usuario.usuarioId) || usuarioSesion
+      );
       rolSesion = sesionGuardada.usuario ? sesionGuardada.usuario.rol : null;
       dependenciaSesion = sesionGuardada.usuario ? (sesionGuardada.usuario.dependencia || '') : '';
       turnoPermitido = sesionGuardada.usuario ? (sesionGuardada.usuario.turnoPermitido || '') : '';
@@ -768,8 +785,8 @@
       seccionUsuarios.classList.add('hidden');
     }
 
-    // Sección Funcionarios: solo UBL_JESEP
-    const esUBL = usuarioSesion === 'UBL_JESEP';
+    // Sección Funcionarios (agregar/eliminar de LISTADO_BASE): solo UBL_JESEP
+    const esUBL = usuarioId === 'UBL_JESEP';
     const menuFuncionarios = document.getElementById('menuFuncionarios');
     const seccionFuncionarios = document.getElementById('seccionFuncionarios');
 
@@ -781,10 +798,30 @@
       seccionFuncionarios.classList.add('hidden');
     }
 
-    // Configurar Tipo de novedad según usuario
+    // UBL_JESEP no registra novedades: se oculta la sección de novedad
+    const menuNovedad = document.getElementById('menuNovedad');
+    const seccionNovedad = document.getElementById('seccionNovedad');
+    if (USUARIOS_SIN_NOVEDADES.indexOf(usuarioId) !== -1) {
+      if (menuNovedad) menuNovedad.classList.add('hidden');
+      if (seccionNovedad) seccionNovedad.classList.add('hidden');
+    }
+
+    // Llenar el desplegable Tipo SOLO con las novedades del usuario conectado
     const tipoSelect = document.getElementById('tipoNovedad');
-    const novedades = NOVEDADES_POR_USUARIO[usuarioSesion] || ['SERVICIO', 'VACACIONES', 'PERMISO', 'CITA MEDICA', 'LICENCIA', 'OTRA NOVEDAD'];
-    tipoSelect.innerHTML = novedades.map(n => '<option value="' + n + '">' + n + '</option>').join('');
+    const novedades = NOVEDADES_POR_USUARIO[usuarioId] || [];
+
+    if (novedades.length) {
+      tipoSelect.innerHTML = '<option value="">Seleccione el tipo de novedad...</option>' +
+        novedades.map(function(n) {
+          return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+        }).join('');
+      tipoSelect.disabled = false;
+    } else {
+      // Sin novedades habilitadas: el campo queda vacío y bloqueado
+      tipoSelect.innerHTML = '<option value="">— Su usuario no tiene novedades habilitadas —</option>';
+      tipoSelect.disabled = true;
+    }
+    onTipoNovedadChange();
 
     // Botones de turno: según turnoPermitido
     const contenedorTurnos = document.getElementById('contenedorTurnos');
@@ -979,6 +1016,13 @@ function onTipoNovedadChange() {
     const tipoNovedad = document.getElementById('tipoNovedad').value;
     const novedad = document.getElementById('novedadNombre').value.trim();
 
+    // Validación en el cliente: el tipo debe pertenecer a los habilitados para este usuario
+    const permitidos = NOVEDADES_POR_USUARIO[usuarioId] || [];
+    if (permitidos.indexOf(tipoNovedad) === -1) {
+      mostrarToast('El tipo de novedad no está habilitado para su usuario.', 'error');
+      return;
+    }
+
     if (!novedad) {
       mostrarToast('Ingrese la novedad.', 'error');
       return;
@@ -991,7 +1035,8 @@ function onTipoNovedadChange() {
       fechaInicial: document.getElementById('fechaInicial').value,
       fechaPresentacion: document.getElementById('fechaPresentacion').value,
       observacion: document.getElementById('observacionNovedad').value.trim(),
-      rv: document.getElementById('rvNovedad').value.trim()
+      rv: document.getElementById('rvNovedad').value.trim(),
+      usuario: usuarioId
     };
 
     // Manejar CAMBIO DE TURNO (GH_JESEP)
