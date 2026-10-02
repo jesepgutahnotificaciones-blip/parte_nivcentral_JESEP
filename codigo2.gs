@@ -513,13 +513,13 @@ function generarReporteTurno(token, filtro) {
     var funcs = resultadoTurno.datos.funcionarios;
     var consecutivo = 'REP-' + Date.now();
 
-    // Generar PDF usando DocumentApp
+    // Generar PDF usando HtmlService
     var pdfBlob = generarPDFBlob_(funcs, filtro, consecutivo);
     var pdfFile = DriveApp.createFile(pdfBlob);
     pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     var urlPDF = pdfFile.getUrl();
 
-    // Generar Excel (CSV) usando SpreadsheetApp
+    // Generar Excel (CSV)
     var excelBlob = generarExcelBlob_(funcs, filtro, consecutivo);
     var excelFile = DriveApp.createFile(excelBlob);
     excelFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -548,7 +548,7 @@ function generarReporteTurno(token, filtro) {
       }
     };
   } catch (err) {
-    return { estado: false, mensaje: err.message };
+    return { estado: false, mensaje: 'Error generando reporte: ' + err.message };
   }
 }
 
@@ -582,8 +582,9 @@ function generarPDFBlob_(funcs, filtro, consecutivo) {
 
   html += '</tbody></table></body></html>';
 
-  var blob = Utilities.newBlob(html, 'text/html', 'reporte.html');
-  return blob.getAs('application/pdf');
+  // Usar HtmlService para generar PDF correctamente
+  var htmlOutput = HtmlService.createHtmlOutput(html);
+  return htmlOutput.getAs('application/pdf');
 }
 
 function generarExcelBlob_(funcs, filtro, consecutivo) {

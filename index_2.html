@@ -9,9 +9,9 @@
 
   <style>
     :root {
-      --verde: #272930;
-      --verde-oscuro: #050c29;
-      --azul: #050c29;
+      --verde: #01592F;
+      --verde-oscuro: #013d21;
+      --azul: #173E56;
       --dorado: #C9A227;
       --gris: #f4f6f7;
       --gris-borde: #dfe4e7;
@@ -36,11 +36,7 @@
     .app-header h3 { margin: 0; font-weight: 700; }
     .app-header small { opacity: .9; }
 
-    .container-app {
-      max-width: 1500px;
-      margin: auto;
-      padding: 20px;
-    }
+    .container-app { max-width: 1500px; margin: auto; padding: 20px; }
 
     .card {
       border: none;
@@ -58,16 +54,11 @@
 
     .card-body { padding: 18px; }
 
-    .btn-pol {
-      background: var(--verde);
-      color: white;
-      border: none;
-    }
+    .btn-pol { background: var(--verde); color: white; border: none; }
+    .btn-pol:hover { background: var(--verde-oscuro); color: white; }
 
-    .btn-pol:hover {
-      background: var(--verde-oscuro);
-      color: white;
-    }
+    .btn-dorado { background: var(--dorado); color: white; border: none; }
+    .btn-dorado:hover { opacity: .9; color: white; }
 
     .section { display: none; }
     .section.active { display: block; }
@@ -93,6 +84,30 @@
     .menu button:hover { background: #eef3f1; }
     .menu button.active { background: var(--verde); color: white; }
 
+    .turn-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .turn-button {
+      border: 1px solid var(--gris-borde);
+      background: white;
+      border-radius: 12px;
+      padding: 18px 12px;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .turn-button:hover {
+      transform: translateY(-2px);
+      border-color: var(--verde);
+      box-shadow: 0 4px 12px rgba(0,0,0,.10);
+    }
+
+    .turn-button strong { display: block; font-size: 30px; color: var(--verde); }
+    .turn-button span { display: block; margin-top: 5px; font-size: 13px; color: #546e7a; }
+
     .employee-card {
       border-left: 5px solid var(--verde);
       background: #f8faf9;
@@ -101,74 +116,39 @@
       margin-bottom: 12px;
     }
 
-    .employee-name {
-      font-size: 19px;
-      font-weight: 700;
-      color: var(--verde);
-    }
+    .employee-name { font-size: 19px; font-weight: 700; color: var(--verde); }
+    .employee-meta { color: #546e7a; font-size: 14px; margin-top: 5px; }
 
-    .employee-meta {
-      color: #546e7a;
-      font-size: 14px;
-      margin-top: 5px;
-    }
-
-    .table-wrapper {
-      overflow-x: auto;
-      width: 100%;
-    }
-
-    table {
-      width: 100%;
-      font-size: 13px;
-      background: white;
-    }
-
-    th {
-      background: var(--verde) !important;
-      color: white !important;
-      white-space: nowrap;
-    }
-
+    .table-wrapper { overflow-x: auto; width: 100%; }
+    table { width: 100%; font-size: 13px; background: white; }
+    th { background: var(--verde) !important; color: white !important; white-space: nowrap; }
     td { vertical-align: middle; }
 
-    .empty, .loading {
-      padding: 25px;
-      text-align: center;
-      background: white;
+    .badge-novedad {
+      background: #e8f3ed;
+      color: var(--verde);
+      border: 1px solid #c8dfd2;
+      padding: 4px 7px;
+      border-radius: 5px;
+      display: inline-block;
+      margin: 2px;
+      font-size: 11px;
+    }
+
+    .empty { padding: 25px; text-align: center; color: #78909c; background: white; border-radius: 10px; }
+    .loading { padding: 25px; text-align: center; background: white; border-radius: 10px; color: var(--verde); }
+
+    .stat-card {
       border-radius: 10px;
-      color: #78909c;
-    }
-
-    .loading { color: var(--verde); }
-
-    .login-wrapper {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: linear-gradient(135deg, #01592F, #173E56);
-    }
-
-    .login-card {
-      width: 100%;
-      max-width: 430px;
+      padding: 15px;
       background: white;
-      border-radius: 15px;
-      box-shadow: 0 10px 35px rgba(0,0,0,.25);
-      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      height: 100%;
+      border-top: 4px solid var(--verde);
     }
 
-    .login-header {
-      background: var(--verde);
-      color: white;
-      padding: 25px;
-      text-align: center;
-    }
-
-    .login-header h3 { margin: 0; }
-    .login-body { padding: 25px; }
+    .stat-number { font-size: 24px; font-weight: 700; color: var(--verde); }
+    .stat-label { color: #607d8b; font-size: 12px; font-weight: 600; text-transform: uppercase; }
 
     .toast-app {
       position: fixed;
@@ -186,29 +166,28 @@
     }
 
     .toast-app.show { display: block; }
-
-    .report-frame {
-      width: 100%;
-      min-height: 600px;
-      border: 1px solid var(--gris-borde);
-      border-radius: 8px;
-      background: white;
-    }
+    .report-frame { width: 100%; min-height: 600px; border: 1px solid var(--gris-borde); border-radius: 8px; background: white; }
 
     @media print {
-      .no-print, .menu, .app-header, button, input, select, textarea {
-        display: none !important;
-      }
       body { background: white; }
+      .no-print, .menu, .app-header, button, input, select, textarea { display: none !important; }
+      .section { display: none !important; }
+      #seccionTurnos { display: block !important; }
+      #resultadoTurno { display: block !important; }
+      .card { box-shadow: none; border: none; }
+      table { font-size: 10px; }
+      th { background: #01592F !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
-  <base target="_blank">
 </head>
 
 <body>
 
-<!-- APLICACIÓN -->
-<div id="aplicacion" style="display:none;">
+<!-- =====================================================
+     APLICACIÓN (SIN LOGIN)
+     ===================================================== -->
+
+<div id="aplicacion">
 
   <header class="app-header">
     <div class="container-app">
@@ -218,11 +197,7 @@
           <small>Sistema de Gestión de Novedades — JESEP / GUTAH</small>
         </div>
         <div class="text-end">
-          <div id="usuarioActual"></div>
-          <div class="mt-1">
-            <button type="button" id="btnInicio" class="btn btn-sm btn-warning" style="display:none;" onclick="irAInicio()">🏠 Inicio</button>
-            <button type="button" class="btn btn-sm btn-light" onclick="cerrarSesionCliente()">Cerrar sesión</button>
-          </div>
+          <div id="usuarioActual"><strong>ADMINISTRADOR</strong><br><small>ADMINISTRADOR — GENERAL</small></div>
         </div>
       </div>
     </div>
@@ -233,19 +208,20 @@
     <!-- MENÚ -->
     <nav class="menu no-print">
       <button type="button" id="menuConsulta" onclick="mostrarSeccion('consulta')">🔎 Consulta</button>
-      <button type="button" id="menuNovedad" onclick="mostrarSeccion('novedad')">📝 Registrar Novedad</button>
+      <button type="button" id="menuNovedad" onclick="mostrarSeccion('novedad')">📝 Registrar novedad</button>
+      <button type="button" id="menuTurnos" onclick="mostrarSeccion('turnos')">📋 Turnos</button>
       <button type="button" id="menuReportes" onclick="mostrarSeccion('reportes')">📄 Reportes</button>
-      <button type="button" id="menuUblBoton" style="display:none;" onclick="mostrarSeccion('ubl')">⚙️ Gestión Base / Novedades (UBL)</button>
+      <button type="button" id="menuUsuarios" class="soloAdministrador" onclick="mostrarSeccion('usuarios')">👤 Usuarios</button>
     </nav>
 
     <!-- CONSULTA FUNCIONARIO -->
-    <section id="seccionConsulta" class="section">
+    <section id="seccionConsulta" class="section active">
       <div class="card">
         <div class="card-header">🔎 Consulta de funcionario</div>
         <div class="card-body">
           <div class="row g-2">
             <div class="col-md-9">
-              <input type="text" id="buscarValor" class="form-control" placeholder="Digite cédula, nombre, grado, dependencia o PERT (AP/PM)" onkeydown="if(event.key === 'Enter'){ buscarFuncionario(); }">
+              <input type="text" id="buscarValor" class="form-control" placeholder="Digite cédula, nombre, grado, nivel o dependencia" onkeydown="if(event.key === 'Enter'){ buscarFuncionario(); }">
             </div>
             <div class="col-md-3">
               <button type="button" class="btn btn-pol w-100" onclick="buscarFuncionario()">🔎 Buscar</button>
@@ -253,7 +229,6 @@
           </div>
         </div>
       </div>
-
       <div id="resultadosBusqueda"></div>
       <div id="fichaFuncionario"></div>
       <div id="historialFuncionario"></div>
@@ -262,7 +237,7 @@
     <!-- REGISTRAR NOVEDAD -->
     <section id="seccionNovedad" class="section">
       <div class="card">
-        <div class="card-header">📝 Registrar Novedad</div>
+        <div class="card-header">📝 Registrar novedad</div>
         <div class="card-body">
           <div class="row g-3">
             <div class="col-md-8">
@@ -270,76 +245,71 @@
               <input type="text" id="novedadFuncionario" class="form-control" readonly placeholder="Seleccione un funcionario mediante la consulta">
               <input type="hidden" id="novedadCedula">
             </div>
-
             <div class="col-md-4">
-              <label class="form-label">Tipo de Novedad</label>
-              <select id="tipoNovedad" class="form-select" onchange="evaluarCamposEspeciales()"></select>
-            </div>
-
-            <!-- Campo especial para SGSST_JESEP -->
-            <div class="col-md-4" id="divReubicacionLaboral" style="display:none;">
-              <label class="form-label">¿Reubicación Laboral?</label>
-              <select id="reubicacionLaboralSelect" class="form-select">
-                <option value="NO">NO</option>
-                <option value="SI">SI</option>
+              <label class="form-label">Tipo</label>
+              <select id="tipoNovedad" class="form-select">
+                <option value="SERVICIO">SERVICIO</option>
+                <option value="VACACIONES">VACACIONES</option>
+                <option value="PERMISO">PERMISO</option>
+                <option value="CITA MEDICA">CITA MEDICA</option>
+                <option value="LICENCIA">LICENCIA</option>
+                <option value="OTRA NOVEDAD">OTRA NOVEDAD</option>
               </select>
             </div>
-
-            <!-- Campos especiales para GH_JESEP -->
-            <div class="col-md-4" id="divNuevoTurno" style="display:none;">
-              <label class="form-label">Nuevo Turno</label>
-              <select id="nuevoTurnoSelect" class="form-select">
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="No Aplica">No Aplica</option>
-              </select>
+            <div class="col-md-6">
+              <label class="form-label">Novedad</label>
+              <input type="text" id="novedadNombre" class="form-control" placeholder="Nombre de la novedad">
             </div>
-
-            <div class="col-md-12" id="divHorarioFlexible" style="display:none;">
-              <div class="row g-2">
-                <div class="col-md-3">
-                  <label class="form-label">Hora Inicio</label>
-                  <input type="time" id="hfHoraInicio" class="form-control">
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label">Hora Fin</label>
-                  <input type="time" id="hfHoraFin" class="form-control">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Días de la Semana</label>
-                  <input type="text" id="hfDiasSemana" class="form-control" placeholder="Ej: Lunes a Viernes">
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6" id="divNombreNovedad">
-              <label class="form-label">Novedad / Detalle</label>
-              <input type="text" id="novedadNombre" class="form-control" placeholder="Descripción adicional o nombre de la novedad">
-            </div>
-
             <div class="col-md-6">
               <label class="form-label">Días</label>
               <input type="number" id="novedadDias" class="form-control" min="0">
             </div>
-
             <div class="col-md-6">
               <label class="form-label">Fecha inicial</label>
               <input type="date" id="fechaInicial" class="form-control">
             </div>
-
             <div class="col-md-6">
               <label class="form-label">Fecha presentación</label>
               <input type="date" id="fechaPresentacion" class="form-control">
             </div>
+            <div class="col-md-12">
+              <label class="form-label">Descripción</label>
+              <textarea id="descripcionNovedad" class="form-control" rows="2" placeholder="Descripción de la novedad"></textarea>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">Observación</label>
+              <textarea id="observacionNovedad" class="form-control" rows="3" placeholder="Observación"></textarea>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">RV</label>
+              <input type="text" id="rvNovedad" class="form-control">
+            </div>
           </div>
-
           <div class="mt-3">
-            <button type="button" class="btn btn-pol" onclick="ejecutarGuardadoNovedad()">💾 Guardar novedad</button>
+            <button type="button" class="btn btn-pol" onclick="registrarNovedad()">💾 Guardar novedad</button>
             <button type="button" class="btn btn-secondary" onclick="limpiarFormularioNovedad()">Limpiar</button>
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- TURNOS -->
+    <section id="seccionTurnos" class="section">
+      <div class="card">
+        <div class="card-header">📋 Listado completo por turno</div>
+        <div class="card-body">
+          <p class="text-muted">Seleccione el grupo que desea consultar.</p>
+          <div class="turn-buttons">
+            <button type="button" class="turn-button" onclick="cargarTurno('A')"><strong>A</strong><span>Consultar Turno A</span></button>
+            <button type="button" class="turn-button" onclick="cargarTurno('B')"><strong>B</strong><span>Consultar Turno B</span></button>
+            <button type="button" class="turn-button" onclick="cargarTurno('C')"><strong>C</strong><span>Consultar Turno C</span></button>
+            <button type="button" class="turn-button" onclick="cargarTurno('SEPRI')"><strong>SEPRI</strong><span>Todos los turnos SEPRI</span></button>
+            <button type="button" class="turn-button" onclick="cargarTurno('GURIN')"><strong>GURIN</strong><span>Grupo GURIN</span></button>
+            <button type="button" class="turn-button" onclick="cargarTurno('NO APLICA')"><strong>N/A</strong><span>NO APLICA</span></button>
+          </div>
+        </div>
+      </div>
+      <div id="resultadoTurno"></div>
     </section>
 
     <!-- REPORTES -->
@@ -349,7 +319,7 @@
         <div class="card-body">
           <div class="row g-2">
             <div class="col-md-6">
-              <label class="form-label">Turno / Grupo</label>
+              <label class="form-label">Turno</label>
               <select id="filtroReporte" class="form-select">
                 <option value="A">A</option>
                 <option value="B">B</option>
@@ -359,192 +329,54 @@
                 <option value="NO APLICA">NO APLICA</option>
               </select>
             </div>
-
             <div class="col-md-6 d-flex align-items-end gap-2">
-              <button type="button" class="btn btn-pol" onclick="previsualizarReporteNovedades()">👁 Previsualizar Novedades</button>
+              <button type="button" class="btn btn-pol" onclick="previsualizarReporte()">👁 Previsualizar</button>
               <button type="button" class="btn btn-secondary" onclick="imprimirReporte()">🖨 Imprimir</button>
+              <button type="button" id="btnGenerarPDF" class="btn btn-danger" onclick="generarArchivoReporte('pdf')">📄 Generar PDF</button>
+              <button type="button" id="btnGenerarExcel" class="btn btn-success" onclick="generarArchivoReporte('excel')">📊 Generar Excel</button>
             </div>
           </div>
         </div>
       </div>
-
       <div id="resultadoReporte"></div>
+      <div class="card">
+        <div class="card-header">Historial de reportes</div>
+        <div class="card-body">
+          <button type="button" class="btn btn-pol mb-3" onclick="cargarReportes()">🔄 Actualizar</button>
+          <div id="listaReportes"></div>
+        </div>
+      </div>
     </section>
 
-    <!-- GESTIÓN BASE UBL_JESEP -->
-    <section id="seccionUbl" class="section">
+    <!-- USUARIOS -->
+    <section id="seccionUsuarios" class="section soloAdministrador">
       <div class="card">
-        <div class="card-header">⚙️ Gestión UBL - Funcionarios y Novedades</div>
+        <div class="card-header">👤 Administración de usuarios</div>
         <div class="card-body">
-          
-          <ul class="nav nav-tabs mb-3" id="ublTabs" role="tablist">
-            <li class="nav-item">
-              <button class="nav-link active" id="tab-agregar" data-bs-toggle="tab" data-bs-target="#panel-agregar" type="button" role="tab">➕ Agregar Funcionario</button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link" id="tab-eliminar" data-bs-toggle="tab" data-bs-target="#panel-eliminar" type="button" role="tab">❌ Eliminar Funcionario</button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link" id="tab-eliminar-nov" data-bs-toggle="tab" data-bs-target="#panel-eliminar-nov" type="button" role="tab">🗑️ Eliminar Novedad por Fila</button>
-            </li>
-          </ul>
-
-          <div class="tab-content">
-            <!-- AGREGAR -->
-            <div class="tab-pane fade show active" id="panel-agregar" role="tabpanel">
-              <form id="formAgregarUbl">
-                <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label">Cédula *</label>
-                    <input type="text" id="ublCedula" class="form-control" required>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">NIV *</label>
-                    <select id="ublNiv" class="form-select" required>
-                      <option value="OF">OF</option>
-                      <option value="NIV. EJE">NIV. EJE</option>
-                      <option value="PT">PT</option>
-                      <option value="PP">PP</option>
-                      <option value="NO UNI">NO UNI</option>
-                    </select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">GR *</label>
-                    <select id="ublGr" class="form-select" required>
-                      <option value="MG">MG</option><option value="BG">BG</option><option value="CR">CR</option>
-                      <option value="TC">TC</option><option value="MY">MY</option><option value="CT">CT</option>
-                      <option value="TE">TE</option><option value="ST">ST</option><option value="CM">CM</option>
-                      <option value="SC">SC</option><option value="IJ">IJ</option><option value="IT">IT</option>
-                      <option value="SI">SI</option><option value="PT">PT</option><option value="PP">PP</option>
-                      <option value="AXP">AXP</option>
-                    </select>
-                  </div>
-
-                  <div class="col-md-6">
-                    <label class="form-label">Apellidos y Nombres *</label>
-                    <input type="text" id="ublNombre" class="form-control" required>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Dependencia *</label>
-                    <input type="text" id="ublDependencia" class="form-control" required>
-                  </div>
-
-                  <div class="col-md-4">
-                    <label class="form-label">PERT *</label>
-                    <select id="ublPert" class="form-select" required>
-                      <option value="AP">AP</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">TURNO (Obligatorio) *</label>
-                    <select id="ublTurno" class="form-select" required>
-                      <option value="A">A</option>
-                      <option value="B">B</option>
-                      <option value="C">C</option>
-                      <option value="No Aplica">No Aplica</option>
-                    </select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Mes *</label>
-                    <select id="ublMes" class="form-select" required>
-                      <option value="ENE">ENERO</option><option value="FEB">FEBRERO</option><option value="MAR">MARZO</option>
-                      <option value="ABR">ABRIL</option><option value="MAY">MAYO</option><option value="JUN">JUNIO</option>
-                      <option value="JUL">JULIO</option><option value="AGO">AGOSTO</option><option value="SEP">SEPTIEMBRE</option>
-                      <option value="OCT">OCTUBRE</option><option value="NOV">NOVIEMBRE</option><option value="DIC">DICIEMBRE</option>
-                    </select>
-                  </div>
-
-                  <div class="col-md-3">
-                    <label class="form-label">Día *</label>
-                    <input type="number" id="ublDia" class="form-control" min="1" max="31" required>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Fecha Nacimiento *</label>
-                    <input type="date" id="ublFechaNac" class="form-control" required>
-                  </div>
-                  <div class="col-md-5">
-                    <label class="form-label">Correo Electrónico *</label>
-                    <input type="email" id="ublCorreo" class="form-control" required>
-                  </div>
-
-                  <div class="col-md-3">
-                    <label class="form-label">Sexo *</label>
-                    <select id="ublSexo" class="form-select" required>
-                      <option value="MASCULINO">MASCULINO</option>
-                      <option value="FEMENINO">FEMENINO</option>
-                    </select>
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label">Estado Civil *</label>
-                    <select id="ublEstadoCivil" class="form-select" required>
-                      <option value="CASADO">CASADO</option>
-                      <option value="UNION LIBRE">UNION LIBRE</option>
-                      <option value="SOLTERO">SOLTERO</option>
-                    </select>
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label">Situación Laboral *</label>
-                    <select id="ublSituacionLaboral" class="form-select" required>
-                      <option value="LABORANDO">LABORANDO</option>
-                      <option value="VACACIONES">VACACIONES</option>
-                      <option value="COMISION DEL SERVICIO">COMISION DEL SERVICIO</option>
-                    </select>
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label">Comunicado Oficial</label>
-                    <input type="text" id="ublComunicado" class="form-control">
-                  </div>
-                </div>
-
-                <button type="button" class="btn btn-pol mt-3" onclick="guardarFuncionarioUBL()">💾 Agregar a LISTADO_BASE</button>
-              </form>
-            </div>
-
-            <!-- ELIMINAR FUNCIONARIO -->
-            <div class="tab-pane fade" id="panel-eliminar" role="tabpanel">
-              <div class="row g-2 align-items-end">
-                <div class="col-md-6">
-                  <label class="form-label">Cédula del Funcionario a Eliminar</label>
-                  <input type="text" id="ublCedulaEliminar" class="form-control" placeholder="Ingrese número de cédula exacto">
-                </div>
-                <div class="col-md-3">
-                  <button type="button" class="btn btn-danger w-100" onclick="eliminarFuncionarioUBL()">🗑️ Eliminar Funcionario</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ELIMINAR NOVEDAD POR FILA -->
-            <div class="tab-pane fade" id="panel-eliminar-nov" role="tabpanel">
-              <div class="row g-2 align-items-end">
-                <div class="col-md-6">
-                  <label class="form-label">Número de Fila de la Novedad (Hoja NOVEDADES)</label>
-                  <input type="number" id="ublFilaNovedadEliminar" class="form-control" placeholder="Ej: 5">
-                </div>
-                <div class="col-md-3">
-                  <button type="button" class="btn btn-warning w-100" onclick="ejecutarEliminacionNovedadPorFila()">🗑️️ Eliminar Novedad</button>
-                </div>
-              </div>
-            </div>
-
+          <div class="row g-3">
+            <div class="col-md-3"><label class="form-label">Usuario</label><input type="text" id="nuevoUsuario" class="form-control"></div>
+            <div class="col-md-3"><label class="form-label">Contraseña</label><input type="password" id="nuevaClave" class="form-control"></div>
+            <div class="col-md-3"><label class="form-label">Rol</label><select id="nuevoRol" class="form-select"><option value="OPERADOR">OPERADOR</option><option value="ADMINISTRADOR">ADMINISTRADOR</option></select></div>
+            <div class="col-md-3"><label class="form-label">Dependencia</label><input type="text" id="nuevaDependencia" class="form-control" placeholder="Ej. NIVEL_CENTRAL"></div>
           </div>
-
+          <button type="button" class="btn btn-pol mt-3" onclick="crearUsuario()">➕ Crear usuario</button>
         </div>
       </div>
+      <div id="listaUsuarios"></div>
     </section>
 
   </main>
 </div>
 
+<!-- TOAST -->
 <div id="toastApp" class="toast-app"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- JAVASCRIPT -->
 <script>
-const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyK6jVq1oIGB7QumoQVidGuJJ1wVRco2Pre2b6npju8baGH2hZwgUaI3lBXAF1lrxs/exec';
+const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbw_bg8NgycYtBtaOnmbEw-VlCzjOmtwPSfuo4YU4KomUqZeflfw1mStIaWC1jEJhvm6/exec';
 
 (function configurarPuenteAPI() {
   const TIMEOUT_MS = 90000;
-
   function llamarAPI_(accion, argumentos, alExito, alFallar) {
     const nombreCallback = '__cb_' + accion.replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
     let finalizado = false;
@@ -576,7 +408,6 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyK6jVq1oIG
     const parametros = new URLSearchParams();
     parametros.set('accion', accion);
     parametros.set('callback', nombreCallback);
-
     try {
       parametros.set('args', JSON.stringify(argumentos || []));
     } catch (e) {
@@ -594,20 +425,17 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyK6jVq1oIG
       limpiar();
       if (alFallar) alFallar({ message: 'No se pudo contactar el servidor.' });
     };
-
     document.head.appendChild(elementoScript);
   }
 
   function crearEjecutor_() {
     let manejadorExito = null;
     let manejadorFallo = null;
-
     const base = {
       withSuccessHandler: function(fn) { manejadorExito = fn; return proxyEjecutor; },
       withFailureHandler: function(fn) { manejadorFallo = fn; return proxyEjecutor; },
       withUserObject: function() { return proxyEjecutor; }
     };
-
     const proxyEjecutor = new Proxy(base, {
       get: function(objetivo, propiedad) {
         if (propiedad in objetivo) return objetivo[propiedad];
@@ -617,7 +445,6 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyK6jVq1oIG
         };
       }
     });
-
     return proxyEjecutor;
   }
 
@@ -626,67 +453,19 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyK6jVq1oIG
   Object.defineProperty(window.google.script, 'run', { get: crearEjecutor_, configurable: true });
 })();
 
-const CLAVE_SESION = 'jesep_sesion';
-const SESION_GUARDADA = leerSesionGuardada_();
-if (!SESION_GUARDADA || !SESION_GUARDADA.token) { salirAlInicio_(); }
-let tokenSesion = SESION_GUARDADA ? SESION_GUARDADA.token : null;
-let usuarioSesion = SESION_GUARDADA && SESION_GUARDADA.usuario ? SESION_GUARDADA.usuario.usuario : null;
-let rolSesion = SESION_GUARDADA && SESION_GUARDADA.usuario ? SESION_GUARDADA.usuario.rol : null;
-let dependenciaSesion = SESION_GUARDADA && SESION_GUARDADA.usuario ? SESION_GUARDADA.usuario.dependencia : null;
+/* VARIABLES GLOBALES */
+let tokenSesion = 'MODO_SIN_LOGIN';
+let usuarioSesion = 'ADMINISTRADOR';
+let rolSesion = 'ADMINISTRADOR';
+let dependenciaSesion = '';
 let funcionarioSeleccionado = null;
-
-
-
-function leerSesionGuardada_() {
-  try { return JSON.parse(sessionStorage.getItem(CLAVE_SESION) || 'null'); } catch (e) { return null; }
-}
-
-function salirAlInicio_(aviso) {
-  try {
-    sessionStorage.removeItem(CLAVE_SESION);
-    if (aviso) sessionStorage.setItem('jesep_aviso', aviso);
-  } catch (e) {}
-  window.location.replace('index.html');
-}
-
-function irAInicio() { window.location.href = 'index.html'; }
-
-function cerrarSesionCliente() {
-  const t = tokenSesion;
-  if (!t) { salirAlInicio_(); return; }
-  google.script.run
-    .withSuccessHandler(function() { salirAlInicio_(); })
-    .withFailureHandler(function() { salirAlInicio_(); })
-    .cerrarSesionCliente(t);
-}
-
-/* Verifica en el servidor que el token sea válido y tenga acceso a este módulo.
-   Si no, devuelve al usuario al inicio. */
-function iniciarModulo(modulo, alListo) {
-  if (!tokenSesion) { salirAlInicio_(); return; }
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (!r || r.estado !== true) { salirAlInicio_('Sesión no válida. Ingrese nuevamente.'); return; }
-      usuarioSesion = r.usuario.usuario;
-      rolSesion = r.usuario.rol || '';
-      dependenciaSesion = r.usuario.dependencia || '';
-      document.getElementById('usuarioActual').innerHTML = '<strong>' + esc(usuarioSesion) + '</strong><br><small>' + esc(rolSesion) + ' — ' + esc(dependenciaSesion) + '</small>';
-      const btnInicio = document.getElementById('btnInicio');
-      if (btnInicio) btnInicio.style.display = (r.modulos && r.modulos.length > 1) ? 'inline-block' : 'none';
-      document.getElementById('aplicacion').style.display = 'block';
-      alListo();
-    })
-    .withFailureHandler(function(err) {
-      salirAlInicio_(err && err.message ? err.message : 'No fue posible validar la sesión.');
-    })
-    .verificarSesion(tokenSesion, modulo);
-}
+let ultimoTurnoConsultado = null;
+let ultimoResultadoturno = null;
+let ultimoReporteArchivos = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-  iniciarModulo('index_2', function() {
-    configurarPermisosPorUsuario();
-    mostrarSeccion('consulta');
-  });
+  configurarPermisos();
+  mostrarSeccion('consulta');
 });
 
 function esc(valor) {
@@ -702,108 +481,35 @@ function mostrarToast(mensaje, tipo = 'success') {
   setTimeout(function() { toast.classList.remove('show'); }, 3500);
 }
 
-function verificarSesionLocal() {
-  if (!tokenSesion) {
-    mostrarToast('La sesión no está disponible.', 'error');
-    return false;
-  }
-  return true;
-}
-
-function configurarPermisosPorUsuario() {
-  const user = String(usuarioSesion || '').toUpperCase();
-  const btnUbl = document.getElementById('menuUblBoton');
-  
-  if (user === 'UBL_JESEP' || rolSesion === 'ADMINISTRADOR') {
-    if (btnUbl) btnUbl.style.display = 'inline-block';
-  } else {
-    if (btnUbl) btnUbl.style.display = 'none';
-  }
-
-  google.script.run
-    .withSuccessHandler(function(res) {
-      const select = document.getElementById('tipoNovedad');
-      if (!select) return;
-      select.innerHTML = '';
-
-      let listaTipos = [];
-      if (res && res.estado) {
-        if (Array.isArray(res.datos)) {
-          listaTipos = res.datos;
-        } else if (res.datos && Array.isArray(res.datos.tipos)) {
-          listaTipos = res.datos.tipos;
-        } else if (res.tipos && Array.isArray(res.tipos)) {
-          listaTipos = res.tipos;
-        }
-      }
-
-      if (!listaTipos.length) {
-        listaTipos = ['EXCUSAS MEDICAS', 'RESTRICCIONES MEDICAS', 'LICIENCIA DE MATERNIDAD'];
-      }
-
-      listaTipos.forEach(function(t) {
-        const opt = document.createElement('option');
-        opt.value = t;
-        opt.textContent = t;
-        select.appendChild(opt);
-      });
-
-      evaluarCamposEspeciales();
-    })
-    .withFailureHandler(function(err) {
-      console.error('Error al obtener tipos de novedad:', err);
-      evaluarCamposEspeciales();
-    })
-    .obtenerTiposNovedadPermitidos(tokenSesion);
-}
-
-function evaluarCamposEspeciales() {
-  const tipo = document.getElementById('tipoNovedad').value;
-  const divReub = document.getElementById('divReubicacionLaboral');
-  const divTurno = document.getElementById('divNuevoTurno');
-  const divHF = document.getElementById('divHorarioFlexible');
-  const divNombre = document.getElementById('divNombreNovedad');
-
-  divReub.style.display = 'none';
-  divTurno.style.display = 'none';
-  divHF.style.display = 'none';
-  divNombre.style.display = 'block';
-
-  const user = String(usuarioSesion || '').toUpperCase();
-
-  if (user === 'SGSST_JESEP' || tipo === 'EXCUSAS MEDICAS' || tipo === 'RESTRICCIONES MEDICAS' || tipo === 'LICIENCIA DE MATERNIDAD' || tipo === 'EXCUSA MÉDICA' || tipo === 'RESTRICCIÓN MÉDICA') {
-    divReub.style.display = 'block';
-  } else if (tipo === 'CAMBIO DE TURNO') {
-    divTurno.style.display = 'block';
-  } else if (tipo === 'HORARIO FLEXIBLE') {
-    divHF.style.display = 'block';
-  }
+function configurarPermisos() {
+  document.querySelectorAll('.soloAdministrador').forEach(function(el) {
+    el.style.display = '';
+  });
 }
 
 function mostrarSeccion(nombre) {
-  const mapa = { consulta: 'seccionConsulta', novedad: 'seccionNovedad', reportes: 'seccionReportes', ubl: 'seccionUbl' };
-  const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', reportes: 'menuReportes', ubl: 'menuUblBoton' };
+  const mapa = { consulta: 'seccionConsulta', novedad: 'seccionNovedad', turnos: 'seccionTurnos', reportes: 'seccionReportes', usuarios: 'seccionUsuarios' };
+  const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', turnos: 'menuTurnos', reportes: 'menuReportes', usuarios: 'menuUsuarios' };
 
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.menu button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.menu button').forEach(function(b) { b.classList.remove('active'); });
 
   const seccion = document.getElementById(mapa[nombre]);
   if (seccion) seccion.classList.add('active');
-
   const boton = document.getElementById(botones[nombre]);
   if (boton) boton.classList.add('active');
+
+  if (nombre === 'reportes') cargarReportes();
+  if (nombre === 'usuarios') cargarUsuarios();
 }
 
 function buscarFuncionario() {
-  if (!verificarSesionLocal()) return;
   const valor = document.getElementById('buscarValor').value.trim();
   const contenedor = document.getElementById('resultadosBusqueda');
-
   if (!valor) {
-    contenedor.innerHTML = '<div class="empty">Ingrese cédula, nombre, grado, dependencia o PERT (AP/PM).</div>';
+    contenedor.innerHTML = '<div class="empty">Ingrese cédula, nombre, grado, nivel o dependencia.</div>';
     return;
   }
-
   contenedor.innerHTML = '<div class="loading">🔄 Buscando funcionario...</div>';
   document.getElementById('fichaFuncionario').innerHTML = '';
   document.getElementById('historialFuncionario').innerHTML = '';
@@ -814,19 +520,17 @@ function buscarFuncionario() {
         contenedor.innerHTML = '<div class="empty">' + esc(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No se encontraron funcionarios.') + '</div>';
         return;
       }
-
       const datos = respuesta.datos || [];
       if (!datos.length) {
         contenedor.innerHTML = '<div class="empty">No se encontraron funcionarios.</div>';
         return;
       }
-
-      let html = '<div class="card"><div class="card-header">Funcionarios encontrados (' + datos.length + ')</div><div class="card-body">';
-      datos.forEach(function(f) {
+      let html = '<div class="card"><div class="card-header">Funcionarios encontrados</div><div class="card-body">';
+      datos.forEach(function(funcionario) {
         html += '<div class="employee-card">' +
-          '<div class="employee-name">' + esc(f.funcionario || f.FUNCIONARIO || f.apellidosYNombres || '') + '</div>' +
-          '<div class="employee-meta">CC: ' + esc(f.cedula || f.CEDULA || '') + ' | GR: ' + esc(f.grado || f.GR || '') + ' | DEP: ' + esc(f.dependencia || f.DEPENDENCIA || '') + ' | PERT: ' + esc(f.pert || f.PERT || '') + ' | Turno: ' + esc(f.turno || f.TURNO || '') + '</div>' +
-          '<div class="mt-2"><button type="button" class="btn btn-sm btn-pol" onclick=\'seleccionarFuncionario(' + JSON.stringify(f) + ')\'>Seleccionar</button></div>' +
+          '<div class="employee-name">' + esc(funcionario.funcionario || funcionario.FUNCIONARIO || '') + '</div>' +
+          '<div class="employee-meta">CC: ' + esc(funcionario.cedula || funcionario.CEDULA || '') + ' &nbsp; | &nbsp; GR: ' + esc(funcionario.grado || funcionario.GR || '') + ' &nbsp; | &nbsp; Turno: ' + esc(funcionario.turno || funcionario.TURNO || '') + '</div>' +
+          '<div class="mt-2"><button type="button" class="btn btn-sm btn-pol me-1" onclick=\'seleccionarFuncionario(' + JSON.stringify(funcionario) + ')\'>Seleccionar</button></div>' +
           '</div>';
       });
       html += '</div></div>';
@@ -842,8 +546,7 @@ function seleccionarFuncionario(funcionario) {
   funcionarioSeleccionado = funcionario;
   const cedula = funcionario.cedula || funcionario.CEDULA || '';
   document.getElementById('novedadCedula').value = cedula;
-  document.getElementById('novedadFuncionario').value = funcionario.funcionario || funcionario.FUNCIONARIO || funcionario.apellidosYNombres || '';
-
+  document.getElementById('novedadFuncionario').value = funcionario.funcionario || funcionario.FUNCIONARIO || '';
   cargarFicha(cedula);
   mostrarSeccion('novedad');
   mostrarToast('Funcionario seleccionado.');
@@ -852,32 +555,23 @@ function seleccionarFuncionario(funcionario) {
 function cargarFicha(cedula) {
   const contenedor = document.getElementById('fichaFuncionario');
   contenedor.innerHTML = '<div class="loading">🔄 Cargando ficha...</div>';
-
   google.script.run
     .withSuccessHandler(function(respuesta) {
       if (!respuesta || respuesta.estado !== true) {
         contenedor.innerHTML = '<div class="empty">No se pudo cargar la ficha.</div>';
         return;
       }
-
-      const f = respuesta.funcionario || respuesta.datos || {};
-      
-      // Actualizamos la variable global con los campos completos recibidos de la ficha
-      if (funcionarioSeleccionado) {
-        funcionarioSeleccionado.nivel = f.nivel || f.NIV || funcionarioSeleccionado.nivel;
-        funcionarioSeleccionado.turno = f.turno || f.TURNO || funcionarioSeleccionado.turno;
-        funcionarioSeleccionado.funcionario = f.funcionario || f.FUNCIONARIO || f.apellidosYNombres || funcionarioSeleccionado.funcionario;
-      }
-
-      let html = '<div class="card"><div class="card-header">Ficha del funcionario</div><div class="card-body">' +
-        '<div class="employee-card">' +
-        '<div class="employee-name">' + esc(f.funcionario || f.FUNCIONARIO || f.apellidosYNombres || '') + '</div>' +
-        '<div class="employee-meta">Cédula: ' + esc(f.cedula || f.CEDULA || '') + ' | Nivel: ' + esc(f.nivel || f.NIV || '') + ' | Grado: ' + esc(f.grado || f.GR || '') + ' | PERT: ' + esc(f.pert || f.PERT || '') + ' | Turno: ' + esc(f.turno || f.TURNO || '') + '</div>' +
-        '<div class="mt-2">Dependencia: <strong>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</strong></div>' +
+      const funcionario = respuesta.funcionario || respuesta.datos || {};
+      let html = '<div class="card"><div class="card-header">Ficha del funcionario</div><div class="card-body">';
+      html += '<div class="employee-card">' +
+        '<div class="employee-name">' + esc(funcionario.funcionario || funcionario.FUNCIONARIO || '') + '</div>' +
+        '<div class="employee-meta">Cédula: ' + esc(funcionario.cedula || funcionario.CEDULA || '') + ' | Grado: ' + esc(funcionario.grado || funcionario.GR || '') + ' | Turno: ' + esc(funcionario.turno || funcionario.TURNO || '') + '</div>' +
         '</div></div></div>';
-
       contenedor.innerHTML = html;
       cargarHistorial(cedula);
+    })
+    .withFailureHandler(function(error) {
+      contenedor.innerHTML = '<div class="alert alert-danger">Error cargando ficha.</div>';
     })
     .obtenerFichaFuncionario(tokenSesion, cedula);
 }
@@ -885,99 +579,50 @@ function cargarFicha(cedula) {
 function cargarHistorial(cedula) {
   const contenedor = document.getElementById('historialFuncionario');
   contenedor.innerHTML = '<div class="loading">🔄 Consultando historial...</div>';
-
-  const esUblOAdmin = (String(usuarioSesion || '').toUpperCase() === 'UBL_JESEP') || rolSesion === 'ADMINISTRADOR';
-
   google.script.run
     .withSuccessHandler(function(respuesta) {
       if (!respuesta || respuesta.estado !== true) {
         contenedor.innerHTML = '<div class="empty">No fue posible consultar el historial.</div>';
         return;
       }
-
       const historial = respuesta.historial || respuesta.datos || [];
       if (!historial.length) {
         contenedor.innerHTML = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="empty">No registra novedades.</div></div></div>';
         return;
       }
-
-      let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th>';
-      if (esUblOAdmin) {
-        html += '<th class="text-center">ACCIÓN</th>';
-      }
-      html += '</tr></thead><tbody>';
-
+      let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DESCRIPCIÓN</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th><th>OBSERVACIÓN</th><th>RV</th><th>TEXTO</th></tr></thead><tbody>';
       historial.forEach(function(n) {
-        html += '<tr><td>' + esc(n.GR) + '</td><td>' + esc(n.NOVEDAD) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(n['Fecha INICIAL']) + '</td><td>' + esc(n['Fecha PRESENTACION']) + '</td>';
-        if (esUblOAdmin) {
-          html += '<td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="eliminarNovedadDirecta(' + n.fila + ', \'' + cedula + '\')">🗑️ Eliminar</button></td>';
-        }
-        html += '</tr>';
+        html += '<tr><td>' + esc(n.GR) + '</td><td><span class="badge-novedad">' + esc(n.NOVEDAD) + '</span></td><td>' + esc(n.DESCRIPCION) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(formatearValor(n['Fecha INICIAL'])) + '</td><td>' + esc(formatearValor(n['Fecha PRESENTACION'])) + '</td><td>' + esc(n.Observacion) + '</td><td>' + esc(n.RV) + '</td><td>' + esc(n.TEXTO) + '</td></tr>';
       });
-
       html += '</tbody></table></div></div></div>';
       contenedor.innerHTML = html;
+    })
+    .withFailureHandler(function(error) {
+      contenedor.innerHTML = '<div class="alert alert-danger">Error consultando historial.</div>';
     })
     .obtenerHistorialFuncionario(tokenSesion, cedula);
 }
 
-function eliminarNovedadDirecta(numFila, cedula) {
-  if (!confirm('¿Está seguro de eliminar esta novedad registrada en la fila ' + numFila + '?')) return;
-
-  google.script.run
-    .withSuccessHandler(function(res) {
-      if (res && res.estado) {
-        mostrarToast(res.mensaje);
-        cargarHistorial(cedula);
-      } else {
-        mostrarToast(res ? res.mensaje : 'Error al eliminar la novedad.', 'error');
-      }
-    })
-    .eliminarNovedadUBL(tokenSesion, numFila);
-}
-
-function ejecutarGuardadoNovedad() {
-  if (!verificarSesionLocal()) return;
+function registrarNovedad() {
   if (!funcionarioSeleccionado) {
     mostrarToast('Debe seleccionar primero un funcionario.', 'error');
     return;
   }
-
   const cedula = funcionarioSeleccionado.cedula || funcionarioSeleccionado.CEDULA || document.getElementById('novedadCedula').value;
-  const grado = funcionarioSeleccionado.grado || funcionarioSeleccionado.GR || '';
-  const nombreFuncionario = funcionarioSeleccionado.funcionario || funcionarioSeleccionado.FUNCIONARIO || funcionarioSeleccionado.apellidosYNombres || '';
-  const nivelFuncionario = funcionarioSeleccionado.nivel || funcionarioSeleccionado.NIV || '';
-  const turnoFuncionario = funcionarioSeleccionado.turno || funcionarioSeleccionado.TURNO || '';
-
-  const tipo = document.getElementById('tipoNovedad').value;
-  const textoDetalleDigitado = document.getElementById('novedadNombre').value.trim();
-  let textoEspecialExtra = '';
-
-  const user = String(usuarioSesion || '').toUpperCase();
-  if (user === 'SGSST_JESEP' || tipo === 'EXCUSAS MEDICAS' || tipo === 'RESTRICCIONES MEDICAS' || tipo === 'LICIENCIA DE MATERNIDAD') {
-    const reub = document.getElementById('reubicacionLaboralSelect').value;
-    textoEspecialExtra = 'Reubicación Laboral: ' + reub;
-  } else if (tipo === 'HORARIO FLEXIBLE') {
-    const hIni = document.getElementById('hfHoraInicio').value;
-    const hFin = document.getElementById('hfHoraFin').value;
-    const diasSem = document.getElementById('hfDiasSemana').value;
-    textoEspecialExtra = 'Horario: ' + hIni + ' a ' + hFin + ' | Días: ' + diasSem;
+  const novedad = document.getElementById('novedadNombre').value.trim();
+  if (!novedad) {
+    mostrarToast('Ingrese la novedad.', 'error');
+    return;
   }
-
   const datos = {
-    cc: cedula,
-    cedula: cedula,
-    grado: grado,
-    funcionario: nombreFuncionario,
-    nivel: nivelFuncionario,
-    turno: turnoFuncionario,
-    novedad: tipo,
-    nombreNovedad: textoDetalleDigitado,
-    descripcion: textoEspecialExtra,
-    nuevoTurno: document.getElementById('nuevoTurnoSelect').value,
+    cc: cedula, cedula: cedula, novedad: novedad,
+    tipo: document.getElementById('tipoNovedad').value,
+    descripcion: document.getElementById('descripcionNovedad').value.trim(),
     dias: document.getElementById('novedadDias').value,
     fechaInicial: document.getElementById('fechaInicial').value,
-    fechaPresentacion: document.getElementById('fechaPresentacion').value
+    fechaPresentacion: document.getElementById('fechaPresentacion').value,
+    observacion: document.getElementById('observacionNovedad').value.trim(),
+    rv: document.getElementById('rvNovedad').value.trim()
   };
 
   google.script.run
@@ -987,13 +632,13 @@ function ejecutarGuardadoNovedad() {
         limpiarFormularioNovedad();
         cargarHistorial(cedula);
       } else {
-        mostrarToast(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No se pudo registrar la novedad.', 'error');
+        mostrarToast(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No fue posible registrar.', 'error');
       }
     })
     .withFailureHandler(function(error) {
-      mostrarToast(error && error.message ? error.message : 'Error al registrar novedad.', 'error');
+      mostrarToast('Error registrando novedad.', 'error');
     })
-    .registrarNovedadPorUsuario(tokenSesion, datos);
+    .registrarNovedad(tokenSesion, datos);
 }
 
 function limpiarFormularioNovedad() {
@@ -1001,111 +646,250 @@ function limpiarFormularioNovedad() {
   document.getElementById('novedadDias').value = '';
   document.getElementById('fechaInicial').value = '';
   document.getElementById('fechaPresentacion').value = '';
-  document.getElementById('hfHoraInicio').value = '';
-  document.getElementById('hfHoraFin').value = '';
-  document.getElementById('hfDiasSemana').value = '';
+  document.getElementById('descripcionNovedad').value = '';
+  document.getElementById('observacionNovedad').value = '';
+  document.getElementById('rvNovedad').value = '';
 }
 
-function previsualizarReporteNovedades() {
-  if (!verificarSesionLocal()) return;
-  const filtro = document.getElementById('filtroReporte').value;
-  const contenedor = document.getElementById('resultadoReporte');
-
-  contenedor.innerHTML = '<div class="loading">🔄 Cargando solo novedades registradas para ' + esc(filtro) + '...</div>';
+function cargarTurno(filtro) {
+  const contenedor = document.getElementById('resultadoTurno');
+  ultimoTurnoConsultado = filtro;
+  ultimoResultadoturno = null;
+  contenedor.innerHTML = '<div class="loading">🔄 Consultando ' + esc(filtro) + '...</div>';
 
   google.script.run
     .withSuccessHandler(function(respuesta) {
       if (!respuesta || respuesta.estado !== true) {
-        contenedor.innerHTML = '<div class="alert alert-danger">' + esc(respuesta ? respuesta.mensaje : 'Error al cargar novedades.') + '</div>';
+        contenedor.innerHTML = '<div class="empty">' + esc(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No se encontró información.') + '</div>';
         return;
       }
-
-      contenedor.innerHTML = '<div class="card"><div class="card-header">Previsualización de Novedades Registradas — Turno ' + esc(filtro) + '</div><div class="card-body p-0"><iframe class="report-frame" id="frameReporte"></iframe></div></div>';
-      document.getElementById('frameReporte').srcdoc = respuesta.html;
+      ultimoResultadoturno = respuesta;
+      renderTurno(respuesta);
     })
-    .previsualizarSoloNovedades(tokenSesion, filtro);
+    .withFailureHandler(function(error) {
+      contenedor.innerHTML = '<div class="alert alert-danger">Error consultando el turno.</div>';
+    })
+    .consultarPorTurno(tokenSesion, filtro);
+}
+
+function renderTurno(respuesta) {
+  const contenedor = document.getElementById('resultadoTurno');
+  const datos = respuesta.datos || {};
+  let funcionarios = datos.funcionarios || respuesta.funcionarios || [];
+  const filtro = datos.filtro || respuesta.filtro || ultimoTurnoConsultado || '';
+
+  if (!funcionarios.length) {
+    contenedor.innerHTML = '<div class="card"><div class="card-body"><div class="empty">No hay funcionarios registrados para ' + esc(filtro) + '.</div></div></div>';
+    return;
+  }
+
+  // Categorías requeridas: OF, NIV, EJE, PT, PP, AXP, NO UNI
+  const categorias = ['OF', 'NIV', 'EJE', 'PT', 'PP', 'AXP', 'NO UNI'];
+  let fuerzaDisponible = {};
+  let fuerzaEfectiva = {};
+  let totalDisponible = 0;
+  let totalEfectiva = 0;
+
+  categorias.forEach(cat => {
+    fuerzaDisponible[cat] = 0;
+    fuerzaEfectiva[cat] = 0;
+  });
+
+  funcionarios.forEach(f => {
+    // Normalizar nivel (NIV o similar) o grado para asignación de categoría
+    let nivelRaw = String(f.nivel || f.NIV || f.categoria || f.CATEGORIA || '').trim().toUpperCase();
+    let gradoRaw = String(f.grado || f.GR || '').trim().toUpperCase();
+    
+    let catAsignada = 'NO UNI';
+    if (nivelRaw && categorias.includes(nivelRaw)) {
+      catAsignada = nivelRaw;
+    } else {
+      // Inferencia por grado o texto si no está especificado explícitamente en el nivel
+      if (gradoRaw.includes('OF') || gradoRaw.includes('TENIENTE') || gradoRaw.includes('CAPITAN') || gradoRaw.includes('MAYOR') || gradoRaw.includes('CORONEL') || gradoRaw.includes('GENERAL')) {
+        catAsignada = 'OF';
+      } else if (gradoRaw.includes('PT') || gradoRaw.includes('PATRULLERO')) {
+        catAsignada = 'PT';
+      } else if (gradoRaw.includes('SI') || gradoRaw.includes('EJECUTIVO') || gradoRaw.includes('INTENDENTE') || gradoRaw.includes('COMISARIO')) {
+        catAsignada = 'EJE';
+      } else if (gradoRaw.includes('PP') || gradoRaw.includes('PATRULLERO DE POLICIA') || gradoRaw.includes('AUXILIAR')) {
+        catAsignada = 'PP';
+      } else if (gradoRaw.includes('AXP') || gradoRaw.includes('APOYO')) {
+        catAsignada = 'AXP';
+      } else if (gradoRaw.includes('NIV')) {
+        catAsignada = 'NIV';
+      }
+    }
+
+    fuerzaDisponible[catAsignada]++;
+    totalDisponible++;
+
+    // Verificar si tiene novedad activa
+    const novedades = f.historialNovedades || [];
+    if (novedades.length === 0) {
+      fuerzaEfectiva[catAsignada]++;
+      totalEfectiva++;
+    }
+  });
+
+  let html = '<div class="card mb-3"><div class="card-header bg-white">📊 <strong>CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + esc(filtro) + '</strong></div><div class="card-body">';
+  html += '<div class="row g-2 mb-3">';
+  
+  categorias.forEach(cat => {
+    let disp = fuerzaDisponible[cat];
+    let efec = fuerzaEfectiva[cat];
+    html += '<div class="col-6 col-md-3 col-lg">';
+    html += '<div class="stat-card">';
+    html += '<div class="stat-label">' + cat + '</div>';
+    html += '<div class="stat-number">' + efec + ' <small class="text-muted fs-6">/ ' + disp + '</small></div>';
+    html += '<div class="text-muted" style="font-size: 11px;">Efectiva / Total</div>';
+    html += '</div></div>';
+  });
+
+  html += '<div class="col-6 col-md-3 col-lg">';
+  html += '<div class="stat-card" style="border-top-color: var(--dorado);">';
+  html += '<div class="stat-label">TOTAL</div>';
+  html += '<div class="stat-number" style="color: var(--dorado);">' + totalEfectiva + ' <small class="text-muted fs-6">/ ' + totalDisponible + '</small></div>';
+  html += '<div class="text-muted" style="font-size: 11px;">Total Efectiva / Total</div>';
+  html += '</div></div>';
+
+  html += '</div>'; // fin row
+  html += '</div></div>'; // fin card
+
+  // Tabla detallada
+  html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
+  html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>NIV</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
+
+  funcionarios.forEach(function(f, indice) {
+    const novedades = f.historialNovedades || [];
+    let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">Sin novedades</span>';
+    html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+  });
+  html += '</tbody></table></div></div></div>';
+  contenedor.innerHTML = html;
+}
+
+function previsualizarReporte() {
+  const filtro = document.getElementById('filtroReporte').value;
+  const contenedor = document.getElementById('resultadoReporte');
+  contenedor.innerHTML = '<div class="loading">🔄 Generando previsualización...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(respuesta) {
+      if (!respuesta || respuesta.estado !== true) {
+        contenedor.innerHTML = '<div class="alert alert-danger">No se pudo generar la previsualización.</div>';
+        return;
+      }
+      contenedor.innerHTML = '<div class="card"><div class="card-header">Previsualización — ' + esc(filtro) + '</div><div class="card-body p-0"><iframe class="report-frame" id="frameReporte"></iframe></div></div>';
+      document.getElementById('frameReporte').srcdoc = respuesta.html || respuesta.contenido || '';
+    })
+    .withFailureHandler(function(error) {
+      contenedor.innerHTML = '<div class="alert alert-danger">Error generando reporte.</div>';
+    })
+    .previsualizarReporteTurno(tokenSesion, filtro);
 }
 
 function imprimirReporte() {
   const frame = document.getElementById('frameReporte');
-  if (!frame) {
-    mostrarToast('Primero genere la previsualización.', 'error');
-    return;
-  }
+  if (!frame) { mostrarToast('Primero genere la previsualización.', 'error'); return; }
   frame.contentWindow.focus();
   frame.contentWindow.print();
 }
 
-function guardarFuncionarioUBL() {
-  if (!verificarSesionLocal()) return;
-
-  const datos = {
-    cedula: document.getElementById('ublCedula').value.trim(),
-    niv: document.getElementById('ublNiv').value,
-    gr: document.getElementById('ublGr').value,
-    funcionario: document.getElementById('ublNombre').value.trim(),
-    dependencia: document.getElementById('ublDependencia').value.trim(),
-    pert: document.getElementById('ublPert').value,
-    turno: document.getElementById('ublTurno').value,
-    mes: document.getElementById('ublMes').value,
-    dia: document.getElementById('ublDia').value,
-    fechaNacimiento: document.getElementById('ublFechaNac').value,
-    correo: document.getElementById('ublCorreo').value.trim(),
-    sexo: document.getElementById('ublSexo').value,
-    estadoCivil: document.getElementById('ublEstadoCivil').value,
-    situacionLaboral: document.getElementById('ublSituacionLaboral').value,
-    comunicadoOficial: document.getElementById('ublComunicado').value.trim()
-  };
-
-  google.script.run
-    .withSuccessHandler(function(res) {
-      if (res && res.estado) {
-        mostrarToast(res.mensaje);
-        document.getElementById('formAgregarUbl').reset();
-      } else {
-        mostrarToast(res ? res.mensaje : 'Error al guardar.', 'error');
-      }
-    })
-    .agregarFuncionarioUBL(tokenSesion, datos);
+function generarReporteDesdeTurno() {
+  if (!ultimoTurnoConsultado) { mostrarToast('Primero consulte un turno.', 'error'); return; }
+  document.getElementById('filtroReporte').value = ultimoTurnoConsultado;
+  generarArchivoReporte('pdf');
 }
 
-function eliminarFuncionarioUBL() {
-  if (!verificarSesionLocal()) return;
-  const cc = document.getElementById('ublCedulaEliminar').value.trim();
-  if (!cc) { mostrarToast('Ingrese la cédula del funcionario.', 'error'); return; }
-
-  if (!confirm('¿Está seguro de eliminar al funcionario con CC ' + cc + ' de LISTADO_BASE?')) return;
-
+function generarArchivoReporte(formato) {
+  const filtro = document.getElementById('filtroReporte').value;
+  mostrarToast('Generando archivos...');
   google.script.run
-    .withSuccessHandler(function(res) {
-      if (res && res.estado) {
-        mostrarToast(res.mensaje);
-        document.getElementById('ublCedulaEliminar').value = '';
-      } else {
-        mostrarToast(res ? res.mensaje : 'Error al eliminar.', 'error');
+    .withSuccessHandler(function(respuesta) {
+      if (!respuesta || respuesta.estado !== true) {
+        mostrarToast('No fue posible generar los archivos.', 'error');
+        return;
       }
+      const datos = respuesta.datos || respuesta;
+      ultimoReporteArchivos = { urlPDF: datos.urlPDF || '', urlExcel: datos.urlExcel || '' };
+      window.open(formato === 'pdf' ? datos.urlPDF : datos.urlExcel, '_blank', 'noopener');
     })
-    .eliminarFuncionarioUBL(tokenSesion, cc);
+    .withFailureHandler(function(error) {
+      mostrarToast('Error generando los archivos.', 'error');
+    })
+    .generarReporteTurno(tokenSesion, filtro);
 }
 
-function ejecutarEliminacionNovedadPorFila() {
-  if (!verificarSesionLocal()) return;
-  const numFila = document.getElementById('ublFilaNovedadEliminar').value.trim();
-  if (!numFila) { mostrarToast('Ingrese el número de fila.', 'error'); return; }
+function cargarReportes() {
+  const contenedor = document.getElementById('listaReportes');
+  if (!contenedor) return;
+  google.script.run
+    .withSuccessHandler(function(respuesta) {
+      if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="empty">No hay reportes.</div>'; return; }
+      const reportes = respuesta.datos || respuesta.reportes || [];
+      let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>CONSECUTIVO</th><th>FECHA</th><th>USUARIO</th><th>TURNO</th><th>URL</th></tr></thead><tbody>';
+      reportes.forEach(r => {
+        html += '<tr><td>' + esc(r.CONSECUTIVO) + '</td><td>' + esc(formatearValor(r.FECHA)) + '</td><td>' + esc(r.USUARIO) + '</td><td>' + esc(r.TURNO) + '</td><td>' + (r.URL ? '<a href="' + esc(r.URL) + '" target="_blank">Abrir</a>' : '') + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      contenedor.innerHTML = html;
+    })
+    .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando reportes.</div>'; })
+    .listarReportes(tokenSesion, 100);
+}
 
-  if (!confirm('¿Está seguro de eliminar la fila ' + numFila + ' de la hoja NOVEDADES?')) return;
+function cargarUsuarios() {
+  const contenedor = document.getElementById('listaUsuarios');
+  google.script.run
+    .withSuccessHandler(function(respuesta) {
+      if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando usuarios.</div>'; return; }
+      const usuarios = respuesta.datos || respuesta.usuarios || [];
+      let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>USUARIO</th><th>ROL</th><th>DEPENDENCIA</th><th>ESTADO</th></tr></thead><tbody>';
+      usuarios.forEach(u => {
+        html += '<tr><td>' + esc(u.USUARIO) + '</td><td>' + esc(u.ROL) + '</td><td>' + esc(u.DEPENDENCIA) + '</td><td>' + esc(u.ESTADO) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      contenedor.innerHTML = html;
+    })
+    .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando usuarios.</div>'; })
+    .listarUsuarios(tokenSesion);
+}
+
+function crearUsuario() {
+  const usuario = document.getElementById('nuevoUsuario').value.trim();
+  const clave = document.getElementById('nuevaClave').value;
+  const rol = document.getElementById('nuevoRol').value;
+  const dependencia = document.getElementById('nuevaDependencia').value.trim();
+  if (!usuario || !clave || !rol || !dependencia) { mostrarToast('Complete todos los campos.', 'error'); return; }
 
   google.script.run
-    .withSuccessHandler(function(res) {
-      if (res && res.estado) {
-        mostrarToast(res.mensaje);
-        document.getElementById('ublFilaNovedadEliminar').value = '';
-      } else {
-        mostrarToast(res ? res.mensaje : 'Error al eliminar la novedad.', 'error');
-      }
+    .withSuccessHandler(res => {
+      mostrarToast(res.mensaje || 'Usuario creado.');
+      cargarUsuarios();
     })
-    .eliminarNovedadUBL(tokenSesion, numFila);
+    .withFailureHandler(() => mostrarToast('Error creando usuario.', 'error'))
+    .crearUsuario(tokenSesion, usuario, clave, rol, dependencia);
+}
+
+function cambiarEstadoUsuario(usuario, nuevoEstado) {
+  google.script.run
+    .withSuccessHandler(() => { mostrarToast('Estado actualizado.'); cargarUsuarios(); })
+    .withFailureHandler(() => mostrarToast('Error.', 'error'))
+    .cambiarEstadoUsuario(tokenSesion, usuario, nuevoEstado);
+}
+
+function formatearValor(valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+  if (typeof valor === 'string') return valor;
+  try {
+    const fecha = new Date(valor);
+    if (!isNaN(fecha.getTime())) {
+      return String(fecha.getDate()).padStart(2,'0') + '/' + String(fecha.getMonth() + 1).padStart(2,'0') + '/' + fecha.getFullYear();
+    }
+  } catch(e) {}
+  return String(valor);
 }
 </script>
+
 </body>
 </html>

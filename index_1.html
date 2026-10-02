@@ -763,8 +763,8 @@
       return;
     }
 
-    // Categorías requeridas: OF, NIV, EJE, PT, PP, AXP, NO UNI
-    const categorias = ['OF', 'NIV', 'EJE', 'PT', 'PP', 'AXP', 'NO UNI'];
+    // Categorías requeridas: OF, EJE, PT, PP, AXP, NO UNI (NIV eliminado)
+    const categorias = ['OF', 'EJE', 'PT', 'PP', 'AXP', 'NO UNI'];
     let fuerzaDisponible = {};
     let fuerzaEfectiva = {};
     let totalDisponible = 0;
@@ -814,9 +814,11 @@
     categorias.forEach(cat => {
       let disp = fuerzaDisponible[cat];
       let efec = fuerzaEfectiva[cat];
+      // Cambiar etiqueta EJE por "Nivel EJEC"
+      let etiqueta = cat === 'EJE' ? 'Nivel EJEC' : cat;
       html += '<div class="col-6 col-md-3 col-lg">';
       html += '<div class="stat-card">';
-      html += '<div class="stat-label">' + cat + '</div>';
+      html += '<div class="stat-label">' + etiqueta + '</div>';
       html += '<div class="stat-number">' + efec + ' <small class="text-muted fs-6">/ ' + disp + '</small></div>';
       html += '<div class="text-muted" style="font-size: 11px;">Efectiva / Total</div>';
       html += '</div></div>';
@@ -824,7 +826,7 @@
 
     html += '<div class="col-6 col-md-3 col-lg">';
     html += '<div class="stat-card" style="border-top-color: var(--dorado);">';
-    html += '<div class="stat-label">TOTAL</div>';
+    html += '<div class="stat-label">En formacion</div>';
     html += '<div class="stat-number" style="color: var(--dorado);">' + totalEfectiva + ' <small class="text-muted fs-6">/ ' + totalDisponible + '</small></div>';
     html += '<div class="text-muted" style="font-size: 11px;">Total Efectiva / Total</div>';
     html += '</div></div>';
@@ -833,12 +835,12 @@
     html += '</div></div>';
 
     html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
-    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>NIV</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
+    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
     funcionarios.forEach(function(f, indice) {
       const novedades = f.historialNovedades || [];
-      let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">Sin novedades</span>';
-      html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+      let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">S/N</span>';
+      html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
     contenedor.innerHTML = html;
