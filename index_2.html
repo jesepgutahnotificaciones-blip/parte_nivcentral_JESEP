@@ -281,14 +281,6 @@
                 <label class="form-label">Descripción</label>
                 <textarea id="descripcionNovedad" class="form-control" rows="2" placeholder="Descripción de la novedad"></textarea>
               </div>
-              <div class="col-md-12">
-                <label class="form-label">Observación</label>
-                <textarea id="observacionNovedad" class="form-control" rows="3" placeholder="Observación"></textarea>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">RV</label>
-                <input type="text" id="rvNovedad" class="form-control">
-              </div>
               <!-- Campos dinámicos para GH_JESEP -->
               <div id="campoCambioTurno" class="col-md-6 hidden">
                 <label class="form-label">Nuevo Turno</label>
@@ -577,7 +569,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyK6jVq1oIGB7QumoQVidGuJJ1wVRco2Pre2b6npju8baGH2hZwgUaI3lBXAF1lrxs/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwlg4jJ_djLZcNnBHGB5eBC9xJE2bQrZcCdUrp8fOwsBba07sRlvZrJWShOireEtVL5/exec';
   const CLAVE_SESION = 'jesep_sesion';
 
   (function configurarPuenteAPI() {
@@ -917,9 +909,9 @@
           contenedor.innerHTML = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="empty">No registra novedades.</div></div></div>';
           return;
         }
-        let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DESCRIPCIÓN</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th><th>OBSERVACIÓN</th><th>RV</th><th>TEXTO</th></tr></thead><tbody>';
+        let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DESCRIPCIÓN</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th><th></th><th>TEXTO</th></tr></thead><tbody>';
         historial.forEach(function(n) {
-          html += '<tr><td>' + esc(n.GR) + '</td><td><span class="badge-novedad">' + esc(n.NOVEDAD) + '</span></td><td>' + esc(n.DESCRIPCION) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(formatearValor(n['Fecha INICIAL'])) + '</td><td>' + esc(formatearValor(n['Fecha PRESENTACION'])) + '</td><td>' + esc(n.Observacion) + '</td><td>' + esc(n.RV) + '</td><td>' + esc(n.TEXTO) + '</td></tr>';
+          html += '<tr><td>' + esc(n.GR) + '</td><td><span class="badge-novedad">' + esc(n.NOVEDAD) + '</span></td><td>' + esc(n.DESCRIPCION) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(formatearValor(n['Fecha INICIAL'])) + '</td><td>' + esc(formatearValor(n['Fecha PRESENTACION'])) + '</td><td>' + '</td><td>' + '</td><td>' + esc(n.TEXTO) + '</td></tr>';
         });
         html += '</tbody></table></div></div></div>';
         contenedor.innerHTML = html;
@@ -949,8 +941,8 @@
       dias: document.getElementById('novedadDias').value,
       fechaInicial: document.getElementById('fechaInicial').value,
       fechaPresentacion: document.getElementById('fechaPresentacion').value,
-      observacion: document.getElementById('observacionNovedad').value.trim(),
-      rv: document.getElementById('rvNovedad').value.trim()
+      
+      
     };
 
     // Manejar CAMBIO DE TURNO (GH_JESEP)
@@ -1022,8 +1014,8 @@
     document.getElementById('fechaInicial').value = '';
     document.getElementById('fechaPresentacion').value = '';
     document.getElementById('descripcionNovedad').value = '';
-    document.getElementById('observacionNovedad').value = '';
-    document.getElementById('rvNovedad').value = '';
+   
+    
     // Ocultar campos dinámicos
     document.getElementById('campoCambioTurno').classList.add('hidden');
     document.getElementById('camposHorarioFlexible').classList.add('hidden');
