@@ -6,9 +6,19 @@
 // Funciona tanto si el script está ligado al libro como si es un proyecto independiente.
 var ID_LIBRO = '1kLYnWBgKgMfahllxWwe5ijls52YM3t_klg4XRnNaC0Q';
 
-// Mientras sea true, el mensaje de "Usuario o contraseña incorrectos" incluye datos de diagnóstico.
+// While sea true, el mensaje de "Usuario o contraseña incorrectos" incluye datos de diagnóstico.
 // Cuando el login funcione, cámbielo a false y vuelva a implementar.
 var DEBUG_LOGIN = true;
+
+// Marcador de versión.
+// Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
+// Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
+// hay que pegar este código y hacer "Implementar > Nueva versión".
+var VERSION_APP = 'JESEP-2026-10-02-r8';
+
+function versionApp() {
+  return { estado: true, version: VERSION_APP };
+}
 
 function abrirLibro_() {
   if (ID_LIBRO) return SpreadsheetApp.openById(ID_LIBRO);
@@ -68,6 +78,12 @@ function doGet(e) {
     if (argsRaw) args = JSON.parse(argsRaw);
   } catch (err) {
     return responder_({ __jsonp_error: true, mensaje: 'Error al procesar los argumentos.' });
+  }
+
+  // Si se abre el Web App sin parámetros, se devuelve el diagnóstico del esquema
+  // de hojas. Así se puede verificar la instalación sin escribir query strings.
+  if (!accion) {
+    return responder_(diagnosticarEsquemaDataSafe());
   }
 
   var resultado;
@@ -133,25 +149,29 @@ function doGet(e) {
       case 'diagnosticarEsquema':
         resultado = diagnosticarEsquemaDataSafe();
         break;
+      case 'version':
+        resultado = versionApp();
+        break;
       default:
         resultado = {
           estado: false,
+          version: VERSION_APP,
           mensaje: (accion ? ('Acción no válida: ' + accion)
                            : 'Falta el parametro "accion". Abra el Web App con ?accion=<nombre>.'),
           accionesValidas: [
+            'version', 'diagnosticarEsquema',
             'validarUsuario', 'verificarSesion', 'cerrarSesionCliente',
             'buscarFuncionario', 'obtenerFichaFuncionario', 'obtenerHistorialFuncionario',
             'registrarNovedad', 'consultarPorTurno', 'previsualizarReporteTurno',
             'generarReporteTurno', 'listarReportes', 'listarUsuarios',
             'crearUsuario', 'cambiarEstadoUsuario', 'listarFuncionarios',
             'agregarFuncionario', 'eliminarFuncionario',
-            'cambiarTurnoFuncionario', 'registrarHorarioFlexible',
-            'diagnosticarEsquema'
+            'cambiarTurnoFuncionario', 'registrarHorarioFlexible'
           ]
         };
     }
   } catch (error) {
-    resultado = { estado: false, mensaje: error.toString() };
+    resultado = { estado: false, version: VERSION_APP, mensaje: error.toString() };
   }
 
   return responder_(resultado);
@@ -1369,10 +1389,11 @@ function diagnosticarEsquemaData() {
   try {
     ss = abrirLibro_();
     add('=== DIAGNOSTICO ===');
+    add('Version en ejecucion: ' + VERSION_APP);
     add('Libro: ' + ss.getName());
   } catch (e) {
     add('ERROR al abrir el libro: ' + e);
-    return { estado: false, reporte: L.join('\n') };
+    return { estado: false, version: VERSION_APP, reporte: L.join('\n') };
   }
 
   try {
@@ -1470,7 +1491,7 @@ function diagnosticarEsquemaData() {
 
   var reporte = L.join('\n');
   try { Logger.log(reporte); } catch (e) {}
-  return { estado: true, reporte: reporte };
+  return { estado: true, version: VERSION_APP, reporte: reporte };
 }
 
 // Version para el editor: delega en la de datos.
@@ -1485,6 +1506,10 @@ function diagnosticarEsquemaDataSafe() {
   try {
     return diagnosticarEsquemaData();
   } catch (e) {
-    return { estado: false, reporte: 'ERROR inesperado: ' + e + '\n' + (e && e.stack ? e.stack : '') };
+    return {
+      estado: false,
+      version: VERSION_APP,
+      reporte: 'ERROR inesperado: ' + e + '\n' + (e && e.stack ? e.stack : '')
+    };
   }
 }

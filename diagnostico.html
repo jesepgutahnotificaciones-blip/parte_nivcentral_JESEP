@@ -23,10 +23,12 @@
         <strong>NOVEDADES</strong> y <strong>LISTADO_BASE</strong>.
       </p>
       <button id="btn" class="btn btn-success" onclick="ejecutar()">▶ Ejecutar diagnóstico</button>
+      <button id="btnVer" class="btn btn-outline-secondary" onclick="verVersion()">Ver versión del servidor</button>
       <span id="estado" class="ms-3 text-muted"></span>
       <hr>
       <p class="mb-1"><strong>URL del servidor:</strong></p>
       <div id="urlMostrada" class="url-box text-muted"></div>
+      <div id="versionActual" class="mt-2"></div>
     </div>
   </div>
 
@@ -43,6 +45,60 @@
 const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbx7I9jamo7JDHXtgTLzwcPWxNHmzLncpC9h04hSHV18Le3VM7sMRdpcdi7ZrBe_NLll/exec';
 
 document.getElementById('urlMostrada').textContent = APPS_SCRIPT_API_URL;
+
+// Consulta la versión del servidor para saber si el despliegue está actualizado
+function verVersion() {
+  const salida = document.getElementById('salida');
+  const estado = document.getElementById('estado');
+  const btn = document.getElementById('btnVer');
+  const caja = document.getElementById('versionActual');
+
+  btn.disabled = true;
+  estado.textContent = 'Consultando versión...';
+  const cb = '__verCb_' + Date.now();
+  const script = document.createElement('script');
+  let done = false;
+
+  const t = setTimeout(function() {
+    if (done) return;
+    done = true;
+    try { delete window[cb]; } catch (e) {}
+    if (script.parentNode) script.parentNode.removeChild(script);
+    estado.textContent = 'Sin respuesta del servidor.';
+    btn.disabled = false;
+    caja.innerHTML = '<div class="alert alert-danger">No respondio. Verifique la URL y que el Web App este desplegado.</div>';
+  }, 30000);
+
+  window[cb] = function(r) {
+    if (done) return;
+    done = true;
+    clearTimeout(t);
+    try { delete window[cb]; } catch (e) {}
+    if (script.parentNode) script.parentNode.removeChild(script);
+    btn.disabled = false;
+    estado.textContent = '';
+
+    if (r && r.estado === true && r.version) {
+      caja.innerHTML = '<div class="alert alert-success">Version desplegada: <strong>' + r.version + '</strong></div>';
+      salida.textContent = 'El servidor tiene la version mas reciente.';
+    } else {
+      caja.innerHTML = '<div class="alert alert-danger">Version antigua o sin accion "version". El despliegue esta desactualizado.</div>';
+      salida.textContent = 'Respuesta del servidor:\n\n' + JSON.stringify(r, null, 2) +
+        '\n\nSolucion: pegar el codigo nuevo en Apps Script y hacer Implementar > Nueva version.';
+    }
+  };
+
+  script.onerror = function() {
+    if (done) return;
+    done = true;
+    clearTimeout(t);
+    btn.disabled = false;
+    estado.textContent = 'Error de red.';
+  };
+
+  script.src = APPS_SCRIPT_API_URL + '?accion=version&callback=' + cb;
+  document.head.appendChild(script);
+}
 
 function ejecutar() {
   const salida = document.getElementById('salida');
@@ -98,6 +154,10 @@ function ejecutar() {
     if (respuesta.reporte) {
       estado.textContent = 'Diagnóstico recibido.';
       salida.textContent = respuesta.reporte;
+      if (respuesta.version) {
+        document.getElementById('versionActual').innerHTML =
+          '<div class="alert alert-success">Version desplegada: <strong>' + respuesta.version + '</strong></div>';
+      }
     } else {
       estado.textContent = 'El servidor respondio:';
       salida.textContent = JSON.stringify(respuesta, null, 2);
