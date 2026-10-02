@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r15';
+var VERSION_APP = 'JESEP-2026-10-02-r16';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -974,6 +974,8 @@ function previsualizarReporteTurno(token, filtro) {
 }
 
 function generarReporteTurno(token, filtro) {
+  var paso = 'consulta de datos';
+
   try {
     var resultadoTurno = consultarPorTurno(token, filtro);
     if (!resultadoTurno.estado) return resultadoTurno;
@@ -981,12 +983,21 @@ function generarReporteTurno(token, filtro) {
     var funcs = resultadoTurno.datos.funcionarios;
     var consecutivo = 'REP-' + Utilities.formatDate(new Date(), 'America/Bogota', 'yyyyMMdd-HHmmss');
 
-    // PDF: se genera en memoria y se devuelve en base64 (no se aloja en Drive)
-    var pdfBlob = generarPDFBlob_(funcs, filtro, consecutivo);
+    // --- PDF ---
+    paso = 'construccion del HTML';
+    var htmlReporte = construirHtmlReporte_(funcs, filtro, consecutivo);
+
+    paso = 'conversion a PDF (HtmlService)';
+    var pdfBlob = generarPDFBlobDesdeHtml_(htmlReporte);
+
+    paso = 'codificacion del PDF en base64';
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
 
-    // Excel (xlsx real): se genera en memoria y se devuelve en base64
+    // --- Excel ---
+    paso = 'generacion del Excel';
     var excelBlob = generarExcelBlob_(funcs, filtro, consecutivo);
+
+    paso = 'codificacion del Excel en base64';
     var excelBase64 = Utilities.base64Encode(excelBlob.getBytes());
 
     return {
@@ -1005,7 +1016,7 @@ function generarReporteTurno(token, filtro) {
     return {
       estado: false,
       version: VERSION_APP,
-      mensaje: '[' + VERSION_APP + '] Error generando reporte: ' + err.message
+      mensaje: '[' + VERSION_APP + '] FALLO EN: ' + paso + ' -> ' + err.message
     };
   }
 }
@@ -1054,19 +1065,37 @@ function escHtml_(v) {
   return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Convierte el HTML del reporte en un Blob PDF.
+// Se separa del resto para poder identificar en qué paso exacto se produce
+// un error (HtmlService puede lanzar "Argumento no válido" con HTML muy largo).
+function generarPDFBlobDesdeHtml_(html) {
+  var htmlOutput = HtmlService.createHtmlOutput(html);
+  var pdf = htmlOutput.getAs('application/pdf');
+  if (!pdf || pdf.getBytes().length === 0) {
+    throw new Error('El PDF generado está vacío.');
+  }
+  return pdf;
+}
+
 function generarPDFBlob_(funcs, filtro, consecutivo) {
   var html = construirHtmlReporte_(funcs, filtro, consecutivo);
-  var htmlOutput = HtmlService.createHtmlOutput(html);
-  return htmlOutput.getAs('application/pdf')
+  return generarPDFBlobDesdeHtml_(html)
     .setName('Reporte_Turno_' + filtro + '_' + consecutivo + '.pdf');
 }
 
-// Genera un .xlsx real en memoria (no requiere crear archivos en Drive)
+// Genera un .xlsx real en memoria (el archivo temporal se descarta al final)
 function generarExcelBlob_(funcs, filtro, consecutivo) {
+  // Nombre de hoja seguro: sin caracteres prohibidos ni excediendo 100 caracteres
+  var nombreHoja = ('TURNO ' + String(filtro))
+    .replace(/[\/\*\?\[\]:\\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 90) || 'TURNO';
+
   var libro = SpreadsheetApp.create('tmp_' + consecutivo);
   try {
     var hoja = libro.getActiveSheet();
-    hoja.setName('TURNO ' + filtro);
+    try { hoja.setName(nombreHoja); } catch (e) { /* conserva el nombre por defecto */ }
 
     var encabezados = ['#', 'CÉDULA', 'GR', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', 'NOVEDADES'];
     hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
