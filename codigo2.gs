@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r11';
+var VERSION_APP = 'JESEP-2026-10-02-r12';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -591,23 +591,26 @@ function servirArchivoReporte_(formato, filtro) {
 
   var sello = Utilities.formatDate(new Date(), 'America/Bogota', 'yyyyMMdd-HHmmss');
   var nombreBase = 'Reporte_Turno_' + filtro + '_' + sello;
-  var blob, mime;
+  var esExcel = (formato === 'excel' || formato === 'xlsx');
+  var blob;
 
-  if (formato === 'excel' || formato === 'xlsx') {
+  if (esExcel) {
     blob = generarExcelBlob_(funcs, filtro, sello);
     blob.setName(nombreBase + '.xlsx');
-    mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    blob.setContentType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   } else {
     blob = generarPDFBlob_(funcs, filtro, sello);
     blob.setName(nombreBase + '.pdf');
-    mime = 'application/pdf';
+    blob.setContentType('application/pdf');
   }
 
+  // createOutput(blob) toma el tipo de contenido del propio blob.
+  // No se usa setMimeType porque solo acepta el enum MimeType y el .xlsx
+  // no existe en ese enumerado.
   return ContentService
-    .createTextOutput(blob)
-    .setMimeType(mime)
+    .createOutput(blob)
     .setHeaders({
-      'Content-Disposition': 'attachment; filename="' + nombreBase + (formato === 'excel' || formato === 'xlsx' ? '.xlsx' : '.pdf') + '"',
+      'Content-Disposition': 'attachment; filename="' + blob.getName() + '"',
       'Cache-Control': 'no-store, no-cache, must-revalidate'
     });
 }
