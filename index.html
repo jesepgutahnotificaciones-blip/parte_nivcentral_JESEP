@@ -26,8 +26,11 @@
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, Arial, sans-serif;
       color: var(--texto);
-      /* Fondo configurado con FOND_1.jpg y un respaldo de color */
-      background: linear-gradient(rgba(243, 245, 244, 0.85), rgba(243, 245, 244, 0.85)), url('FOND_1.jpg') no-repeat center center fixed;
+      background-color: var(--gris);
+      background-image: linear-gradient(rgba(243, 245, 244, 0.85), rgba(243, 245, 244, 0.85)), url('FOND_1.jpg');
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-attachment: fixed;
       background-size: cover;
       display: flex;
       flex-direction: column;
@@ -245,7 +248,6 @@
 
   <header class="franja">
     <div class="franja-interna">
-      <!-- Escudo oficial en formato PNG incorporado desde el repositorio -->
       <img src="ESC_PONAL.png" class="escudo" alt="Escudo institucional Policía Nacional de Colombia">
       <div>
         <h1>Policía Nacional de Colombia</h1>
@@ -325,16 +327,27 @@
 const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyG5b8ypxfvqiR3Lg9j8eXe-tas5eF6OLIkX7vSxv2Y_AExo5ko95IYmGZUMw15guXb/exec';
 
 (function configurarPuenteAPI() {
-  const TIMEOUT_MS = 90000;
+  // Apps Script puede tardar unos segundos en arrancar en frío; 30 s es suficiente.
+  const TIMEOUT_MS = 30000;
 
   function llamarAPI_(accion, argumentos, alExito, alFallar) {
-    const nombreCallback = '__cb_' + accion.replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+    const nombreCallback = '__cb_' + String(accion).replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+    const elementoScript = document.createElement('script');
     let finalizado = false;
+    let idTimeout = null;
 
     function limpiar() {
-      delete window[nombreCallback];
-      if (elementoScript.parentNode) elementoScript.parentNode.removeChild(elementoScript);
       clearTimeout(idTimeout);
+      // Se deja una función vacía por si el servidor responde tarde (evita errores en consola)
+      window[nombreCallback] = function() {};
+      if (elementoScript.parentNode) elementoScript.parentNode.removeChild(elementoScript);
+    }
+
+    function fallar(mensaje) {
+      if (finalizado) return;
+      finalizado = true;
+      limpiar();
+      if (alFallar) alFallar({ message: mensaje });
     }
 
     window[nombreCallback] = function(respuesta) {
@@ -348,11 +361,8 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyG5b8ypxfv
       if (alExito) alExito(respuesta);
     };
 
-    const idTimeout = setTimeout(function() {
-      if (finalizado) return;
-      finalizado = true;
-      limpiar();
-      if (alFallar) alFallar({ message: 'Tiempo de espera agotado contactando el servidor.' });
+    idTimeout = setTimeout(function() {
+      fallar('Tiempo de espera agotado contactando el servidor.');
     }, TIMEOUT_MS);
 
     const parametros = new URLSearchParams();
@@ -362,19 +372,21 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyG5b8ypxfv
     try {
       parametros.set('args', JSON.stringify(argumentos || []));
     } catch (e) {
-      finalizado = true;
-      clearTimeout(idTimeout);
-      if (alFallar) alFallar({ message: 'No fue posible preparar la solicitud.' });
+      fallar('No fue posible preparar la solicitud.');
       return;
     }
 
-    const elementoScript = document.createElement('script');
     elementoScript.src = APPS_SCRIPT_API_URL + '?' + parametros.toString();
+
+    // Error de red / URL inexistente
     elementoScript.onerror = function() {
-      if (finalizado) return;
-      finalizado = true;
-      limpiar();
-      if (alFallar) alFallar({ message: 'No se pudo contactar el servidor.' });
+      fallar('No se pudo contactar el servidor. Verifique su conexión o la URL del backend.');
+    };
+
+    // El script se descargó pero NUNCA llamó al callback: Google devolvió una página HTML
+    // (permisos del Web App, inicio de sesión de Google o error) en lugar de JSONP.
+    elementoScript.onload = function() {
+      fallar('El servidor respondió con un formato inválido. Verifique que el Web App esté implementado como "Cualquier persona" y con la última versión.');
     };
 
     document.head.appendChild(elementoScript);
@@ -416,11 +428,6 @@ const RUTAS_MODULO = {
 };
 
 function $(id) { return document.getElementById(id); }
-
-function esc(valor) {
-  if (valor === null || valor === undefined) return '';
-  return String(valor).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
 
 function leerSesion() {
   try { return JSON.parse(sessionStorage.getItem(CLAVE_SESION) || 'null'); } catch (e) { return null; }
@@ -471,7 +478,7 @@ function enrutar(sesion) {
 
 function iniciarSesion() {
   const usuario = $('txtUsuario').value.trim();
-  const clave = $('txtClave').value;
+  const clave = $('txtClave').value.trim();
   const boton = $('btnIngresar');
 
   if (!usuario || !clave) {
@@ -511,7 +518,10 @@ function cerrarSesion() {
   const sesion = leerSesion();
   borrarSesion();
   if (sesion && sesion.token) {
-    google.script.run.withSuccessHandler(function() {}).withFailureHandler(function() {}).cerrarSesionCliente(sesion.token);
+    google.script.run
+      .withSuccessHandler(function() {})
+      .withFailureHandler(function() {})
+      .cerrarSesionCliente(sesion.token);
   }
   mostrarPantalla('pantallaLogin');
   mostrarMensaje('');
@@ -546,16 +556,27 @@ document.addEventListener('DOMContentLoaded', function() {
     mostrarPantalla('pantallaCarga');
     google.script.run
       .withSuccessHandler(function(r) {
-        if (!r || r.estado !== true) { borrarSesion(); mostrarPantalla('pantallaLogin'); return; }
-        guardada.usuario = r.usuario;
-        guardada.modulos = r.modulos || [];
-        guardarSesion(guardada);
-        enrutar(guardada);
-      })
-      .withFailureHandler(function() {
+        if (r && r.estado === true) {
+          // Si el servidor devuelve datos actualizados, se usan; si no, se conservan los guardados
+          if (r.usuario) guardada.usuario = r.usuario;
+          if (r.modulos) guardada.modulos = r.modulos;
+          guardarSesion(guardada);
+          enrutar(guardada);
+          return;
+        }
+        // Backend sin la acción "verificarSesion": no se expulsa al usuario por eso
+        if (r && /Acción no válida/i.test(String(r.mensaje || ''))) {
+          enrutar(guardada);
+          return;
+        }
         borrarSesion();
         mostrarPantalla('pantallaLogin');
         mostrarMensaje('Su sesión expiró. Ingrese nuevamente.', 'error');
+      })
+      .withFailureHandler(function(err) {
+        borrarSesion();
+        mostrarPantalla('pantallaLogin');
+        mostrarMensaje((err && err.message) || 'No fue posible verificar la sesión. Ingrese nuevamente.', 'error');
       })
       .verificarSesion(guardada.token);
   } else {
