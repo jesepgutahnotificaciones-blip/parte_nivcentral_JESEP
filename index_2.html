@@ -846,8 +846,11 @@
               datos.nombrePDF || ('Reporte_' + filtro + '.pdf'));
           } else {
             if (!datos.excelBase64) throw new Error('El servidor no devolvió el Excel.');
+            // La extensión depende de si el servidor generó xlsx o csv
+            const esCsv = /\.csv$/i.test(datos.nombreExcel || '');
             descargarBase64_(datos.excelBase64,
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              esCsv ? 'text/csv;charset=utf-8'
+                    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
               datos.nombreExcel || ('Reporte_' + filtro + '.xlsx'));
           }
           mostrarToast('Archivo descargado: ' + (datos.nombrePDF || datos.nombreExcel || ''));
@@ -1476,9 +1479,10 @@ function probarDescarga() {
         }
         let kb = 0;
         try { kb = Math.round(d.pdfBase64.length * 3 / 4 / 1024); } catch (e) {}
+        let extra = '';
+        if (d.tipoExcel) extra = ' Excel generado como: ' + d.tipoExcel.toUpperCase() + '.';
         caja.className = 'alert alert-success mt-3';
-        caja.textContent = 'OK — el servidor generó un PDF válido (' + kb + ' KB). ' +
-          'Si al pulsar "Generar PDF" no se descarga, el problema es del navegador, no del servidor.';
+        caja.textContent = 'OK — PDF válido (' + kb + ' KB).' + extra;
       })
       .withFailureHandler(function(e) {
         if (!caja) return;

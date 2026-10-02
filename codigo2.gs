@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r17';
+var VERSION_APP = 'JESEP-2026-10-02-r18';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -636,9 +636,12 @@ function servirArchivoReporte_(formato, filtro) {
   var blob;
 
   if (esExcel) {
-    blob = generarExcelBlob_(funcs, filtro, sello);
-    blob.setName(nombreBase + '.xlsx');
-    blob.setContentType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    var excel = generarExcelArchivo_(funcs, filtro, sello);
+    blob = excel.blob;
+    blob.setName(excel.nombre);
+    blob.setContentType(excel.tipo === 'csv'
+      ? 'text/csv; charset=utf-8'
+      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   } else {
     blob = generarPDFBlob_(funcs, filtro, sello);
     blob.setName(nombreBase + '.pdf');
@@ -993,12 +996,12 @@ function generarReporteTurno(token, filtro) {
     paso = 'codificacion del PDF en base64';
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
 
-    // --- Excel ---
+    // --- Excel (xlsx real, o CSV de respaldo si Drive no convierte) ---
     paso = 'generacion del Excel';
-    var excelBlob = generarExcelBlob_(funcs, filtro, consecutivo);
+    var excel = generarExcelArchivo_(funcs, filtro, consecutivo);
 
     paso = 'codificacion del Excel en base64';
-    var excelBase64 = Utilities.base64Encode(excelBlob.getBytes());
+    var excelBase64 = Utilities.base64Encode(excel.blob.getBytes());
 
     return {
       estado: true,
@@ -1006,8 +1009,9 @@ function generarReporteTurno(token, filtro) {
       datos: {
         filtro: filtro,
         consecutivo: consecutivo,
+        tipoExcel: excel.tipo,
         nombrePDF: 'Reporte_Turno_' + filtro + '_' + consecutivo + '.pdf',
-        nombreExcel: 'Reporte_Turno_' + filtro + '_' + consecutivo + '.xlsx',
+        nombreExcel: excel.nombre,
         pdfBase64: pdfBase64,
         excelBase64: excelBase64
       }
@@ -1083,62 +1087,79 @@ function generarPDFBlob_(funcs, filtro, consecutivo) {
     .setName('Reporte_Turno_' + filtro + '_' + consecutivo + '.pdf');
 }
 
-// Genera un .xlsx real en memoria (el archivo temporal se descarta al final)
-function generarExcelBlob_(funcs, filtro, consecutivo) {
-  // Nombre de hoja seguro: sin caracteres prohibidos ni excediendo 100 caracteres
-  var nombreHoja = ('TURNO ' + String(filtro))
-    .replace(/[\/\*\?\[\]:\\]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .substring(0, 90) || 'TURNO';
+// Genera el Excel. Intenta un .xlsx real mediante Drive; si la conversión
+// no está disponible, cae a un CSV construido en memoria (que Excel abre
+// sin problemas y no requiere Drive).
+// Devuelve { blob, nombre, tipo }
+function generarExcelArchivo_(funcs, filtro, consecutivo) {
+  var filas = funcs.map(function(f, i) {
+    var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
+    return [
+      i + 1,
+      f.cedula || f.CEDULA || '',
+      f.grado || f.GR || '',
+      f.funcionario || f.FUNCIONARIO || '',
+      f.dependencia || f.DEPENDENCIA || '',
+      f.turno || f.TURNO || '',
+      novedadesTexto || 'S/N'
+    ];
+  });
+  var encabezados = ['#', 'CÉDULA', 'GR', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', 'NOVEDADES'];
+  var nombreBase = 'Reporte_Turno_' + filtro + '_' + consecutivo;
 
-  var libro = SpreadsheetApp.create('tmp_' + consecutivo);
+  // --- Intento 1: .xlsx real ---
   try {
-    var hoja = libro.getActiveSheet();
-    try { hoja.setName(nombreHoja); } catch (e) { /* conserva el nombre por defecto */ }
+    var libro = SpreadsheetApp.create('tmp_' + consecutivo);
+    try {
+      var hoja = libro.getActiveSheet();
+      try {
+        var nombreHoja = ('TURNO ' + String(filtro))
+          .replace(/[\/\*\?\[\]:\\]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .substring(0, 90) || 'TURNO';
+        hoja.setName(nombreHoja);
+      } catch (e) { /* conserva el nombre por defecto */ }
 
-    var encabezados = ['#', 'CÉDULA', 'GR', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', 'NOVEDADES'];
-    hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
-
-    var filas = funcs.map(function(f, i) {
-      var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
-      return [
-        i + 1,
-        f.cedula || f.CEDULA || '',
-        f.grado || f.GR || '',
-        f.funcionario || f.FUNCIONARIO || '',
-        f.dependencia || f.DEPENDENCIA || '',
-        f.turno || f.TURNO || '',
-        novedadesTexto || 'S/N'
-      ];
-    });
-
-    if (filas.length) {
-      hoja.getRange(2, 1, filas.length, encabezados.length).setValues(filas);
-
-      // Formato de la cabecera
-      var cab = hoja.getRange(1, 1, 1, encabezados.length);
-      cab.setFontWeight('bold').setBackground('#01592F').setFontColor('#ffffff');
-
-      // Ajustes de tamaño
-      hoja.setFrozenRows(1);
-      hoja.autoResizeColumns(1, encabezados.length);
-      for (var c = 1; c <= encabezados.length; c++) {
-        if (hoja.getColumnWidth(c) > 220) hoja.setColumnWidth(c, 220);
+      hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
+      if (filas.length) {
+        hoja.getRange(2, 1, filas.length, encabezados.length).setValues(filas);
+        var cab = hoja.getRange(1, 1, 1, encabezados.length);
+        cab.setFontWeight('bold').setBackground('#01592F').setFontColor('#ffffff');
+        hoja.setFrozenRows(1);
       }
-    }
 
-    // Exporta a xlsx binario real.
-    // La clase Spreadsheet NO tiene getAs(): hay que obtener el archivo
-    // de Drive y convertirlo desde ahi.
-    var archivo = DriveApp.getFileById(libro.getId());
-    var excelBlob = archivo.getAs(MimeType.EXCEL);
-    excelBlob.setName('Reporte_Turno_' + filtro + '_' + consecutivo + '.xlsx');
-    return excelBlob;
-  } finally {
-    // La hoja temporal se descarta; nunca queda visible en Drive
-    try { DriveApp.getFileById(libro.getId()).setTrashed(true); } catch (e) {}
+      // Se usa la cadena MIME literal: el enumerado MimeType puede llegar nulo.
+      var archivo = DriveApp.getFileById(libro.getId());
+      var blob = archivo.getAs('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      if (blob && blob.getBytes().length > 0) {
+        blob.setName(nombreBase + '.xlsx');
+        return { blob: blob, nombre: nombreBase + '.xlsx', tipo: 'xlsx' };
+      }
+    } finally {
+      try { DriveApp.getFileById(libro.getId()).setTrashed(true); } catch (e2) {}
+    }
+  } catch (e1) {
+    // Se ignora y se intenta el CSV
   }
+
+  // --- Intento 2: CSV en memoria (sin Drive) ---
+  function celdaCsv_(v) {
+    var s = (v === null || v === undefined) ? '' : String(v);
+    if (s.indexOf('"') !== -1 || s.indexOf(',') !== -1 || s.indexOf('\n') !== -1) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  var lineas = [];
+  lineas.push(encabezados.map(celdaCsv_).join(','));
+  filas.forEach(function(fila) { lineas.push(fila.map(celdaCsv_).join(',')); });
+
+  // BOM para que Excel reconozca UTF-8 (acentos y ñ)
+  var csv = '\ufeff' + lineas.join('\r\n');
+  var csvBlob = Utilities.newBlob(csv, 'text/csv; charset=utf-8', nombreBase + '.csv');
+  return { blob: csvBlob, nombre: nombreBase + '.csv', tipo: 'csv' };
 }
 
 function listarReportes(token, limite) {
