@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r18';
+var VERSION_APP = 'JESEP-2026-10-02-r19';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -713,10 +713,11 @@ function renglonBasePorCedula_(cedula) {
 
   var cabeceras = datos[0];
   var idxCedula = idxColumnaBase_(cabeceras, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/, /^N C$/], 0);
-  var cedulaIn = String(cedula || '').trim();
+  var cedulaIn = normalizaCedula_(cedula);
+  if (!cedulaIn) return null;
 
   for (var i = 1; i < datos.length; i++) {
-    if (String(datos[i][idxCedula]).trim() === cedulaIn) {
+    if (normalizaCedula_(datos[i][idxCedula]) === cedulaIn) {
       return { cabeceras: cabeceras, valores: datos[i], fila: i + 1, hoja: hoja };
     }
   }
@@ -904,11 +905,12 @@ function consultarPorTurno(token, filtro) {
       if (filtro === 'SEPRI' || turnoFila === String(filtro).trim().toUpperCase()) {
 
         var cedulaFuncionario = String(obj.cedula || obj.CEDULA || '').trim();
+        var cedulaFuncionarioNorm = normalizaCedula_(obj.cedula || obj.CEDULA || '');
         var novedadesCruzadas = [];
 
         // Cruce con la hoja NOVEDADES usando las mismas posiciones fijas
         // del registro: B = cedula, E = tipo, F = novedad, G = dias.
-        if (datosNovedades.length > 1 && cedulaFuncionario !== '') {
+        if (datosNovedades.length > 1 && cedulaFuncionarioNorm !== '') {
           var idxCedulaNov = 1;
           var idxTipoNov = 4;
           var idxNovedadNov = 5;
@@ -917,9 +919,10 @@ function consultarPorTurno(token, filtro) {
           for (var n = 1; n < datosNovedades.length; n++) {
             var filaNov = datosNovedades[n];
 
-            var vCed = filaNov[idxCedulaNov];
-            var cedulaNov = (vCed === null || vCed === undefined) ? '' : String(vCed).trim();
-            if (cedulaNov !== cedulaFuncionario) continue;
+            // Se compara la cedula normalizada: tolera formato, separadores
+            // y ceros a la izquierda (numero en una hoja, texto en la otra).
+            var cedulaNov = normalizaCedula_(filaNov[idxCedulaNov]);
+            if (cedulaNov === '' || cedulaNov !== cedulaFuncionarioNorm) continue;
 
             var vTipo = filaNov[idxTipoNov];
             var vNovedad = filaNov[idxNovedadNov];
@@ -1037,27 +1040,57 @@ function construirHtmlReporte_(funcs, filtro, consecutivo) {
   html += 'td{padding:3px 5px;border:1px solid #cccccc;vertical-align:top;}';
   html += 'tr{page-break-inside:avoid;}';
   html += 'thead{display:table-header-group;}';
+  html += '.grupo td{background:#e8f3ed;font-weight:bold;font-size:9pt;color:#01592F;padding:5px;border:1px solid #c8dfd2;}';
+  html += '.grupo td.oscuro{background:#fdf3e3;color:#8a5a00;}';
+  html += '.nov{background:#fff6f6;}';
   html += '</style></head><body>';
+
+  var ordenados = ordenarParaReporte_(funcs);
+  var sinNov = ordenados.filter(function(f) { return !tieneNovedades_(f); });
+  var conNov = ordenados.filter(function(f) { return tieneNovedades_(f); });
+
   html += '<h1>REPORTE DE TURNO ' + escHtml_(filtro) + '</h1>';
   html += '<div class="meta"><b>Consecutivo:</b> ' + escHtml_(consecutivo) + ' &nbsp;|&nbsp; ';
   html += '<b>Fecha:</b> ' + escHtml_(Utilities.formatDate(new Date(), 'America/Bogota', "dd/MM/yyyy HH:mm")) + ' &nbsp;|&nbsp; ';
-  html += '<b>Total funcionarios:</b> ' + funcs.length + '</div>';
+  html += '<b>Total:</b> ' + funcs.length +
+    ' &nbsp;|&nbsp; <b>Sin novedades:</b> ' + sinNov.length +
+    ' &nbsp;|&nbsp; <b>Con novedades:</b> ' + conNov.length + '</div>';
   html += '<table><thead><tr>';
   html += '<th>#</th><th>C&eacute;dula</th><th>GR</th><th>Funcionario</th><th>Dependencia</th><th>Turno</th><th>Novedades</th>';
   html += '</tr></thead><tbody>';
 
-  funcs.forEach(function(f, i) {
-    var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
-    html += '<tr>';
-    html += '<td>' + (i + 1) + '</td>';
-    html += '<td>' + escHtml_(f.cedula || f.CEDULA || '') + '</td>';
-    html += '<td>' + escHtml_(f.grado || f.GR || '') + '</td>';
-    html += '<td>' + escHtml_(f.funcionario || f.FUNCIONARIO || '') + '</td>';
-    html += '<td>' + escHtml_(f.dependencia || f.DEPENDENCIA || '') + '</td>';
-    html += '<td>' + escHtml_(f.turno || f.TURNO || '') + '</td>';
-    html += '<td>' + escHtml_(novedadesTexto || 'S/N') + '</td>';
-    html += '</tr>';
-  });
+  var n = 0;
+  var gradoPrevio = null;
+
+  function filasDe_(lista, conNovedades) {
+    for (var i = 0; i < lista.length; i++) {
+      var f = lista[i];
+      var g = gradoDe_(f);
+
+      // Encabezado de grupo cada vez que cambia el GR
+      if (g !== gradoPrevio) {
+        gradoPrevio = g;
+        html += '<tr class="grupo' + (conNovedades ? ' oscuro' : '') + '"><td colspan="7">' +
+          (conNovedades ? 'CON NOVEDADES &middot; GRADO ' : 'SIN NOVEDADES &middot; GRADO ') +
+          escHtml_(g || 'SIN GRADO') + '</td></tr>';
+      }
+
+      n++;
+      var novedadesTexto = (f.historialNovedades || []).map(function(x) { return x.NOVEDAD; }).join(', ');
+      html += '<tr' + (conNovedades ? ' class="nov"' : '') + '>';
+      html += '<td>' + n + '</td>';
+      html += '<td>' + escHtml_(f.cedula || f.CEDULA || '') + '</td>';
+      html += '<td>' + escHtml_(f.grado || f.GR || '') + '</td>';
+      html += '<td>' + escHtml_(f.funcionario || f.FUNCIONARIO || '') + '</td>';
+      html += '<td>' + escHtml_(f.dependencia || f.DEPENDENCIA || '') + '</td>';
+      html += '<td>' + escHtml_(f.turno || f.TURNO || '') + '</td>';
+      html += '<td>' + escHtml_(novedadesTexto || 'S/N') + '</td>';
+      html += '</tr>';
+    }
+  }
+
+  filasDe_(sinNov, false);
+  filasDe_(conNov, true);
 
   html += '</tbody></table></body></html>';
   return html;
@@ -1067,6 +1100,46 @@ function construirHtmlReporte_(funcs, filtro, consecutivo) {
 function escHtml_(v) {
   if (v === null || v === undefined) return '';
   return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* =====================================================
+   ORDEN Y AGRUPACIÓN DEL REPORTE
+   Primero los funcionarios SIN novedades, agrupados por GR.
+   Al final los que SÍ tienen novedades, también agrupados por GR.
+   ===================================================== */
+
+// Normaliza la cédula para comparar sin importar formato,
+// separadores ni ceros a la izquierda (numero vs texto).
+function normalizaCedula_(v) {
+  if (v === null || v === undefined) return '';
+  var s = String(v).replace(/[^0-9]/g, '');
+  return s.replace(/^0+/, '');
+}
+
+function tieneNovedades_(f) {
+  return !!(f && f.historialNovedades && f.historialNovedades.length);
+}
+
+function gradoDe_(f) {
+  return String((f && (f.grado || f.GR)) || '').trim().toUpperCase();
+}
+
+function nombreDe_(f) {
+  return String((f && (f.funcionario || f.FUNCIONARIO)) || '').trim().toUpperCase();
+}
+
+// Copia ordenada: sin novedades primero; dentro de cada grupo, por GR y luego nombre.
+function ordenarParaReporte_(funcs) {
+  return (funcs || []).slice().sort(function(a, b) {
+    var na = tieneNovedades_(a) ? 1 : 0;
+    var nb = tieneNovedades_(b) ? 1 : 0;
+    if (na !== nb) return na - nb;              // sin novedades arriba
+    var ga = gradoDe_(a), gb = gradoDe_(b);
+    if (ga !== gb) return ga < gb ? -1 : 1;     // por grado
+    var xa = nombreDe_(a), xb = nombreDe_(b);
+    if (xa !== xb) return xa < xb ? -1 : 1;     // por nombre
+    return 0;
+  });
 }
 
 // Convierte el HTML del reporte en un Blob PDF.
@@ -1092,18 +1165,33 @@ function generarPDFBlob_(funcs, filtro, consecutivo) {
 // sin problemas y no requiere Drive).
 // Devuelve { blob, nombre, tipo }
 function generarExcelArchivo_(funcs, filtro, consecutivo) {
-  var filas = funcs.map(function(f, i) {
-    var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
-    return [
-      i + 1,
+  // Mismo orden que el PDF: sin novedades primero, agrupado por GR.
+  var ordenados = ordenarParaReporte_(funcs);
+
+  var filas = [];
+  var n = 0;
+  var gradoPrevio = null;
+
+  ordenados.forEach(function(f) {
+    var g = gradoDe_(f);
+    // Fila de encabezado cada vez que cambia el GR
+    if (g !== gradoPrevio) {
+      gradoPrevio = g;
+      filas.push(['GRUPO', (tieneNovedades_(f) ? 'CON NOVEDADES - ' : 'SIN NOVEDADES - ') + 'GRADO ' + (g || 'SIN GRADO'), '', '', '', '', '']);
+    }
+    n++;
+    var novedadesTexto = (f.historialNovedades || []).map(function(x) { return x.NOVEDAD; }).join(', ');
+    filas.push([
+      n,
       f.cedula || f.CEDULA || '',
       f.grado || f.GR || '',
       f.funcionario || f.FUNCIONARIO || '',
       f.dependencia || f.DEPENDENCIA || '',
       f.turno || f.TURNO || '',
       novedadesTexto || 'S/N'
-    ];
+    ]);
   });
+
   var encabezados = ['#', 'CÉDULA', 'GR', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', 'NOVEDADES'];
   var nombreBase = 'Reporte_Turno_' + filtro + '_' + consecutivo;
 

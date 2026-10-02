@@ -937,10 +937,35 @@
     html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
     html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
-    funcionarios.forEach(function(f, indice) {
+    // Mismo orden del reporte: sin novedades primero, agrupado por GR.
+    const ordenados = funcionarios.slice().sort(function(a, b) {
+      const na = (a.historialNovedades || []).length ? 1 : 0;
+      const nb = (b.historialNovedades || []).length ? 1 : 0;
+      if (na !== nb) return na - nb;
+      const ga = String(a.grado || a.GR || '').trim().toUpperCase();
+      const gb = String(b.grado || b.GR || '').trim().toUpperCase();
+      if (ga !== gb) return ga < gb ? -1 : 1;
+      const xa = String(a.funcionario || a.FUNCIONARIO || '').trim().toUpperCase();
+      const xb = String(b.funcionario || b.FUNCIONARIO || '').trim().toUpperCase();
+      return xa < xb ? -1 : (xa > xb ? 1 : 0);
+    });
+
+    let n = 0;
+    let gradoPrevio = null;
+    ordenados.forEach(function(f) {
+      const g = String(f.grado || f.GR || '').trim().toUpperCase();
+      const conNov = (f.historialNovedades || []).length > 0;
+      if (g !== gradoPrevio) {
+        gradoPrevio = g;
+        const color = conNov ? 'warning' : 'success';
+        html += '<tr class="table-' + color + '"><td colspan="7"><strong>' +
+          (conNov ? 'CON NOVEDADES · GRADO ' : 'SIN NOVEDADES · GRADO ') + esc(g || 'SIN GRADO') +
+          '</strong></td></tr>';
+      }
+      n++;
       const novedades = f.historialNovedades || [];
       let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">S/N</span>';
-      html += '<tr><td>' + (indice + 1) + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+      html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
     contenedor.innerHTML = html;
