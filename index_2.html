@@ -257,7 +257,7 @@
               </div>
               <div class="col-md-4">
                 <label class="form-label">Tipo</label>
-                <select id="tipoNovedad" class="form-select">
+                <select id="tipoNovedad" class="form-select" onchange="onTipoNovedadChange()">
                   <!-- Las opciones se generan dinámicamente según el usuario -->
                 </select>
               </div>
@@ -281,15 +281,43 @@
                 <label class="form-label">Descripción</label>
                 <textarea id="descripcionNovedad" class="form-control" rows="2" placeholder="Descripción de la novedad"></textarea>
               </div>
+              <div class="col-md-8">
+                <label class="form-label">Observación</label>
+                <textarea id="observacionNovedad" class="form-control" rows="2" placeholder="Observación"></textarea>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">RV</label>
+                <input type="text" id="rvNovedad" class="form-control">
+              </div>
               <!-- Campos dinámicos para GH_JESEP -->
-              <div id="campoCambioTurno" class="col-md-6 hidden">
-                <label class="form-label">Nuevo Turno</label>
-                <select id="nuevoTurno" class="form-select">
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="No Aplica">No Aplica</option>
-                </select>
+              <div id="campoCambioTurno" class="col-md-12 hidden">
+                <div class="alert alert-success py-2 mb-2">
+                  <strong>🔄 CAMBIO DE TURNO</strong> — Al guardar, el turno se actualiza en la hoja LISTADO_BASE.
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Turno Actual</label>
+                    <input type="text" id="turnoActualFuncionario" class="form-control" readonly>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Nuevo Turno</label>
+                    <select id="nuevoTurno" class="form-select">
+                      <option value="">Seleccione...</option>
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                      <option value="C">C</option>
+                      <option value="No Aplica">No Aplica</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Fecha del cambio</label>
+                    <input type="date" id="fechaCambioTurno" class="form-control">
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label">Observación del cambio</label>
+                    <textarea id="observacionCambioTurno" class="form-control" rows="2" placeholder="Motivo o justificación del cambio de turno"></textarea>
+                  </div>
+                </div>
               </div>
               <div id="camposHorarioFlexible" class="col-md-12 hidden">
                 <div class="row g-3">
@@ -909,9 +937,9 @@
           contenedor.innerHTML = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="empty">No registra novedades.</div></div></div>';
           return;
         }
-        let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DESCRIPCIÓN</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th><th></th><th>TEXTO</th></tr></thead><tbody>';
+        let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>GR</th><th>NOVEDAD</th><th>DESCRIPCIÓN</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th><th>OBSERVACIÓN</th><th>RV</th><th>TEXTO</th></tr></thead><tbody>';
         historial.forEach(function(n) {
-          html += '<tr><td>' + esc(n.GR) + '</td><td><span class="badge-novedad">' + esc(n.NOVEDAD) + '</span></td><td>' + esc(n.DESCRIPCION) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(formatearValor(n['Fecha INICIAL'])) + '</td><td>' + esc(formatearValor(n['Fecha PRESENTACION'])) + '</td><td>' + '</td><td>' + '</td><td>' + esc(n.TEXTO) + '</td></tr>';
+          html += '<tr><td>' + esc(n.GR) + '</td><td><span class="badge-novedad">' + esc(n.NOVEDAD) + '</span></td><td>' + esc(n.DESCRIPCION) + '</td><td>' + esc(n.Dias) + '</td><td>' + esc(formatearValor(n['Fecha INICIAL'])) + '</td><td>' + esc(formatearValor(n['Fecha PRESENTACION'])) + '</td><td>' + esc(n.Observacion) + '</td><td>' + esc(n.RV) + '</td><td>' + esc(n.TEXTO) + '</td></tr>';
         });
         html += '</tbody></table></div></div></div>';
         contenedor.innerHTML = html;
@@ -922,18 +950,39 @@
       .obtenerHistorialFuncionario(tokenSesion, cedula);
   }
 
+  // Muestra u oculta los campos especiales según el Tipo de novedad elegido
+function onTipoNovedadChange() {
+    const tipo = document.getElementById('tipoNovedad').value;
+    const bloqueCambio = document.getElementById('campoCambioTurno');
+    const bloqueHorario = document.getElementById('camposHorarioFlexible');
+
+    const esCambioTurno = (tipo === 'CAMBIO DE TURNO');
+    const esHorario = (tipo === 'HORARIO FLEXIBLE');
+
+    if (bloqueCambio) bloqueCambio.classList.toggle('hidden', !esCambioTurno);
+    if (bloqueHorario) bloqueHorario.classList.toggle('hidden', !esHorario);
+
+    // Rellena el turno actual cuando se elige CAMBIO DE TURNO
+    if (esCambioTurno && funcionarioSeleccionado) {
+      const turnoActual = funcionarioSeleccionado.turno || funcionarioSeleccionado.TURNO || '';
+      const campo = document.getElementById('turnoActualFuncionario');
+      if (campo) campo.value = turnoActual;
+    }
+  }
+
   function registrarNovedad() {
     if (!funcionarioSeleccionado) {
       mostrarToast('Debe seleccionar primero un funcionario.', 'error');
       return;
     }
     const cedula = funcionarioSeleccionado.cedula || funcionarioSeleccionado.CEDULA || document.getElementById('novedadCedula').value;
+    const tipoNovedad = document.getElementById('tipoNovedad').value;
     const novedad = document.getElementById('novedadNombre').value.trim();
+
     if (!novedad) {
       mostrarToast('Ingrese la novedad.', 'error');
       return;
     }
-    const tipoNovedad = document.getElementById('tipoNovedad').value;
     const datos = {
       cc: cedula, cedula: cedula, novedad: novedad,
       tipo: tipoNovedad,
@@ -941,37 +990,46 @@
       dias: document.getElementById('novedadDias').value,
       fechaInicial: document.getElementById('fechaInicial').value,
       fechaPresentacion: document.getElementById('fechaPresentacion').value,
-      
-      
+      observacion: document.getElementById('observacionNovedad').value.trim(),
+      rv: document.getElementById('rvNovedad').value.trim()
     };
 
     // Manejar CAMBIO DE TURNO (GH_JESEP)
     if (tipoNovedad === 'CAMBIO DE TURNO') {
-      const nuevoTurno = document.getElementById('nuevoTurno').value;
-      if (!nuevoTurno) {
+      const selTurno = document.getElementById('nuevoTurno');
+      const nuevoTurno = selTurno ? selTurno.value : '';
+      if (!nuevoTurno || nuevoTurno === 'Seleccione...') {
         mostrarToast('Seleccione el nuevo turno.', 'error');
         return;
       }
+
+      const turnoPrevio = funcionarioSeleccionado.turno || funcionarioSeleccionado.TURNO || '';
+      datos.novedad = 'CAMBIO DE TURNO: ' + turnoPrevio + ' → ' + nuevoTurno;
+      datos.descripcion = document.getElementById('observacionCambioTurno')
+        ? document.getElementById('observacionCambioTurno').value.trim() || datos.descripcion
+        : datos.descripcion;
+      if (!datos.fechaInicial) {
+        datos.fechaInicial = document.getElementById('fechaCambioTurno') ? document.getElementById('fechaCambioTurno').value : '';
+      }
+
       google.script.run
         .withSuccessHandler(function(respuesta) {
           if (respuesta && respuesta.estado === true) {
-            mostrarToast('Turno actualizado correctamente.');
-            // También registrar en NOVEDADES
-            datos.novedad = 'Cambio de turno a ' + nuevoTurno;
-            datos.tipo = 'CAMBIO DE TURNO';
+            mostrarToast(respuesta.mensaje || 'Turno actualizado correctamente.');
+            // Se registra también en la hoja NOVEDADES
             google.script.run
               .withSuccessHandler(function() {
                 limpiarFormularioNovedad();
                 cargarHistorial(cedula);
               })
-              .withFailureHandler(function() {})
+              .withFailureHandler(function() { limpiarFormularioNovedad(); })
               .registrarNovedad(tokenSesion, datos);
           } else {
             mostrarToast(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No fue posible actualizar el turno.', 'error');
           }
         })
         .withFailureHandler(function(error) {
-          mostrarToast('Error actualizando turno.', 'error');
+          mostrarToast('Error actualizando turno: ' + ((error && error.message) || 'fallo de red'), 'error');
         })
         .cambiarTurnoFuncionario(tokenSesion, cedula, nuevoTurno);
       return;
@@ -981,15 +1039,45 @@
     if (tipoNovedad === 'HORARIO FLEXIBLE') {
       const horaInicial = document.getElementById('horaInicial').value;
       const horaFinal = document.getElementById('horaFinal').value;
-      const dias = Array.from(document.querySelectorAll('.diaSemana:checked')).map(cb => cb.value);
-      
+      const dias = Array.from(document.querySelectorAll('.diaSemana:checked')).map(function(cb) { return cb.value; });
+
       if (!horaInicial || !horaFinal || dias.length === 0) {
-        mostrarToast('Complete todos los campos de horario flexible.', 'error');
+        mostrarToast('Complete hora inicial, hora final y al menos un día.', 'error');
         return;
       }
-      
-      datos.novedad = 'Horario flexible: ' + horaInicial + ' - ' + horaFinal + ' (' + dias.join(', ') + ')';
+
+      datos.novedad = 'HORARIO FLEXIBLE: ' + horaInicial + ' a ' + horaFinal + ' (' + dias.join(', ') + ')';
       datos.tipo = 'HORARIO FLEXIBLE';
+      datos.horaInicial = horaInicial;
+      datos.horaFinal = horaFinal;
+      datos.dias = dias;
+
+      // Se registra con la función dedicada para NOVEDADES
+      google.script.run
+        .withSuccessHandler(function(respuesta) {
+          if (respuesta && respuesta.estado === true) {
+            mostrarToast(respuesta.mensaje || 'Horario flexible registrado correctamente.');
+            limpiarFormularioNovedad();
+            cargarHistorial(cedula);
+          } else {
+            mostrarToast(respuesta && respuesta.mensaje ? respuesta.mensaje : 'No fue posible registrar el horario.', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          mostrarToast('Error registrando horario: ' + ((error && error.message) || 'fallo de red'), 'error');
+        })
+        .registrarHorarioFlexible(tokenSesion, {
+          cc: cedula,
+          cedula: cedula,
+          horaInicial: horaInicial,
+          horaFinal: horaFinal,
+          dias: dias,
+          fechaInicial: datos.fechaInicial,
+          fechaPresentacion: datos.fechaPresentacion,
+          observacion: datos.descripcion || datos.observacion,
+          rv: datos.rv
+        });
+      return;
     }
 
     google.script.run
@@ -1014,15 +1102,23 @@
     document.getElementById('fechaInicial').value = '';
     document.getElementById('fechaPresentacion').value = '';
     document.getElementById('descripcionNovedad').value = '';
-   
-    
-    // Ocultar campos dinámicos
+    document.getElementById('observacionNovedad').value = '';
+    document.getElementById('rvNovedad').value = '';
+
+    // Ocultar y limpiar campos dinámicos de GH_JESEP
     document.getElementById('campoCambioTurno').classList.add('hidden');
     document.getElementById('camposHorarioFlexible').classList.add('hidden');
-    document.getElementById('nuevoTurno').value = '';
+    const selTurno = document.getElementById('nuevoTurno');
+    if (selTurno) selTurno.value = '';
+    const turnoActual = document.getElementById('turnoActualFuncionario');
+    if (turnoActual) turnoActual.value = '';
+    const fechaCambio = document.getElementById('fechaCambioTurno');
+    if (fechaCambio) fechaCambio.value = '';
+    const obsCambio = document.getElementById('observacionCambioTurno');
+    if (obsCambio) obsCambio.value = '';
     document.getElementById('horaInicial').value = '';
     document.getElementById('horaFinal').value = '';
-    document.querySelectorAll('.diaSemana:checked').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.diaSemana:checked').forEach(function(cb) { cb.checked = false; });
   }
 
   function cargarTurno(filtro) {
@@ -1175,26 +1271,62 @@
     generarArchivoReporte('pdf');
   }
 
+  // Convierte base64 en un Blob y dispara la descarga directa (sin usar Drive)
+  function descargarBase64_(base64, mimeType, nombreArchivo) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombreArchivo;
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+  }
+
   function generarArchivoReporte(formato) {
     const filtro = document.getElementById('filtroReporte').value;
-    mostrarToast('Generando archivos...');
+    const btnPDF = document.getElementById('btnGenerarPDF');
+    const btnExcel = document.getElementById('btnGenerarExcel');
+    const textoOriginalPDF = btnPDF ? btnPDF.innerHTML : '';
+    const textoOriginalExcel = btnExcel ? btnExcel.innerHTML : '';
+
+    if (btnPDF) { btnPDF.disabled = true; btnPDF.innerHTML = '⏳ Generando...'; }
+    if (btnExcel) { btnExcel.disabled = true; btnExcel.innerHTML = '⏳ Generando...'; }
+    mostrarToast('Generando archivo, espere...');
+
+    function restaurarBotones() {
+      if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = textoOriginalPDF; }
+      if (btnExcel) { btnExcel.disabled = false; btnExcel.innerHTML = textoOriginalExcel; }
+    }
+
     google.script.run
       .withSuccessHandler(function(respuesta) {
+        restaurarBotones();
         if (!respuesta || respuesta.estado !== true) {
-          mostrarToast('No fue posible generar los archivos.', 'error');
+          mostrarToast((respuesta && respuesta.mensaje) || 'No fue posible generar el archivo.', 'error');
           return;
         }
-        const datos = respuesta.datos || respuesta;
-        ultimoReporteArchivos = { urlPDF: datos.urlPDF || '', urlExcel: datos.urlExcel || '' };
-        const url = formato === 'pdf' ? datos.urlPDF : datos.urlExcel;
-        if (url && url !== '#') {
-          window.open(url, '_blank', 'noopener');
-        } else {
-          mostrarToast('La URL del archivo no está disponible.', 'error');
+        const datos = respuesta.datos || {};
+        try {
+          if (formato === 'pdf') {
+            if (!datos.pdfBase64) throw new Error('El servidor no devolvió el contenido del PDF.');
+            descargarBase64_(datos.pdfBase64, 'application/pdf', datos.nombrePDF || ('Reporte_' + filtro + '.pdf'));
+          } else {
+            if (!datos.excelBase64) throw new Error('El servidor no devolvió el contenido del Excel.');
+            descargarBase64_(datos.excelBase64, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', datos.nombreExcel || ('Reporte_' + filtro + '.xlsx'));
+          }
+          mostrarToast('Archivo descargado: ' + (datos.consecutivo || ''));
+        } catch (e) {
+          mostrarToast('Error al descargar: ' + e.message, 'error');
         }
       })
       .withFailureHandler(function(error) {
-        mostrarToast('Error generando los archivos.', 'error');
+        restaurarBotones();
+        mostrarToast('Error generando el archivo: ' + ((error && error.message) || 'fallo de red'), 'error');
       })
       .generarReporteTurno(tokenSesion, filtro);
   }
@@ -1206,15 +1338,29 @@
       .withSuccessHandler(function(respuesta) {
         if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="empty">No hay reportes.</div>'; return; }
         const reportes = respuesta.datos || respuesta.reportes || [];
-        let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>CONSECUTIVO</th><th>FECHA</th><th>USUARIO</th><th>TURNO</th><th>URL</th></tr></thead><tbody>';
+        if (!reportes.length) { contenedor.innerHTML = '<div class="empty">No hay reportes generados.</div>'; return; }
+        let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>CONSECUTIVO</th><th>FECHA</th><th>TURNO</th><th>ACCIÓN</th></tr></thead><tbody>';
         reportes.forEach(r => {
-          html += '<tr><td>' + esc(r.CONSECUTIVO) + '</td><td>' + esc(formatearValor(r.FECHA)) + '</td><td>' + esc(r.USUARIO) + '</td><td>' + esc(r.TURNO) + '</td><td>' + (r.URL ? '<a href="' + esc(r.URL) + '" target="_blank">Abrir</a>' : '') + '</td></tr>';
+          const turno = esc(r.TURNO || '');
+          html += '<tr><td>' + esc(r.CONSECUTIVO) + '</td><td>' + esc(formatearValor(r.FECHA)) + '</td><td>' + turno + '</td>' +
+            '<td><button type="button" class="btn btn-sm btn-pol" onclick="regenerarReporte(\'' + turno + '\')">📄 PDF</button> ' +
+            '<button type="button" class="btn btn-sm btn-success" onclick="regenerarReporteExcel(\'' + turno + '\')">📊 Excel</button></td></tr>';
         });
         html += '</tbody></table></div>';
         contenedor.innerHTML = html;
       })
       .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando reportes.</div>'; })
       .listarReportes(tokenSesion, 100);
+  }
+
+  function regenerarReporte(turno) {
+    document.getElementById('filtroReporte').value = turno;
+    generarArchivoReporte('pdf');
+  }
+
+  function regenerarReporteExcel(turno) {
+    document.getElementById('filtroReporte').value = turno;
+    generarArchivoReporte('excel');
   }
 
   function cargarUsuarios() {

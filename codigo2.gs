@@ -100,6 +100,9 @@ function doGet(e) {
       case 'cambiarTurnoFuncionario':
         resultado = cambiarTurnoFuncionario(args[0], args[1], args[2]);
         break;
+      case 'registrarHorarioFlexible':
+        resultado = registrarHorarioFlexible(args[0], args[1]);
+        break;
       default:
         resultado = { estado: false, mensaje: 'Acción no válida: ' + accion };
     }
@@ -162,6 +165,30 @@ function buscarCab_(cab, regex, excluir) {
     if (regex.test(cab[i]) && !(excluir && excluir.test(cab[i]))) return i;
   }
   return -1;
+}
+
+/* =====================================================
+   UTILIDADES PARA ENCONTRAR COLUMNAS (normaliza acentos,
+   mayúsculas y espacios/guiones bajos en los encabezados)
+   ===================================================== */
+function normalizarCabColumna_(v) {
+  return String(v === null || v === undefined ? '' : v)
+    .toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s_\-]+/g, ' ')
+    .trim();
+}
+
+// Devuelve el índice de la primera columna cuyo encabezado coincide con alguno de los patrones
+function idxColumnaBase_(cabeceras, patrones, respaldo) {
+  var cab = cabeceras.map(normalizarCabColumna_);
+  var lista = Array.isArray(patrones) ? patrones : [patrones];
+  for (var p = 0; p < lista.length; p++) {
+    for (var i = 0; i < cab.length; i++) {
+      if (lista[p].test(cab[i])) return i;
+    }
+  }
+  return (respaldo === undefined) ? -1 : respaldo;
 }
 
 function validarUsuario(usuarioIngresado, claveIngresada) {
@@ -494,22 +521,8 @@ function previsualizarReporteTurno(token, filtro) {
     if (!resultadoTurno.estado) return resultadoTurno;
 
     var funcs = resultadoTurno.datos.funcionarios;
-    var html = '<h3 style="font-family:Arial;">Reporte de Turno: ' + filtro + '</h3>';
-    html += '<table border="1" cellpadding="5" style="border-collapse:collapse;width:100%;font-family:Arial;font-size:12px;">';
-    html += '<tr style="background:#01592F;color:white;"><th>Cédula</th><th>Grado</th><th>Funcionario</th><th>Dependencia</th><th>Turno</th><th>Novedades</th></tr>';
-
-    funcs.forEach(function(f) {
-      var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
-      html += '<tr>';
-      html += '<td>' + (f.cedula || f.CEDULA || '') + '</td>';
-      html += '<td>' + (f.grado || f.GR || '') + '</td>';
-      html += '<td>' + (f.funcionario || f.FUNCIONARIO || '') + '</td>';
-      html += '<td>' + (f.dependencia || f.DEPENDENCIA || '') + '</td>';
-      html += '<td>' + (f.turno || f.TURNO || '') + '</td>';
-      html += '<td>' + novedadesTexto + '</td>';
-      html += '</tr>';
-    });
-    html += '</table>';
+    var consecutivo = 'PREVIEW';
+    var html = construirHtmlReporte_(funcs, filtro, consecutivo);
 
     return { estado: true, html: html };
   } catch (err) {
@@ -523,40 +536,25 @@ function generarReporteTurno(token, filtro) {
     if (!resultadoTurno.estado) return resultadoTurno;
 
     var funcs = resultadoTurno.datos.funcionarios;
-    var consecutivo = 'REP-' + Date.now();
+    var consecutivo = 'REP-' + Utilities.formatDate(new Date(), 'America/Bogota', 'yyyyMMdd-HHmmss');
 
-    // Generar PDF usando HtmlService
+    // PDF: se genera en memoria y se devuelve en base64 (no se aloja en Drive)
     var pdfBlob = generarPDFBlob_(funcs, filtro, consecutivo);
-    var pdfFile = DriveApp.createFile(pdfBlob);
-    pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var urlPDF = pdfFile.getUrl();
+    var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
 
-    // Generar Excel (CSV)
+    // Excel (xlsx real): se genera en memoria y se devuelve en base64
     var excelBlob = generarExcelBlob_(funcs, filtro, consecutivo);
-    var excelFile = DriveApp.createFile(excelBlob);
-    excelFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var urlExcel = excelFile.getUrl();
-
-    // Guardar registro en hoja REPORTES
-    try {
-      var ss = abrirLibro_();
-      var hojaReportes = ss.getSheetByName('REPORTES');
-      if (!hojaReportes) {
-        hojaReportes = ss.insertSheet('REPORTES');
-        hojaReportes.appendRow(['CONSECUTIVO', 'FECHA', 'USUARIO', 'TURNO', 'URL_PDF', 'URL_EXCEL']);
-      }
-      hojaReportes.appendRow([consecutivo, new Date(), 'USUARIO', filtro, urlPDF, urlExcel]);
-    } catch (e) {
-      // No crítico si no se puede guardar el registro
-    }
+    var excelBase64 = Utilities.base64Encode(excelBlob.getBytes());
 
     return {
       estado: true,
       datos: {
         filtro: filtro,
         consecutivo: consecutivo,
-        urlPDF: urlPDF,
-        urlExcel: urlExcel
+        nombrePDF: 'Reporte_Turno_' + filtro + '_' + consecutivo + '.pdf',
+        nombreExcel: 'Reporte_Turno_' + filtro + '_' + consecutivo + '.xlsx',
+        pdfBase64: pdfBase64,
+        excelBase64: excelBase64
       }
     };
   } catch (err) {
@@ -564,77 +562,101 @@ function generarReporteTurno(token, filtro) {
   }
 }
 
-function generarPDFBlob_(funcs, filtro, consecutivo) {
-  var html = '<html><head><style>';
-  html += 'body{font-family:Arial,sans-serif;margin:20px;}';
-  html += 'h2{color:#01592F;}';
-  html += 'table{width:100%;border-collapse:collapse;font-size:11px;}';
-  html += 'th{background:#01592F;color:white;padding:8px;text-align:left;}';
-  html += 'td{padding:6px;border:1px solid #ddd;}';
-  html += 'tr:nth-child(even){background:#f9f9f9;}';
+// Construye el HTML del reporte (compartido por PDF y previsualización)
+function construirHtmlReporte_(funcs, filtro, consecutivo) {
+  var html = '<html><head><meta charset="utf-8"><style>';
+  html += '@page{size:Letter landscape;margin:12mm;}';
+  html += 'body{font-family:Arial,Helvetica,sans-serif;color:#1f2a24;}';
+  html += 'h1{color:#01592F;font-size:16pt;margin:0 0 4px;}';
+  html += '.meta{font-size:8pt;color:#51615a;margin-bottom:8px;}';
+  html += 'table{width:100%;border-collapse:collapse;font-size:7.5pt;}';
+  html += 'th{background:#01592F;color:#fff;padding:4px 5px;text-align:left;border:1px solid #01592F;}';
+  html += 'td{padding:3px 5px;border:1px solid #cccccc;vertical-align:top;}';
+  html += 'tr{page-break-inside:avoid;}';
+  html += 'thead{display:table-header-group;}';
   html += '</style></head><body>';
-  html += '<h2>REPORTE DE TURNO ' + filtro + '</h2>';
-  html += '<p><strong>Consecutivo:</strong> ' + consecutivo + '</p>';
-  html += '<p><strong>Fecha:</strong> ' + new Date().toLocaleString() + '</p>';
+  html += '<h1>REPORTE DE TURNO ' + escHtml_(filtro) + '</h1>';
+  html += '<div class="meta"><b>Consecutivo:</b> ' + escHtml_(consecutivo) + ' &nbsp;|&nbsp; ';
+  html += '<b>Fecha:</b> ' + escHtml_(Utilities.formatDate(new Date(), 'America/Bogota', "dd/MM/yyyy HH:mm")) + ' &nbsp;|&nbsp; ';
+  html += '<b>Total funcionarios:</b> ' + funcs.length + '</div>';
   html += '<table><thead><tr>';
-  html += '<th>Cédula</th><th>Grado</th><th>Funcionario</th><th>Dependencia</th><th>Turno</th><th>Novedades</th>';
+  html += '<th>#</th><th>C&eacute;dula</th><th>GR</th><th>Funcionario</th><th>Dependencia</th><th>Turno</th><th>Novedades</th>';
   html += '</tr></thead><tbody>';
 
-  funcs.forEach(function(f) {
+  funcs.forEach(function(f, i) {
     var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
     html += '<tr>';
-    html += '<td>' + (f.cedula || f.CEDULA || '') + '</td>';
-    html += '<td>' + (f.grado || f.GR || '') + '</td>';
-    html += '<td>' + (f.funcionario || f.FUNCIONARIO || '') + '</td>';
-    html += '<td>' + (f.dependencia || f.DEPENDENCIA || '') + '</td>';
-    html += '<td>' + (f.turno || f.TURNO || '') + '</td>';
-    html += '<td>' + novedadesTexto + '</td>';
+    html += '<td>' + (i + 1) + '</td>';
+    html += '<td>' + escHtml_(f.cedula || f.CEDULA || '') + '</td>';
+    html += '<td>' + escHtml_(f.grado || f.GR || '') + '</td>';
+    html += '<td>' + escHtml_(f.funcionario || f.FUNCIONARIO || '') + '</td>';
+    html += '<td>' + escHtml_(f.dependencia || f.DEPENDENCIA || '') + '</td>';
+    html += '<td>' + escHtml_(f.turno || f.TURNO || '') + '</td>';
+    html += '<td>' + escHtml_(novedadesTexto || 'S/N') + '</td>';
     html += '</tr>';
   });
 
   html += '</tbody></table></body></html>';
-
-  // Usar HtmlService para generar PDF correctamente
-  var htmlOutput = HtmlService.createHtmlOutput(html);
-  return htmlOutput.getAs('application/pdf');
+  return html;
 }
 
+// Escapa caracteres especiales para que no rompan el HTML del reporte
+function escHtml_(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function generarPDFBlob_(funcs, filtro, consecutivo) {
+  var html = construirHtmlReporte_(funcs, filtro, consecutivo);
+  var htmlOutput = HtmlService.createHtmlOutput(html);
+  return htmlOutput.getAs('application/pdf')
+    .setName('Reporte_Turno_' + filtro + '_' + consecutivo + '.pdf');
+}
+
+// Genera un .xlsx real en memoria (no requiere crear archivos en Drive)
 function generarExcelBlob_(funcs, filtro, consecutivo) {
-  var ss = SpreadsheetApp.create('Reporte_Turno_' + filtro + '_' + consecutivo);
-  var hoja = ss.getActiveSheet();
+  var libro = SpreadsheetApp.create('tmp_' + consecutivo);
+  try {
+    var hoja = libro.getActiveSheet();
+    hoja.setName('TURNO ' + filtro);
 
-  // Encabezados
-  hoja.appendRow(['CÉDULA', 'GRADO', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', 'NOVEDADES']);
+    var encabezados = ['#', 'CÉDULA', 'GR', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', 'NOVEDADES'];
+    hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
 
-  // Datos
-  funcs.forEach(function(f) {
-    var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
-    hoja.appendRow([
-      f.cedula || f.CEDULA || '',
-      f.grado || f.GR || '',
-      f.funcionario || f.FUNCIONARIO || '',
-      f.dependencia || f.DEPENDENCIA || '',
-      f.turno || f.TURNO || '',
-      novedadesTexto
-    ]);
-  });
+    var filas = funcs.map(function(f, i) {
+      var novedadesTexto = (f.historialNovedades || []).map(function(n) { return n.NOVEDAD; }).join(', ');
+      return [
+        i + 1,
+        f.cedula || f.CEDULA || '',
+        f.grado || f.GR || '',
+        f.funcionario || f.FUNCIONARIO || '',
+        f.dependencia || f.DEPENDENCIA || '',
+        f.turno || f.TURNO || '',
+        novedadesTexto || 'S/N'
+      ];
+    });
 
-  // Formato
-  var rango = hoja.getRange(1, 1, 1, 6);
-  rango.setFontWeight('bold');
-  rango.setBackground('#01592F');
-  rango.setFontColor('white');
+    if (filas.length) {
+      hoja.getRange(2, 1, filas.length, encabezados.length).setValues(filas);
 
-  var csv = '';
-  var datos = hoja.getDataRange().getValues();
-  for (var i = 0; i < datos.length; i++) {
-    csv += datos[i].join(',') + '\n';
+      // Formato de la cabecera
+      var cab = hoja.getRange(1, 1, 1, encabezados.length);
+      cab.setFontWeight('bold').setBackground('#01592F').setFontColor('#ffffff');
+
+      // Ajustes de tamaño
+      hoja.setFrozenRows(1);
+      hoja.autoResizeColumns(1, encabezados.length);
+      for (var c = 1; c <= encabezados.length; c++) {
+        if (hoja.getColumnWidth(c) > 220) hoja.setColumnWidth(c, 220);
+      }
+    }
+
+    // Exporta a xlsx binario real
+    return libro.getAs(MimeType.EXCEL).setName('Reporte_Turno_' + filtro + '_' + consecutivo + '.xlsx');
+  } finally {
+    // La hoja temporal se descarta; nunca queda visible en Drive
+    try { DriveApp.getFileById(libro.getId()).setTrashed(true); } catch (e) {}
   }
-
-  var blob = Utilities.newBlob(csv, 'text/csv', 'Reporte_Turno_' + filtro + '_' + consecutivo + '.csv');
-  DriveApp.getFileById(ss.getId()).setTrashed(true);
-
-  return blob;
 }
 
 function listarReportes(token, limite) {
@@ -652,8 +674,7 @@ function listarReportes(token, limite) {
         CONSECUTIVO: datos[i][0],
         FECHA: datos[i][1],
         USUARIO: datos[i][2],
-        TURNO: datos[i][3],
-        URL: datos[i][4] || ''
+        TURNO: datos[i][3]
       });
     }
 
@@ -840,79 +861,71 @@ function listarFuncionarios(token) {
   }
 }
 
+// Crea una fila con la MISMA longitud que los encabezados y ubica cada campo
+// en la columna que realmente existe en LISTADO_BASE.
 function agregarFuncionario(token, datos) {
   try {
     var ss = abrirLibro_();
     var hoja = ss.getSheetByName('LISTADO_BASE');
-    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
+    if (!hoja) return { estado: false, mensaje: 'No se encontro la hoja LISTADO_BASE.' };
 
-    // Verificar si ya existe la cédula
-    var datosExistentes = hoja.getDataRange().getValues();
-    var idxCedula = -1;
-    var cabeceras = datosExistentes[0];
-    for (var j = 0; j < cabeceras.length; j++) {
-      var c = String(cabeceras[j]).toUpperCase();
-      if (c === 'CEDULA' || c === 'CC') { idxCedula = j; break; }
-    }
+    var existentes = hoja.getDataRange().getValues();
+    var cabeceras = existentes[0];
+    var numCols = cabeceras.length;
 
-    if (idxCedula !== -1) {
-      for (var i = 1; i < datosExistentes.length; i++) {
-        if (String(datosExistentes[i][idxCedula]).trim() === String(datos.cedula).trim()) {
-          return { estado: false, mensaje: 'Ya existe un funcionario con esa cédula.' };
-        }
+    var idxCedula = idxColumnaBase_(cabeceras, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/, /^N C$/], 0);
+    var cedulaIn = String(datos.cedula || '').trim();
+    if (!cedulaIn) return { estado: false, mensaje: 'La cedula es obligatoria.' };
+
+    for (var i = 1; i < existentes.length; i++) {
+      if (String(existentes[i][idxCedula]).trim() === cedulaIn) {
+        return { estado: false, mensaje: 'Ya existe un funcionario registrado con esa cedula.' };
       }
     }
 
-    // Crear nueva fila con los datos
-    var nuevaFila = [];
-    nuevaFila[idxCedula !== -1 ? idxCedula : 0] = datos.cedula;
-    
-    // Buscar índices de columnas
-    var idxNivel = -1, idxGrado = -1, idxNombre = -1, idxDependencia = -1;
-    var idxPert = -1, idxTurno = -1, idxMes = -1, idxDia = -1;
-    var idxFechaNac = -1, idxCorreo = -1, idxSexo = -1, idxEstadoCivil = -1;
-    var idxSituacion = -1, idxComunicado = -1;
+    // Fila vacia del mismo ancho que la hoja (evita desalinear columnas)
+    var fila = [];
+    for (var c = 0; c < numCols; c++) fila.push('');
 
-    for (var j = 0; j < cabeceras.length; j++) {
-      var c = String(cabeceras[j]).toUpperCase();
-      if (c === 'NIV' || c === 'NIVEL') idxNivel = j;
-      else if (c === 'GR' || c === 'GRADO') idxGrado = j;
-      else if (c === 'FUNCIONARIO' || c === 'NOMBRE' || c === 'APELLIDOS Y NOMBRES') idxNombre = j;
-      else if (c === 'DEPENDENCIA') idxDependencia = j;
-      else if (c === 'PERT') idxPert = j;
-      else if (c === 'TURNO') idxTurno = j;
-      else if (c === 'MES') idxMes = j;
-      else if (c === 'DIA') idxDia = j;
-      else if (c === 'FECHA_NACIMIENTO' || c === 'FECHA NACIMIENTO') idxFechaNac = j;
-      else if (c === 'CORREO' || c === 'CORREO_ELECTRONICO' || c === 'EMAIL') idxCorreo = j;
-      else if (c === 'SEXO') idxSexo = j;
-      else if (c === 'ESTADO_CIVIL') idxEstadoCivil = j;
-      else if (c === 'SITUACION_LABORAL') idxSituacion = j;
-      else if (c === 'COMUNICADO' || c === 'COMUNICADO_OFICIAL') idxComunicado = j;
+    var campos = [
+      { valor: datos.cedula,            patrones: [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/] },
+      { valor: datos.nivel,             patrones: [/^NIV$/, /^NIVEL$/] },
+      { valor: datos.grado,             patrones: [/^GR$/, /^GRADO$/] },
+      { valor: datos.funcionario,       patrones: [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/] },
+      { valor: datos.dependencia,       patrones: [/^DEPENDENCIA$/] },
+      { valor: datos.pert,              patrones: [/^PERT$/] },
+      { valor: datos.turno,             patrones: [/^TURNO$/] },
+      { valor: datos.mes,               patrones: [/^MES$/, /^MES ANO$/, /^MESES ANO$/] },
+      { valor: datos.dia,               patrones: [/^DIA$/] },
+      { valor: datos.fechaNacimiento,   patrones: [/^FECHA NACIMIENTO$/, /^FECHA DE NACIMIENTO$/, /^FNAC$/] },
+      { valor: datos.correo,            patrones: [/^CORREO ELECTRONICO$/, /^CORREO$/, /^EMAIL$/] },
+      { valor: datos.sexo,              patrones: [/^SEXO$/] },
+      { valor: datos.estadoCivil,       patrones: [/^ESTADO CIVIL$/] },
+      { valor: datos.situacionLaboral,  patrones: [/^SITUACION LABORAL$/] },
+      { valor: datos.comunicado,        patrones: [/^COMUNICADO OFICIAL$/, /^COMUNICADO$/] }
+    ];
+
+    var sinColumna = [];
+    for (var k = 0; k < campos.length; k++) {
+      var campo = campos[k];
+      if (campo.valor === '' || campo.valor === null || campo.valor === undefined) continue;
+      var destino = idxColumnaBase_(cabeceras, campo.patrones, -1);
+      if (destino === -1) { sinColumna.push(campo.patrones[0].source); continue; }
+      fila[destino] = campo.valor;
     }
 
-    if (idxNivel !== -1) nuevaFila[idxNivel] = datos.nivel;
-    if (idxGrado !== -1) nuevaFila[idxGrado] = datos.grado;
-    if (idxNombre !== -1) nuevaFila[idxNombre] = datos.funcionario;
-    if (idxDependencia !== -1) nuevaFila[idxDependencia] = datos.dependencia;
-    if (idxPert !== -1) nuevaFila[idxPert] = datos.pert;
-    if (idxTurno !== -1) nuevaFila[idxTurno] = datos.turno;
-    if (idxMes !== -1) nuevaFila[idxMes] = datos.mes;
-    if (idxDia !== -1) nuevaFila[idxDia] = datos.dia;
-    if (idxFechaNac !== -1) nuevaFila[idxFechaNac] = datos.fechaNacimiento;
-    if (idxCorreo !== -1) nuevaFila[idxCorreo] = datos.correo;
-    if (idxSexo !== -1) nuevaFila[idxSexo] = datos.sexo;
-    if (idxEstadoCivil !== -1) nuevaFila[idxEstadoCivil] = datos.estadoCivil;
-    if (idxSituacion !== -1) nuevaFila[idxSituacion] = datos.situacionLaboral;
-    if (idxComunicado !== -1) nuevaFila[idxComunicado] = datos.comunicado;
+    hoja.appendRow(fila);
 
-    hoja.appendRow(nuevaFila);
-
-    return { estado: true, mensaje: 'Funcionario agregado correctamente.' };
+    return {
+      estado: true,
+      mensaje: 'Funcionario agregado a LISTADO_BASE correctamente.' +
+        (sinColumna.length ? ' Sin columna en la hoja para: ' + sinColumna.join(', ') : '')
+    };
   } catch (err) {
     return { estado: false, mensaje: 'Error agregando funcionario: ' + err.message };
   }
 }
+
 
 function eliminarFuncionario(token, cedula) {
   try {
@@ -954,28 +967,72 @@ function cambiarTurnoFuncionario(token, cedula, nuevoTurno) {
     var hoja = ss.getSheetByName('LISTADO_BASE');
     if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
 
+    var turno = String(nuevoTurno || '').trim();
+    if (!turno) return { estado: false, mensaje: 'Debe indicar el nuevo turno.' };
+
     var datos = hoja.getDataRange().getValues();
-    var idxCedula = -1, idxTurno = -1;
+    if (datos.length < 2) return { estado: false, mensaje: 'La hoja LISTADO_BASE está vacía.' };
+
     var cabeceras = datos[0];
-    
-    for (var j = 0; j < cabeceras.length; j++) {
-      var c = String(cabeceras[j]).toUpperCase();
-      if (c === 'CEDULA' || c === 'CC') idxCedula = j;
-      else if (c === 'TURNO') idxTurno = j;
+    var idxCedula = idxColumnaBase_(cabeceras, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/, /^N C$/], 0);
+    // Columna H de LISTADO_BASE = índice 7
+    var idxTurno = idxColumnaBase_(cabeceras, [/^TURNO$/], 7);
+
+    if (idxTurno >= cabeceras.length) {
+      return { estado: false, mensaje: 'La columna H (TURNO) no existe en LISTADO_BASE.' };
     }
 
-    if (idxCedula === -1) return { estado: false, mensaje: 'No se encontró la columna de cédula.' };
-    if (idxTurno === -1) return { estado: false, mensaje: 'No se encontró la columna de turno.' };
-
+    var cedulaIn = String(cedula || '').trim();
     for (var i = 1; i < datos.length; i++) {
-      if (String(datos[i][idxCedula]).trim() === String(cedula).trim()) {
-        hoja.getRange(i + 1, idxTurno + 1).setValue(nuevoTurno);
-        return { estado: true, mensaje: 'Turno actualizado correctamente.' };
+      if (String(datos[i][idxCedula]).trim() === cedulaIn) {
+        var turnoAnterior = String(datos[i][idxTurno] || '').trim();
+        hoja.getRange(i + 1, idxTurno + 1).setValue(turno);
+        SpreadsheetApp.flush();
+        return {
+          estado: true,
+          mensaje: 'Turno actualizado de "' + turnoAnterior + '" a "' + turno + '" (columna ' + Utilities.getColumnLetter(idxTurno + 1) + ').',
+          turnoAnterior: turnoAnterior,
+          turnoNuevo: turno,
+          columna: Utilities.getColumnLetter(idxTurno + 1)
+        };
       }
     }
 
-    return { estado: false, mensaje: 'Funcionario no encontrado.' };
+    return { estado: false, mensaje: 'Funcionario no encontrado en LISTADO_BASE.' };
   } catch (err) {
     return { estado: false, mensaje: 'Error cambiando turno: ' + err.message };
+  }
+}
+
+// Registra un horario flexible en la hoja NOVEDADES
+function registrarHorarioFlexible(token, datosHorario) {
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('NOVEDADES');
+    if (!hoja) {
+      hoja = ss.insertSheet('NOVEDADES');
+      hoja.appendRow(['CEDULA', 'NOVEDAD', 'TIPO', 'DESCRIPCION', 'Dias', 'Fecha INICIAL', 'Fecha PRESENTACION', 'Observacion', 'RV', 'TEXTO', 'FECHA_REGISTRO']);
+    }
+
+    var dias = Array.isArray(datosHorario.dias) ? datosHorario.dias.join(', ') : String(datosHorario.dias || '');
+    var descripcion = 'De ' + datosHorario.horaInicial + ' a ' + datosHorario.horaFinal + ' | Días: ' + dias;
+
+    hoja.appendRow([
+      datosHorario.cedula,
+      'HORARIO FLEXIBLE',
+      'HORARIO FLEXIBLE',
+      descripcion,
+      Array.isArray(datosHorario.dias) ? datosHorario.dias.length : '',
+      datosHorario.fechaInicial || '',
+      datosHorario.fechaPresentacion || '',
+      datosHorario.observacion || '',
+      datosHorario.rv || '',
+      descripcion,
+      new Date()
+    ]);
+
+    return { estado: true, mensaje: 'Horario flexible registrado correctamente.' };
+  } catch (err) {
+    return { estado: false, mensaje: 'Error registrando horario: ' + err.message };
   }
 }

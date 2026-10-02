@@ -880,26 +880,63 @@
     generarArchivoReporte('pdf');
   }
 
+  // Convierte base64 en un Blob y dispara la descarga directa (sin usar Drive)
+  function descargarBase64_(base64, mimeType, nombreArchivo) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombreArchivo;
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+    // Libera el objeto cuando el navegador termine la descarga
+    setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+  }
+
   function generarArchivoReporte(formato) {
     const filtro = document.getElementById('filtroReporte').value;
-    mostrarToast('Generando archivos...');
+    const btnPDF = document.getElementById('btnGenerarPDF');
+    const btnExcel = document.getElementById('btnGenerarExcel');
+    const textoOriginalPDF = btnPDF ? btnPDF.innerHTML : '';
+    const textoOriginalExcel = btnExcel ? btnExcel.innerHTML : '';
+
+    if (btnPDF) { btnPDF.disabled = true; btnPDF.innerHTML = '⏳ Generando...'; }
+    if (btnExcel) { btnExcel.disabled = true; btnExcel.innerHTML = '⏳ Generando...'; }
+    mostrarToast('Generando archivo, espere...');
+
+    function restaurarBotones() {
+      if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = textoOriginalPDF; }
+      if (btnExcel) { btnExcel.disabled = false; btnExcel.innerHTML = textoOriginalExcel; }
+    }
+
     google.script.run
       .withSuccessHandler(function(respuesta) {
+        restaurarBotones();
         if (!respuesta || respuesta.estado !== true) {
-          mostrarToast('No fue posible generar los archivos.', 'error');
+          mostrarToast((respuesta && respuesta.mensaje) || 'No fue posible generar el archivo.', 'error');
           return;
         }
-        const datos = respuesta.datos || respuesta;
-        ultimoReporteArchivos = { urlPDF: datos.urlPDF || '', urlExcel: datos.urlExcel || '' };
-        const url = formato === 'pdf' ? datos.urlPDF : datos.urlExcel;
-        if (url && url !== '#') {
-          window.open(url, '_blank', 'noopener');
-        } else {
-          mostrarToast('La URL del archivo no está disponible.', 'error');
+        const datos = respuesta.datos || {};
+        try {
+          if (formato === 'pdf') {
+            if (!datos.pdfBase64) throw new Error('El servidor no devolvió el contenido del PDF.');
+            descargarBase64_(datos.pdfBase64, 'application/pdf', datos.nombrePDF || ('Reporte_' + filtro + '.pdf'));
+          } else {
+            if (!datos.excelBase64) throw new Error('El servidor no devolvió el contenido del Excel.');
+            descargarBase64_(datos.excelBase64, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', datos.nombreExcel || ('Reporte_' + filtro + '.xlsx'));
+          }
+          mostrarToast('Archivo descargado: ' + (datos.consecutivo || ''));
+        } catch (e) {
+          mostrarToast('Error al descargar: ' + e.message, 'error');
         }
       })
       .withFailureHandler(function(error) {
-        mostrarToast('Error generando los archivos.', 'error');
+        restaurarBotones();
+        mostrarToast('Error generando el archivo: ' + ((error && error.message) || 'fallo de red'), 'error');
       })
       .generarReporteTurno(tokenSesion, filtro);
   }
@@ -911,15 +948,29 @@
       .withSuccessHandler(function(respuesta) {
         if (!respuesta || respuesta.estado !== true) { contenedor.innerHTML = '<div class="empty">No hay reportes.</div>'; return; }
         const reportes = respuesta.datos || respuesta.reportes || [];
-        let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>CONSECUTIVO</th><th>FECHA</th><th>USUARIO</th><th>TURNO</th><th>URL</th></tr></thead><tbody>';
+        if (!reportes.length) { contenedor.innerHTML = '<div class="empty">No hay reportes generados.</div>'; return; }
+        let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>CONSECUTIVO</th><th>FECHA</th><th>TURNO</th><th>ACCIÓN</th></tr></thead><tbody>';
         reportes.forEach(r => {
-          html += '<tr><td>' + esc(r.CONSECUTIVO) + '</td><td>' + esc(formatearValor(r.FECHA)) + '</td><td>' + esc(r.USUARIO) + '</td><td>' + esc(r.TURNO) + '</td><td>' + (r.URL ? '<a href="' + esc(r.URL) + '" target="_blank">Abrir</a>' : '') + '</td></tr>';
+          const turno = esc(r.TURNO || '');
+          html += '<tr><td>' + esc(r.CONSECUTIVO) + '</td><td>' + esc(formatearValor(r.FECHA)) + '</td><td>' + turno + '</td>' +
+            '<td><button type="button" class="btn btn-sm btn-pol" onclick="regenerarReporte(\'' + turno + '\')">📄 PDF</button> ' +
+            '<button type="button" class="btn btn-sm btn-success" onclick="regenerarReporteExcel(\'' + turno + '\')">📊 Excel</button></td></tr>';
         });
         html += '</tbody></table></div>';
         contenedor.innerHTML = html;
       })
       .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando reportes.</div>'; })
       .listarReportes(tokenSesion, 100);
+  }
+
+  function regenerarReporte(turno) {
+    document.getElementById('filtroReporte').value = turno;
+    generarArchivoReporte('pdf');
+  }
+
+  function regenerarReporteExcel(turno) {
+    document.getElementById('filtroReporte').value = turno;
+    generarArchivoReporte('excel');
   }
 
   function cargarUsuarios() {
