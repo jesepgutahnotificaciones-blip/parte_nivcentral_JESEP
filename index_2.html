@@ -784,6 +784,25 @@
     window.location.href = 'index.html';
   }
 
+  // Descarga el archivo directamente desde Apps Script.
+  // El servidor responde con Content-Disposition: attachment, asi que el
+  // navegador guarda el archivo sin pasar por Drive ni por base64.
+  function descargarReporte_(formato, filtro) {
+    const url = APPS_SCRIPT_API_URL +
+      '?accion=descargarReporte' +
+      '&formato=' + encodeURIComponent(formato) +
+      '&filtro=' + encodeURIComponent(filtro) +
+      '&_=' + Date.now();
+
+    const marco = document.createElement('iframe');
+    marco.style.display = 'none';
+    marco.src = url;
+    document.body.appendChild(marco);
+    setTimeout(function() {
+      try { document.body.removeChild(marco); } catch (e) {}
+    }, 120000);
+  }
+
   function esc(valor) {
     if (valor === null || valor === undefined) return '';
     return String(valor).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -1362,63 +1381,12 @@ function onTipoNovedadChange() {
   }
 
   // Convierte base64 en un Blob y dispara la descarga directa (sin usar Drive)
-  function descargarBase64_(base64, mimeType, nombreArchivo) {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const enlace = document.createElement('a');
-    enlace.href = url;
-    enlace.download = nombreArchivo;
-    document.body.appendChild(enlace);
-    enlace.click();
-    document.body.removeChild(enlace);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
-  }
-
   function generarArchivoReporte(formato) {
     const filtro = document.getElementById('filtroReporte').value;
-    const btnPDF = document.getElementById('btnGenerarPDF');
-    const btnExcel = document.getElementById('btnGenerarExcel');
-    const textoOriginalPDF = btnPDF ? btnPDF.innerHTML : '';
-    const textoOriginalExcel = btnExcel ? btnExcel.innerHTML : '';
+    if (!filtro) { mostrarToast('Seleccione un turno.', 'error'); return; }
 
-    if (btnPDF) { btnPDF.disabled = true; btnPDF.innerHTML = '⏳ Generando...'; }
-    if (btnExcel) { btnExcel.disabled = true; btnExcel.innerHTML = '⏳ Generando...'; }
-    mostrarToast('Generando archivo, espere...');
-
-    function restaurarBotones() {
-      if (btnPDF) { btnPDF.disabled = false; btnPDF.innerHTML = textoOriginalPDF; }
-      if (btnExcel) { btnExcel.disabled = false; btnExcel.innerHTML = textoOriginalExcel; }
-    }
-
-    google.script.run
-      .withSuccessHandler(function(respuesta) {
-        restaurarBotones();
-        if (!respuesta || respuesta.estado !== true) {
-          mostrarToast((respuesta && respuesta.mensaje) || 'No fue posible generar el archivo.', 'error');
-          return;
-        }
-        const datos = respuesta.datos || {};
-        try {
-          if (formato === 'pdf') {
-            if (!datos.pdfBase64) throw new Error('El servidor no devolvió el contenido del PDF.');
-            descargarBase64_(datos.pdfBase64, 'application/pdf', datos.nombrePDF || ('Reporte_' + filtro + '.pdf'));
-          } else {
-            if (!datos.excelBase64) throw new Error('El servidor no devolvió el contenido del Excel.');
-            descargarBase64_(datos.excelBase64, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', datos.nombreExcel || ('Reporte_' + filtro + '.xlsx'));
-          }
-          mostrarToast('Archivo descargado: ' + (datos.consecutivo || ''));
-        } catch (e) {
-          mostrarToast('Error al descargar: ' + e.message, 'error');
-        }
-      })
-      .withFailureHandler(function(error) {
-        restaurarBotones();
-        mostrarToast('Error generando el archivo: ' + ((error && error.message) || 'fallo de red'), 'error');
-      })
-      .generarReporteTurno(tokenSesion, filtro);
+    mostrarToast('Descargando ' + (formato === 'pdf' ? 'PDF' : 'Excel') + ' del turno ' + filtro + '...');
+    descargarReporte_(formato, filtro);
   }
 
   function cargarReportes() {

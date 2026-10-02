@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r10';
+var VERSION_APP = 'JESEP-2026-10-02-r11';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -64,6 +64,24 @@ function modulosDeUsuario_(usuarioId, rol) {
 function doGet(e) {
   var p = (e && e.parameter) ? e.parameter : {};
   var accion = p.accion;
+
+  /* ---------------------------------------------------------------
+     DESCARGA DIRECTA DE ARCHIVOS (PDF / XLSX)
+     Devuelve el binario con Content-Disposition: attachment, de modo
+     que el navegador lo descargue de inmediato. Nada queda en Drive.
+     Se atiende antes del JSONP porque no usa callback.
+     --------------------------------------------------------------- */
+  if (accion === 'descargarReporte') {
+    try {
+      return servirArchivoReporte_(String(p.formato || 'pdf').toLowerCase(),
+                                  String(p.filtro || 'A'));
+    } catch (err) {
+      return ContentService
+        .createTextOutput('No se pudo generar el archivo.\n\n' + (err && err.message ? err.message : err))
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+  }
+
   // Solo se permiten caracteres válidos en el nombre del callback (evita inyección de código)
   var callback = String(p.callback || '').replace(/[^a-zA-Z0-9_.$]/g, '');
   var argsRaw = p.args;
@@ -550,6 +568,48 @@ function letraColumna_(indiceBase) {
   } catch (e) {
     return '?';
   }
+}
+
+/* =====================================================
+   DESCARGA DIRECTA DE REPORTES (PDF / XLSX)
+
+   El archivo se genera en memoria y se devuelve con
+   "Content-Disposition: attachment", por lo que el navegador lo
+   guarda en la carpeta de descargas del usuario.
+   No se crea ningún archivo en Drive.
+   ===================================================== */
+function servirArchivoReporte_(formato, filtro) {
+  var resultado = consultarPorTurno('MODO_SIN_LOGIN', filtro);
+  if (!resultado.estado) {
+    throw new Error(resultado.mensaje || 'No se encontraron datos para el turno ' + filtro + '.');
+  }
+
+  var funcs = resultado.datos.funcionarios;
+  if (!funcs.length) {
+    throw new Error('No hay funcionarios registrados en el turno ' + filtro + '.');
+  }
+
+  var sello = Utilities.formatDate(new Date(), 'America/Bogota', 'yyyyMMdd-HHmmss');
+  var nombreBase = 'Reporte_Turno_' + filtro + '_' + sello;
+  var blob, mime;
+
+  if (formato === 'excel' || formato === 'xlsx') {
+    blob = generarExcelBlob_(funcs, filtro, sello);
+    blob.setName(nombreBase + '.xlsx');
+    mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  } else {
+    blob = generarPDFBlob_(funcs, filtro, sello);
+    blob.setName(nombreBase + '.pdf');
+    mime = 'application/pdf';
+  }
+
+  return ContentService
+    .createTextOutput(blob)
+    .setMimeType(mime)
+    .setHeaders({
+      'Content-Disposition': 'attachment; filename="' + nombreBase + (formato === 'excel' || formato === 'xlsx' ? '.xlsx' : '.pdf') + '"',
+      'Cache-Control': 'no-store, no-cache, must-revalidate'
+    });
 }
 
 function filaCabeceraNovedades_(hoja) {
