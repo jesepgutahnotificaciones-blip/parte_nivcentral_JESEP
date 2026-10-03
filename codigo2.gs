@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-03-r25';
+var VERSION_APP = 'JESEP-2026-10-03-r26';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -184,6 +184,9 @@ function doGet(e) {
         break;
       case 'registrarNovedadRapida':
         resultado = registrarNovedadRapida(args[0], args[1], args[2]);
+        break;
+      case 'registrarPresentacionesVacacion':
+        resultado = registrarPresentacionesVacacion(args[0], args[1]);
         break;
       case 'version':
         resultado = versionApp();
@@ -983,6 +986,12 @@ function consultarPorTurno(token, filtro) {
             var tipoNov = (vTipo === null || vTipo === undefined) ? '' : String(vTipo).trim();
             var novedadNov = (vNovedad === null || vNovedad === undefined) ? '' : String(vNovedad).trim();
             var diasNov = (vDias === null || vDias === undefined) ? '' : String(vDias).trim();
+
+            // El marcador de "se presenta de vacaciones hoy" NO es una novedad:
+            // la persona esta disponible, solo se registra que debe presentarse.
+            // Por eso no se devuelve en historialNovedades (asi la fila no queda
+            // sombreada ni se descuenta de la fuerza disponible).
+            if (esPresentacionVacacion_(tipoNov)) continue;
 
             // F ya viene concatenada ("TIPO - nombre"); solo se une si viene separada
             var concatenado = novedadNov || tipoNov;
@@ -1951,6 +1960,147 @@ function registrarNovedadRapida(token, cedula, tipo) {
     };
   } catch (err) {
     return { estado: false, version: VERSION_APP, mensaje: 'Error registrando novedad: ' + err.message };
+  }
+}
+
+/* =====================================================
+   11. PRESENTACIONES DE VACACIONES DEL DIA
+   Marca quais funcionarios deben presentarse hoy de
+   vacaciones. NO es una novedad: no descuenta de la fuerza
+   disponible ni sombrea la fila en la tabla del turno.
+   ===================================================== */
+
+var MARCADOR_PRESENTACION_ = 'PRESENTACION VACACION';
+
+// Reconoce el marcador de presentacion, con o sin acentos y espacios.
+function esPresentacionVacacion_(tipo) {
+  var t = quitarAcentos_(String(tipo || '').trim()).replace(/\s+/g, ' ');
+  if (!t) return false;
+  return t.indexOf('PRESENTACION') !== -1 && t.indexOf('VACACION') !== -1;
+}
+
+// Reemplaza la lista de presentaciones de hoy por la lista recibida.
+// Si un funcionario ya venia marcado y se desmarca, su fila se elimina.
+function registrarPresentacionesVacacion(token, cedulas) {
+  try {
+    var lista = Array.isArray(cedulas) ? cedulas : [];
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('NOVEDADES');
+    if (!hoja) {
+      return { estado: false, version: VERSION_APP, mensaje: 'No existe la hoja NOVEDADES.' };
+    }
+
+    var mapa = mapaColumnasNovedades_(hoja);
+    if (!mapa) {
+      return { estado: false, version: VERSION_APP, mensaje: 'No se pudo leer el encabezado de NOVEDADES.' };
+    }
+
+    // Normaliza y descarta repetidos
+    var deseados = {};
+    for (var i = 0; i < lista.length; i++) {
+      var cc = normalizaCedula_(lista[i]);
+      if (cc) deseados[cc] = true;
+    }
+
+    var hoy = Utilities.formatDate(new Date(), ZONA_, 'yyyy-MM-dd');
+    var partesHoy = partesFecha_(new Date(), ZONA_);
+
+    // Recorre las presentaciones YA registradas hoy.
+    //   - las que siguen en la lista se conservan (no se duplican)
+    //   - las que se desmarcaron se borran
+    var datos = hoja.getDataRange().getValues();
+    var cab = (datos[0] || []).map(normalizarCabColumna_);
+    var iCed = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/], 0);
+    var iTipo = idxColumnaBase_(cab, [/^TIPO$/], -1);
+    var iFPre = idxColumnaBase_(cab, [/^FECHA PRESENTACION$/], -1);
+    var iFIni = idxColumnaBase_(cab, [/^FECHA INICIAL$/], -1);
+
+    var yaMarcadas = {};
+    var borrar = [];
+
+    for (var f = 1; f < datos.length; f++) {
+      var fila = datos[f];
+      if (iTipo >= 0 && !esPresentacionVacacion_(fila[iTipo])) continue;
+
+      var fPre = iFPre >= 0 ? partesFecha_(fila[iFPre], ZONA_) : null;
+      var fIni = iFIni >= 0 ? partesFecha_(fila[iFIni], ZONA_) : null;
+      var esHoy = (fPre && fPre.anio === partesHoy.anio && fPre.mes === partesHoy.mes && fPre.dia === partesHoy.dia) ||
+                  (fIni && fIni.anio === partesHoy.anio && fIni.mes === partesHoy.mes && fIni.dia === partesHoy.dia);
+      if (!esHoy) continue;
+
+      var ccFila = iCed >= 0 ? normalizaCedula_(fila[iCed]) : '';
+      if (!ccFila) continue;
+
+      if (deseados[ccFila]) {
+        if (!yaMarcadas[ccFila]) yaMarcadas[ccFila] = true;  // ya estaba: se conserva
+      } else {
+        borrar.push(f + 1);                                   // se desmarco: se borra
+      }
+    }
+
+    // Se borra de abajo hacia arriba para no mover los indices
+    for (var b = borrar.length - 1; b >= 0; b--) {
+      hoja.deleteRow(borrar[b]);
+    }
+
+    // Inserta solo los que no estaban marcados todavia
+    var agregados = 0;
+    var omitidos = [];
+    var varKeys = Object.keys(deseados);
+
+    for (var k = 0; k < varKeys.length; k++) {
+      var cc = varKeys[k];
+      if (yaMarcadas[cc]) continue;
+
+      var base = renglonBasePorCedula_(cc);
+      if (!base) {
+        omitidos.push(cc);
+        continue;
+      }
+
+      var nombre = '';
+      var cabBase = base.cabeceras.map(normalizarCabColumna_);
+      var idxNombre = idxColumnaBase_(cabBase,
+        [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/], -1);
+      if (idxNombre !== -1 && idxNombre < base.valores.length) {
+        nombre = String(base.valores[idxNombre] === null ? '' : base.valores[idxNombre]).trim();
+      }
+
+      var filaNueva = construirFilaNovedades_(mapa, {
+        cedula: cc,
+        nombreFuncionario: nombre,
+        tipo: MARCADOR_PRESENTACION_,
+        novedad: 'PRESENTACION',
+        dias: '',
+        fechaInicial: hoy,
+        fechaPresentacion: hoy,
+        observacion: 'Debe presentarse hoy de vacaciones',
+        texto: 'PRESENTACION DEL DIA'
+      });
+
+      completarDesdeBase_(filaNueva, mapa, base);
+      hoja.appendRow(filaNueva);
+      agregados++;
+    }
+
+    var conservadas = 0;
+    for (var y in yaMarcadas) { if (yaMarcadas.hasOwnProperty(y)) conservadas++; }
+
+    return {
+      estado: true,
+      version: VERSION_APP,
+      mensaje: 'Presentaciones de hoy: ' + (varKeys.length - omitidos.length) + ' en total (' +
+        agregados + ' nuevo(s), ' + conservadas + ' sin cambio' +
+        (borrar.length ? ', ' + borrar.length + ' desmarca(s)' : '') + ')' +
+        (omitidos.length ? '. ' + omitidos.length + ' cédula(s) no encontrada(s) en LISTADO_BASE.' : '.'),
+      registrados: agregados,
+      conservadas: conservadas,
+      eliminados: borrar.length,
+      omitidos: omitidos,
+      total: varKeys.length
+    };
+  } catch (err) {
+    return { estado: false, version: VERSION_APP, mensaje: 'Error registrando presentaciones: ' + err.message };
   }
 }
 

@@ -183,6 +183,165 @@
     .nov-tipo-total { border-top-color: var(--verde); }
     .nov-tipo-total .nov-tipo-num { color: var(--verde); }
 
+    /* Modal de presentaciones de vacaciones del dia */
+    .pv-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 32, 24, .74);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 10000;
+    }
+
+    .pv-overlay.oculto { display: none !important; }
+
+    .pv-caja {
+      background: #fff;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 620px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .35);
+      overflow: hidden;
+      animation: pvEntra .18s ease-out;
+    }
+
+    @keyframes pvEntra {
+      from { transform: translateY(-10px) scale(.98); opacity: 0; }
+      to { transform: none; opacity: 1; }
+    }
+
+    .pv-cabecera {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--verde);
+      color: #fff;
+      padding: 16px 20px;
+      flex-shrink: 0;
+    }
+
+    .pv-icono { font-size: 26px; line-height: 1; }
+    .pv-cabecera h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+    .pv-fecha { font-size: .78rem; opacity: .85; }
+
+    .pv-cerrar {
+      margin-left: auto;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 26px;
+      line-height: 1;
+      cursor: pointer;
+      opacity: .8;
+      padding: 0 4px;
+    }
+
+    .pv-cerrar:hover { opacity: 1; }
+
+    .pv-aviso {
+      background: #fdf3e3;
+      border-bottom: 1px solid #f0d9a8;
+      color: #7a5510;
+      font-size: .78rem;
+      line-height: 1.45;
+      padding: 10px 20px;
+      flex-shrink: 0;
+    }
+
+    .pv-busca {
+      display: flex;
+      gap: 6px;
+      padding: 12px 20px 8px;
+      flex-shrink: 0;
+    }
+
+    .pv-input {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: .88rem;
+      border: 1px solid var(--borde);
+      border-radius: 6px;
+    }
+
+    .pv-input:focus { outline: 2px solid var(--dorado); outline-offset: 1px; }
+
+    .pv-lista {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 20px 12px;
+      min-height: 120px;
+    }
+
+    .pv-cargando, .pv-vacio { padding: 28px; text-align: center; color: #78909c; font-size: .88rem; }
+
+    .pv-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--borde);
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .pv-item:hover { background: #f4f8f6; }
+    .pv-item input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--verde); cursor: pointer; flex-shrink: 0; }
+    .pv-nombre { flex: 1; font-size: .88rem; }
+    .pv-item input[type=text] { display: none; }
+
+    .pv-grado {
+      font-size: .68rem;
+      font-weight: 700;
+      color: var(--verde);
+      background: var(--verde-claro);
+      border-radius: 4px;
+      padding: 1px 6px;
+      flex-shrink: 0;
+    }
+
+    .pv-dep { font-size: .74rem; color: #90a4ae; flex-shrink: 0; max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pv-ya { font-size: .68rem; font-weight: 700; color: #8a5a00; background: #fdf3e3; border: 1px solid #f0d9a8; border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
+
+    .pv-oculto { display: none !important; }
+
+    .pv-pie {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--borde);
+      background: #fafcfb;
+      flex-shrink: 0;
+    }
+
+    .pv-resumen { font-size: .82rem; color: #607d8b; }
+    .pv-resumen b { font-size: 1.05rem; color: var(--verde); }
+
+    .pv-btn, .pv-btn-sec {
+      padding: 9px 16px;
+      font-size: .85rem;
+      font-weight: 700;
+      border-radius: 7px;
+      cursor: pointer;
+      border: 1px solid var(--borde);
+    }
+
+    .pv-btn { color: #fff; background: var(--verde); border-color: var(--verde); margin-left: 6px; }
+    .pv-btn:hover:not(:disabled) { background: var(--verde-oscuro); }
+    .pv-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .pv-btn-sec { color: #607d8b; background: #fff; }
+    .pv-btn-sec:hover { background: #f1f5f3; }
+    .pv-busca .pv-btn-sec { padding: 8px 11px; font-size: .78rem; }
+
+    .btn-presentacion { background: var(--dorado); border-color: var(--dorado); color: #fff; }
+    .btn-presentacion:hover { background: #b08d1c; border-color: #b08d1c; color: #fff; }
+
     /* Selector de novedad rapida dentro de la tabla del turno */
     .nov-rapida {
       display: flex;
@@ -406,6 +565,43 @@
         </div>
         <div id="resultadoTurno"></div>
       </section>
+
+      <!-- MODAL: PRESENTACIONES DE VACACIONES DEL DIA -->
+      <div id="modalPresentacion" class="pv-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="tituloPresentacion">
+        <div class="pv-caja">
+          <div class="pv-cabecera">
+            <span class="pv-icono">🗓️</span>
+            <div>
+              <h2 id="tituloPresentacion">Presentaciones de vacaciones de hoy</h2>
+              <span id="pvSubtitulo" class="pv-fecha"></span>
+            </div>
+            <button type="button" class="pv-cerrar" onclick="cerrarModalPresentacion()" aria-label="Cerrar">×</button>
+          </div>
+
+          <div class="pv-aviso">
+            <strong>Esto no cuenta como novedad.</strong> Quien se presenta está disponible, por lo que
+            no se descuenta de la fuerza disponible ni se sombrea la fila del turno.
+          </div>
+
+          <div class="pv-busca">
+            <input type="text" id="pvBuscar" class="pv-input" placeholder="Buscar por nombre, grado o cédula..." autocomplete="off">
+            <button type="button" class="pv-btn-sec" onclick="seleccionarTodosPresentacion()">Todos</button>
+            <button type="button" class="pv-btn-sec" onclick="deseleccionarTodosPresentacion()">Ninguno</button>
+          </div>
+
+          <div class="pv-lista" id="pvLista">
+            <div class="pv-cargando">🔄 Cargando funcionarios del turno...</div>
+          </div>
+
+          <div class="pv-pie">
+            <span class="pv-resumen"><b id="pvCount">0</b> seleccionados</span>
+            <div>
+              <button type="button" class="pv-btn-sec" onclick="cerrarModalPresentacion()">Cancelar</button>
+              <button type="button" class="pv-btn" id="pvGuardar" onclick="guardarPresentaciones()">💾 Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- REPORTES -->
       <section id="seccionReportes" class="section">
@@ -1101,6 +1297,154 @@
       .registrarNovedadRapida(tokenSesion, cedula, tipo);
   }
 
+  /* =====================================================
+     PRESENTACIONES DE VACACIONES DEL DIA
+     Abre el listado del turno consultado con casillas para
+     marcar quienes deben presentarse hoy. No es una novedad:
+     no altera la fuerza disponible ni sombrea las filas.
+     ===================================================== */
+  let _listaPresentacion = [];
+  let _cedulasPresentacion = {};
+
+  function abrirModalPresentacion() {
+    if (!ultimoResultadoturno || !ultimoResultadoturno.datos) {
+      mostrarToast('Primero consulte un turno.', 'error');
+      return;
+    }
+
+    const turno = ultimoTurnoConsultado || '';
+    _listaPresentacion = (ultimoResultadoturno.datos.funcionarios || []).slice();
+    _cedulasPresentacion = {};
+
+    const lista = document.getElementById('pvLista');
+    lista.innerHTML = '<div class="pv-cargando">🔄 Consultando quién ya está marcado...</div>';
+
+    const sub = document.getElementById('pvSubtitulo');
+    if (sub) sub.textContent = 'Turno ' + turno;
+
+    document.getElementById('modalPresentacion').classList.remove('oculto');
+    actualizarContadorPresentacion_();
+
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (r && r.estado === true && r.datos) {
+          r.datos.forEach(function(p) {
+            const cc = normalizarCedulaCliente_(p.cedula);
+            if (cc) _cedulasPresentacion[cc] = true;
+          });
+        }
+        pintarListaPresentacion_(document.getElementById('pvBuscar').value);
+      })
+      .withFailureHandler(function() {
+        pintarListaPresentacion_('');
+      })
+      .presentarVacacionesHoy(tokenSesion);
+  }
+
+  function cerrarModalPresentacion() {
+    document.getElementById('modalPresentacion').classList.add('oculto');
+  }
+
+  function normalizarCedulaCliente_(v) {
+    return String(v === null || v === undefined ? '' : v).replace(/\D/g, '');
+  }
+
+  function pintarListaPresentacion_(filtro) {
+    const cont = document.getElementById('pvLista');
+    if (!cont) return;
+
+    const q = String(filtro || '').trim().toUpperCase();
+
+    const visibles = _listaPresentacion.filter(function(f) {
+      if (!q) return true;
+      return (String(f.cedula || '') + ' ' + String(f.grado || '') + ' ' +
+        String(f.funcionario || '') + ' ' + String(f.dependencia || '')).toUpperCase().indexOf(q) !== -1;
+    });
+
+    if (!_listaPresentacion.length) {
+      cont.innerHTML = '<div class="pv-vacio">No hay funcionarios en el turno consultado.</div>';
+      return;
+    }
+    if (!visibles.length) {
+      cont.innerHTML = '<div class="pv-vacio">Ningún funcionario coincide con la búsqueda.</div>';
+      return;
+    }
+
+    let html = '';
+    visibles.forEach(function(f) {
+      const cc = normalizarCedulaCliente_(f.cedula);
+      const ya = !!_cedulasPresentacion[cc];
+      html += '<label class="pv-item" data-cc="' + esc(cc) + '">';
+      html += '<input type="checkbox" class="pv-check" value="' + esc(cc) + '"' + (ya ? ' checked' : '') +
+        ' onchange="actualizarContadorPresentacion_()">';
+      html += '<span class="pv-nombre">' + esc(f.funcionario || '') + '</span>';
+      if (f.grado) html += '<span class="pv-grado">' + esc(f.grado) + '</span>';
+      if (f.dependencia) html += '<span class="pv-dep">' + esc(f.dependencia) + '</span>';
+      if (ya) html += '<span class="pv-ya">ya marcado</span>';
+      html += '</label>';
+    });
+    cont.innerHTML = html;
+    actualizarContadorPresentacion_();
+  }
+
+  function actualizarContadorPresentacion_() {
+    const c = document.getElementById('pvCount');
+    if (!c) return;
+    const n = document.querySelectorAll('#pvLista .pv-check:checked').length;
+    c.textContent = n;
+  }
+
+  function seleccionarTodosPresentacion() {
+    document.querySelectorAll('#pvLista .pv-check').forEach(function(c) { c.checked = true; });
+    actualizarContadorPresentacion_();
+  }
+
+  function deseleccionarTodosPresentacion() {
+    document.querySelectorAll('#pvLista .pv-check').forEach(function(c) { c.checked = false; });
+    actualizarContadorPresentacion_();
+  }
+
+  function guardarPresentaciones() {
+    const sel = [];
+    document.querySelectorAll('#pvLista .pv-check:checked').forEach(function(c) {
+      if (c.value) sel.push(c.value);
+    });
+
+    const btn = document.getElementById('pvGuardar');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
+
+    google.script.run
+      .withSuccessHandler(function(r) {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar'; }
+
+        if (!r || r.estado !== true) {
+          mostrarToast((r && r.mensaje) || 'No fue posible guardar las presentaciones.', 'error');
+          return;
+        }
+
+        cerrarModalPresentacion();
+        mostrarToast(r.mensaje || 'Presentaciones actualizadas.');
+        if (ultimoTurnoConsultado) cargarTurno(ultimoTurnoConsultado);
+      })
+      .withFailureHandler(function(e) {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar'; }
+        mostrarToast('Error guardando: ' + ((e && e.message) || 'fallo de red'), 'error');
+      })
+      .registrarPresentacionesVacacion(tokenSesion, sel);
+  }
+
+  document.addEventListener('keydown', function(ev) {
+    const ov = document.getElementById('modalPresentacion');
+    if (ev.key === 'Escape' && ov && !ov.classList.contains('oculto')) cerrarModalPresentacion();
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const b = document.getElementById('pvBuscar');
+    if (b) {
+      b.addEventListener('input', function() { pintarListaPresentacion_(b.value); });
+    }
+  });
+
   function renderTurno(respuesta) {
     const contenedor = document.getElementById('resultadoTurno');
     const datos = respuesta.datos || {};
@@ -1217,7 +1561,8 @@
 
     // El botón de reporte se oculta para los usuarios DISPONIBLE_*
     const botonesTabla = '<button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button>' +
-      (esUsuarioDisponible ? '' : '<button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button>');
+      (esUsuarioDisponible ? '' : '<button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button>') +
+      '<button type="button" class="btn btn-sm btn-presentacion me-1" onclick="abrirModalPresentacion()">🗓 Presentar hoy</button>';
 
     html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div>' + botonesTabla + '</div></div></div><div class="card-body">';
     html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
