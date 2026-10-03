@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-03-r27';
+var VERSION_APP = 'JESEP-2026-10-03-r28';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -181,6 +181,9 @@ function doGet(e) {
         break;
       case 'consultarPresentacionesHoy':
         resultado = consultarPresentacionesHoy(args[0], args[1]);
+        break;
+      case 'confirmarPresentacionesHoy':
+        resultado = confirmarPresentacionesHoy(args[0], args[1]);
         break;
       case 'presentarVacacionesHoy':
         resultado = consultarPresentacionesHoy(args[0], '');
@@ -1880,6 +1883,93 @@ function consultarPresentacionesHoy(token, filtro) {
     };
   } catch (err) {
     return { estado: false, mensaje: 'Error buscando presentaciones de hoy: ' + err.message };
+  }
+}
+
+// Confirma quienes SI se presentaron hoy.
+// A los marcados SI se les borra de NOVEDADES la fila de TIPO
+// VACACIONES o PERMISO con Fecha PRESENTACION igual a hoy, con lo
+// cual vuelven al listado S/N y se suman a la fuerza disponible.
+// A los marcados NO no se les toca nada: la novedad sigue vigente.
+function confirmarPresentacionesHoy(token, cedulas) {
+  try {
+    var entrada = Array.isArray(cedulas) ? cedulas : [];
+
+    // Solo se aceptan los que trae "SI". El "NO" nunca se envia.
+    var objetivo = {};
+    for (var i = 0; i < entrada.length; i++) {
+      var cc = normalizaCedula_(entrada[i]);
+      if (cc) objetivo[cc] = true;
+    }
+
+    if (!Object.keys(objetivo).length) {
+      return { estado: true, version: VERSION_APP, mensaje: 'No se marcó ningún funcionario como presentado.', filasEliminadas: 0, funcionarios: 0 };
+    }
+
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('NOVEDADES');
+    if (!hoja) {
+      return { estado: false, version: VERSION_APP, mensaje: 'No existe la hoja NOVEDADES.' };
+    }
+
+    var datos = hoja.getDataRange().getValues();
+    if (datos.length < 2) {
+      return { estado: true, version: VERSION_APP, mensaje: 'No hay novedades que actualizar.', filasEliminadas: 0, funcionarios: 0 };
+    }
+
+    var cab = (datos[0] || []).map(normalizarCabColumna_);
+    var iCed = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/], 0);
+    var iTipo = idxColumnaBase_(cab, [/^TIPO$/], -1);
+    var iFPre = idxColumnaBase_(cab, [/^FECHA PRESENTACION$/], -1);
+
+    var hoy = partesFecha_(new Date(), ZONA_);
+    var borrar = [];
+    var porCedula = {};
+
+    for (var f = 1; f < datos.length; f++) {
+      var fila = datos[f];
+
+      // Solo TIPO VACACIONES o PERMISO
+      var tipo = iTipo >= 0 ? String(fila[iTipo] || '') : '';
+      var tipoNorm = quitarAcentos_(tipo);
+      if (tipoNorm.indexOf('VACACION') === -1 && tipoNorm.indexOf('PERMISO') === -1) continue;
+
+      // Y con Fecha PRESENTACION de hoy (columna K)
+      var fPre = iFPre >= 0 ? partesFecha_(fila[iFPre], ZONA_) : null;
+      if (!fPre) continue;
+      if (fPre.anio !== hoy.anio || fPre.mes !== hoy.mes || fPre.dia !== hoy.dia) continue;
+
+      var ccFila = iCed >= 0 ? normalizaCedula_(fila[iCed]) : '';
+      if (!ccFila || !objetivo[ccFila]) continue;
+
+      borrar.push(f + 1);
+      porCedula[ccFila] = true;
+    }
+
+    // Se borra de abajo hacia arriba para no mover los indices
+    for (var b = borrar.length - 1; b >= 0; b--) {
+      hoja.deleteRow(borrar[b]);
+    }
+
+    var atendidos = Object.keys(porCedula).length;
+    var sinCambio = Object.keys(objetivo).length - atendidos;
+
+    var msg = 'Pasaron a S/N: ' + atendidos + ' funcionario(s). ' +
+      'Se eliminaron ' + borrar.length + ' fila(s) de NOVEDADES.';
+    if (sinCambio > 0) {
+      msg += ' ' + sinCambio + ' no tenían novedad de vacaciones o permiso con fecha de hoy.';
+    }
+
+    return {
+      estado: true,
+      version: VERSION_APP,
+      mensaje: msg,
+      filasEliminadas: borrar.length,
+      funcionarios: atendidos,
+      sinCambio: sinCambio
+    };
+  } catch (err) {
+    return { estado: false, version: VERSION_APP, mensaje: 'Error confirmando presentaciones: ' + err.message };
   }
 }
 
