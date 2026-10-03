@@ -135,6 +135,45 @@
       font-size: 11px;
     }
 
+    /* Conteo numerico de novedades por tipo */
+    .nov-tipo-card {
+      border-radius: 10px;
+      padding: 12px 10px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      border-top: 4px solid var(--dorado);
+      height: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .nov-tipo-label {
+      color: #607d8b;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+      margin-bottom: 6px;
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nov-tipo-num {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--verde);
+      line-height: 1.1;
+    }
+
+    .nov-tipo-num.cero { color: #b0bec5; }
+
+    .nov-tipo-total { border-top-color: var(--verde); }
+    .nov-tipo-total .nov-tipo-num { color: var(--verde); }
+
     /* Selector de novedad rapida dentro de la tabla del turno */
     .nov-rapida {
       display: flex;
@@ -515,6 +554,14 @@
   let ultimoTurnoConsultado = null;
   let ultimoResultadoturno = null;
   let ultimoReporteArchivos = null;
+  // Usuario DISPONIBLE_A / _B / _C: solo consulta su turno, sin registrar
+  // novedades ni generar reportes.
+  let esUsuarioDisponible = false;
+
+  function esUsuarioTurno_(idUsuario) {
+    const id = String(idUsuario || '').trim().toUpperCase();
+    return id.indexOf('DISPONIBLE_') === 0;
+  }
 
   document.addEventListener('DOMContentLoaded', function() {
     // Leer sesión guardada por index.html
@@ -525,6 +572,9 @@
       rolSesion = sesionGuardada.usuario ? sesionGuardada.usuario.rol : null;
       dependenciaSesion = sesionGuardada.usuario ? (sesionGuardada.usuario.dependencia || '') : '';
       turnoPermitido = sesionGuardada.usuario ? (sesionGuardada.usuario.turnoPermitido || '') : '';
+      esUsuarioDisponible = esUsuarioTurno_(
+        sesionGuardada.usuario ? (sesionGuardada.usuario.usuarioId || sesionGuardada.usuario.usuario) : ''
+      );
 
       if (!usuarioSesion) {
         // Redirigir al login si no hay sesión válida
@@ -666,6 +716,25 @@
       seccionUsuarios.classList.add('hidden');
     }
 
+    // Usuarios DISPONIBLE_A / _B / _C: sin "Registrar novedad" ni "Reportes".
+    // Solo pueden consultar su turno.
+    const menuNovedad = document.getElementById('menuNovedad');
+    const seccionNovedad = document.getElementById('seccionNovedad');
+    const menuReportes = document.getElementById('menuReportes');
+    const seccionReportes = document.getElementById('seccionReportes');
+
+    if (esUsuarioDisponible) {
+      menuNovedad.classList.add('hidden');
+      seccionNovedad.classList.add('hidden');
+      menuReportes.classList.add('hidden');
+      seccionReportes.classList.add('hidden');
+    } else {
+      menuNovedad.classList.remove('hidden');
+      seccionNovedad.classList.remove('hidden');
+      menuReportes.classList.remove('hidden');
+      seccionReportes.classList.remove('hidden');
+    }
+
     // Botones de turno: según turnoPermitido
     const contenedorTurnos = document.getElementById('contenedorTurnos');
     const todosLosTurnos = [
@@ -700,6 +769,12 @@
   function mostrarSeccion(nombre) {
     const mapa = { consulta: 'seccionConsulta', novedad: 'seccionNovedad', turnos: 'seccionTurnos', reportes: 'seccionReportes', usuarios: 'seccionUsuarios' };
     const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', turnos: 'menuTurnos', reportes: 'menuReportes', usuarios: 'menuUsuarios' };
+
+    // Los usuarios DISPONIBLE_* solo acceden a Consulta y Turnos.
+    if (esUsuarioDisponible && (nombre === 'novedad' || nombre === 'reportes' || nombre === 'usuarios')) {
+      mostrarToast('Su usuario no tiene acceso a esta sección.', 'error');
+      nombre = 'turnos';
+    }
 
     document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
     document.querySelectorAll('.menu button').forEach(function(b) { b.classList.remove('active'); });
@@ -927,6 +1002,45 @@
 
   let _contSelectorNov = 0;
 
+  /* =====================================================
+     CONTEO NUMERICO DE NOVEDADES POR TIPO
+     Cada funcionario se clasifica una sola vez, en la
+     primera categoria que coincida con alguna de sus
+     novedades. El texto viene del backend como
+     "TIPO - novedad (N dias)".
+     ===================================================== */
+  const CATEGORIAS_NOVEDAD_ = [
+    { clave: 'RETARDADOS',      etiqueta: 'Retardados',          patron: /RETARD/ },
+    { clave: 'VACACIONES',      etiqueta: 'En vacaciones',       patron: /VACACION/ },
+    { clave: 'LICENCIA',        etiqueta: 'De licencia',          patron: /LICENCIA/ },
+    { clave: 'PERMISO',         etiqueta: 'De permiso',           patron: /PERMISO/ },
+    { clave: 'COMISION',        etiqueta: 'En comision',          patron: /COMISION/ },
+    { clave: 'CURSO_ASCENSO',   etiqueta: 'En curso de ascenso',  patron: /ASCENSO/ }
+  ];
+
+  function contarNovedadesPorTipo(funcionarios) {
+    const conteo = {};
+    CATEGORIAS_NOVEDAD_.forEach(c => { conteo[c.clave] = 0; });
+
+    (funcionarios || []).forEach(f => {
+      const lista = f.historialNovedades || [];
+      if (!lista.length) return;
+
+      // Se unen todas sus novedades para buscar la primera categoria.
+      const texto = lista.map(x => String(x.NOVEDAD || '')).join(' ')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+      for (let i = 0; i < CATEGORIAS_NOVEDAD_.length; i++) {
+        if (CATEGORIAS_NOVEDAD_[i].patron.test(texto)) {
+          conteo[CATEGORIAS_NOVEDAD_[i].clave]++;
+          break;
+        }
+      }
+    });
+
+    return conteo;
+  }
+
   function selectorNovedadRapida_(cedula) {
     const idSel = 'selNov' + (++_contSelectorNov);
     const idBtn = 'btnNov' + _contSelectorNov;
@@ -1065,7 +1179,38 @@
     html += '</div>';
     html += '</div></div>';
 
-    html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
+    // Conteo numerico de novedades por tipo
+    const conteoNov = contarNovedadesPorTipo(funcionarios);
+
+    html += '<div class="card mb-3"><div class="card-header bg-white">📌 <strong>NOVEDADES DEL TURNO</strong></div><div class="card-body">';
+    html += '<div class="row g-2">';
+
+    // Total en formacion
+    html += '<div class="col-6 col-md-4 col-lg-2">';
+    html += '<div class="nov-tipo-card nov-tipo-total">';
+    html += '<div class="nov-tipo-label">En formacion</div>';
+    html += '<div class="stat-number">' + totalDisponible + ' <span class="stat-slash">/ ' + totalEfectiva + '</span>' +
+      ' <span class="stat-paren">(Efectiva)</span></div>';
+    html += '<div class="stat-mini">Disponible / Total</div>';
+    html += '</div></div>';
+
+    CATEGORIAS_NOVEDAD_.forEach(function(cat) {
+      const n = conteoNov[cat.clave] || 0;
+      html += '<div class="col-6 col-md-4 col-lg-2">';
+      html += '<div class="nov-tipo-card">';
+      html += '<div class="nov-tipo-label">' + esc(cat.etiqueta) + '</div>';
+      html += '<div class="nov-tipo-num' + (n ? '' : ' cero') + '">' + n + '</div>';
+      html += '</div></div>';
+    });
+
+    html += '</div>';
+    html += '</div></div>';
+
+    // El botón de reporte se oculta para los usuarios DISPONIBLE_*
+    const botonesTabla = '<button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button>' +
+      (esUsuarioDisponible ? '' : '<button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button>');
+
+    html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div>' + botonesTabla + '</div></div></div><div class="card-body">';
     html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
     // Mismo orden del reporte: sin novedades primero y jerarquia de grados.
@@ -1092,7 +1237,9 @@
       n++;
       const novedades = f.historialNovedades || [];
       let novedadesHtml = novedades.length ? novedades.map(x => '<span class="badge-novedad">' + esc(x.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">S/N</span>';
-      novedadesHtml += selectorNovedadRapida_(f.cedula || f.CEDULA || '');
+      // El desplegable solo aparece en las filas SIN novedades (las no sombreadas).
+      // En las filas sombreadas la novedad ya esta registrada.
+      if (!novedades.length) novedadesHtml += selectorNovedadRapida_(f.cedula || f.CEDULA || '');
       html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
