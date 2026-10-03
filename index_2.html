@@ -138,6 +138,22 @@
       font-size: 11px;
     }
 
+    /* Indicador discreto de novedades en el encabezado del conteo */
+    .nov-cabecera {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .01em;
+      color: #78909c;
+      background: #f4f6f7;
+      border: 1px solid #e2e8e6;
+      border-radius: 10px;
+      padding: 2px 9px;
+      white-space: nowrap;
+      cursor: default;
+    }
+
+    .nov-cabecera.vacia { opacity: .65; }
+
     .empty { padding: 25px; text-align: center; color: #78909c; background: white; border-radius: 10px; }
     .loading { padding: 25px; text-align: center; background: white; border-radius: 10px; color: var(--verde); }
 
@@ -152,6 +168,13 @@
 
     .stat-number { font-size: 24px; font-weight: 700; color: var(--verde); }
     .stat-label { color: #607d8b; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+
+    /* Formato de las cifras dentro de cada tarjeta */
+    .stat-slash { font-size: 15px; color: #90a4ae; font-weight: 600; }
+    .stat-paren { font-size: 11px; color: #90a4ae; font-weight: 600; }
+    .stat-mini { font-size: 10px; color: #90a4ae; text-transform: uppercase; letter-spacing: .02em; }
+    .stat-card-total { border-top-color: var(--dorado); }
+    .stat-card-total .stat-number { color: var(--dorado); }
 
     .toast-app {
       position: fixed;
@@ -1329,20 +1352,23 @@ function onTipoNovedadChange() {
 
     // Categorías: OF, EJE, PT, PP, AXP, NO UNI (NIV eliminado)
     const categorias = ['OF', 'EJE', 'PT', 'PP', 'AXP', 'NO UNI'];
-    let fuerzaDisponible = {};
-    let fuerzaEfectiva = {};
-    let totalDisponible = 0;
+
+    // Fuerza efectiva  = total de funcionarios del turno (con y sin novedades)
+    // Fuerza disponible = los que NO tienen novedad
+    let fEfectiva = {};
+    let fDisponible = {};
     let totalEfectiva = 0;
+    let totalDisponible = 0;
 
     categorias.forEach(cat => {
-      fuerzaDisponible[cat] = 0;
-      fuerzaEfectiva[cat] = 0;
+      fEfectiva[cat] = 0;
+      fDisponible[cat] = 0;
     });
 
     funcionarios.forEach(f => {
       let nivelRaw = String(f.nivel || f.NIV || f.categoria || f.CATEGORIA || '').trim().toUpperCase();
       let gradoRaw = String(f.grado || f.GR || '').trim().toUpperCase();
-      
+
       let catAsignada = 'NO UNI';
       if (nivelRaw && categorias.includes(nivelRaw)) {
         catAsignada = nivelRaw;
@@ -1360,39 +1386,62 @@ function onTipoNovedadChange() {
         }
       }
 
-      fuerzaDisponible[catAsignada]++;
-      totalDisponible++;
+      fEfectiva[catAsignada]++;
+      totalEfectiva++;
 
       const novedades = f.historialNovedades || [];
       if (novedades.length === 0) {
-        fuerzaEfectiva[catAsignada]++;
-        totalEfectiva++;
+        fDisponible[catAsignada]++;
+        totalDisponible++;
       }
     });
 
-    let html = '<div class="card mb-3"><div class="card-header bg-white">📊 <strong>CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + esc(filtro) + '</strong></div><div class="card-body">';
+    // Indicador discreto de novedades para el encabezado del conteo
+    let conNovTotal = 0;
+    const desglose = [];
+    categorias.forEach(function(cat) {
+      const n = fEfectiva[cat] - fDisponible[cat];
+      if (n > 0) desglose.push(cat + ': ' + n);
+    });
+    conNovTotal = totalEfectiva - totalDisponible;
+
+    let html = '<div class="card mb-3"><div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">' +
+      '<span>📊 <strong>CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + esc(filtro) + '</strong></span>' +
+      '<span class="nov-cabecera' + (conNovTotal ? '' : ' vacia') + '"' +
+      (desglose.length ? ' title="' + esc(desglose.join(' · ')) + '"' : '') + '>' +
+      (conNovTotal ? conNovTotal + ' con novedad' : 'sin novedades') +
+      '</span></div><div class="card-body">';
     html += '<div class="row g-2 mb-3">';
-    
-    categorias.forEach(cat => {
-      let disp = fuerzaDisponible[cat];
-      let efec = fuerzaEfectiva[cat];
-      let etiqueta = cat === 'EJE' ? 'Nivel EJEC' : cat;
+
+    categorias.forEach(function(cat) {
+      const total = fEfectiva[cat];
+      const disp = fDisponible[cat];
+      const etiqueta = cat === 'EJE' ? 'Nivel EJEC' : cat;
+
       html += '<div class="col-6 col-md-3 col-lg">';
       html += '<div class="stat-card">';
       html += '<div class="stat-label">' + etiqueta + '</div>';
-      html += '<div class="stat-number">' + efec + ' <small class="text-muted fs-6">/ ' + disp + '</small></div>';
-      html += '<div class="text-muted" style="font-size: 11px;">Efectiva / Total</div>';
+      html += '<div class="stat-number">' + disp + ' <span class="stat-slash">/ ' + total + '</span>' +
+        ' <span class="stat-paren">(Efectiva)</span></div>';
+      html += '<div class="stat-mini">Disponible / Total</div>';
       html += '</div></div>';
     });
 
     html += '<div class="col-6 col-md-3 col-lg">';
-    html += '<div class="stat-card" style="border-top-color: var(--dorado);">';
+    html += '<div class="stat-card stat-card-total">';
     html += '<div class="stat-label">En formacion</div>';
-    html += '<div class="stat-number" style="color: var(--dorado);">' + totalEfectiva + ' <small class="text-muted fs-6">/ ' + totalDisponible + '</small></div>';
-    html += '<div class="text-muted" style="font-size: 11px;">Total Efectiva / Total</div>';
+    html += '<div class="stat-number">' + totalDisponible + ' <span class="stat-slash">/ ' + totalEfectiva + '</span>' +
+      ' <span class="stat-paren">(Efectiva)</span></div>';
+    html += '<div class="stat-mini">Disponible / Total</div>';
     html += '</div></div>';
 
     html += '</div>';
+
+    if (desglose.length) {
+      html += '<div class="mt-2 pt-2 border-top" style="font-size: 11px; color: #90a4ae;">' +
+        '<strong style="color:#78909c;">Descontado por novedad:</strong> ' + esc(desglose.join('   ·   ')) + '</div>';
+    }
+
     html += '</div></div>';
 
     html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
