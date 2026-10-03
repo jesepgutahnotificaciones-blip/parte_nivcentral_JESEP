@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-03-r29';
+var VERSION_APP = 'JESEP-2026-10-03-r31';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -24,23 +24,104 @@ function versionApp() {
   return { estado: true, version: VERSION_APP };
 }
 
+/* =====================================================
+   DIAGNÓSTICO DE PERMISOS
+   Ejecuta esta función desde el EDITOR de Apps Script
+   (no desde la página web) y mira el resultado.
+   Sirve para saber si el problema es el manifiesto,
+   la autorización, o que se está editando otro proyecto.
+   ===================================================== */
+function revisarPermisos() {
+  var L = [];
+  function add(x) { L.push(String(x)); }
+
+  add('VERSION  ' + VERSION_APP);
+  add('ID_LIBRO ' + ID_LIBRO);
+  add('');
+
+  // 1) Contexto de ejecucion
+  try {
+    add('Usuario que ejecuta  : ' + Session.getEffectiveUser().getEmail());
+  } catch (e0) {
+    add('Usuario que ejecuta  : no disponible (' + e0.message + ')');
+  }
+  try {
+    add('Usuario activo       : ' + Session.getActiveUser().getEmail());
+  } catch (e1) {
+    add('Usuario activo       : no disponible');
+  }
+  try {
+    add('Script ID            : ' + ScriptApp.getService().getUrl());
+  } catch (e2) {
+    add('Script ID            : no disponible');
+  }
+  add('');
+
+  // 2) Prueba directa de la hoja
+  try {
+    var ss = SpreadsheetApp.openById(ID_LIBRO);
+    add('OK  SpreadsheetApp.openById -> ' + ss.getName());
+    add('OK  Filas LISTADO_BASE  -> ' + ss.getSheetByName('LISTADO_BASE').getLastRow());
+  } catch (err) {
+    add('FALLO SpreadsheetApp.openById');
+    add('     ' + err.message);
+  }
+  add('');
+
+  // 3) Prueba de Drive (para el Excel)
+  try {
+    var tmp = SpreadsheetApp.create('tmp_permisos');
+    DriveApp.getFileById(tmp.getId()).setTrashed(true);
+    add('OK  DriveApp crear/eliminar temporal');
+  } catch (err2) {
+    add('FALLO DriveApp -> ' + err2.message);
+  }
+  add('');
+  add('Si las pruebas de arriba dicen OK pero la pagina web');
+  add('falla, el problema es la AUTORIZACION o el DESPLIEGUE,');
+  add('no el manifiesto.');
+  add('Si fallan aqui, el manifiesto de ESTE proyecto sigue');
+  add('sin el scope spreadsheets.');
+
+  return L.join('\n');
+}
+
 // Abre el libro de trabajo.
-// Si falta el permiso de hojas de calculo, avisa con un mensaje claro
-// en vez de dejar el error generico de OAuth de Google.
+// Si falta el permiso de hojas de calculo, reune datos de contexto
+// (que proyecto responde y con que cuenta se ejecuta) para que el
+// mensaje diga exactamente donde esta el problema.
 function abrirLibro_() {
   try {
     if (ID_LIBRO) return SpreadsheetApp.openById(ID_LIBRO);
     return SpreadsheetApp.getActiveSpreadsheet();
   } catch (err) {
     var msg = String((err && err.message) || err);
+
     if (msg.indexOf('spreadsheets') !== -1 || msg.indexOf('permisos') !== -1 ||
         msg.indexOf('Scopes') !== -1 || msg.indexOf('insufficient') !== -1) {
+
+      var url = '(desconocido)';
+      try { url = ScriptApp.getService().getUrl(); } catch (e1) {}
+
+      var quien = '(desconocido)';
+      try { quien = Session.getEffectiveUser().getEmail() || 'sin correo'; } catch (e2) {}
+
+      var activa = '(desconocida)';
+      try { var ua = Session.getActiveUser().getEmail(); activa = ua ? ua : 'ninguna (web app)'; } catch (e3) {}
+
       throw new Error(
-        'Falta el permiso de hojas de calculo (scope spreadsheets). ' +
-        'Abri Configuracion del proyecto > Mostrar el archivo de manifiesto appsscript.json, ' +
-        'agrega "https://www.googleapis.com/auth/spreadsheets" a oauthScopes, ' +
-        'guarda, vuelve a implementar (Implementar > Nueva implementacion) ' +
-        'y vuelve a autorizar la aplicacion. Detalle: ' + msg
+        'SIN PERMISO DE HOJAS DE CALCULO. | ' +
+        'Proyecto que responde: ' + url + ' | ' +
+        'Ejecuta como: ' + quien + ' | ' +
+        'Usuario activo: ' + activa + ' | ' +
+        'ID_LIBRO en el codigo: ' + ID_LIBRO + ' | ' +
+        'COMO ARREGLAR: en el editor de Apps Script abre Configuracion del proyecto, ' +
+        'marca "Mostrar el archivo de manifiesto appsscript.json", BORRA todo el bloque ' +
+        '"oauthScopes" (o pon solo https://www.googleapis.com/auth/spreadsheets y ' +
+        'https://www.googleapis.com/auth/drive.file), pulsa Guardar, ' +
+        'DESPUES ejecuta cualquier funcion desde el EDITOR y acepta la pantalla de ' +
+        'autorizacion de Google (este paso es obligatorio), y solo entonces ve a ' +
+        'Implementar > Nueva implementacion. Detalle original: ' + msg
       );
     }
     throw err;
