@@ -135,6 +135,15 @@
       font-size: 11px;
     }
 
+    /* Novedad sin TIPO informado en la hoja: se muestra marcada, no como vacio */
+    .badge-sin-tipo {
+      background: #f0f2f1;
+      color: #78909c;
+      border: 1px dashed #b0bec5;
+      font-style: italic;
+      font-weight: 600;
+    }
+
     /* Conteo numerico de novedades por tipo */
     .nov-tipo-card {
       border-radius: 10px;
@@ -1236,11 +1245,23 @@
       const conNov = (f.historialNovedades || []).length > 0;
       n++;
       const novedades = f.historialNovedades || [];
-      // Los usuarios DISPONIBLE_* solo ven el TIPO; los demas, el texto concatenado.
-      let novedadesHtml = novedades.length
-        ? novedades.map(x => '<span class="badge-novedad">' +
-            esc((esUsuarioDisponible ? (x.TIPO || x.NOVEDAD) : x.NOVEDAD) || '') + '</span>').join('')
-        : '<span class="text-muted">S/N</span>';
+
+      // Los usuarios DISPONIBLE_* muestran SOLO el TIPO. Nunca el concatenado.
+      // Los demas usuarios muestran el texto completo "TIPO - detalle (dias)".
+      let novedadesHtml;
+      if (novedades.length) {
+        novedadesHtml = novedades.map(function(x) {
+          if (esUsuarioDisponible) {
+            const soloTipo = String(x.TIPO || '').trim();
+            return '<span class="badge-novedad' + (soloTipo ? '' : ' badge-sin-tipo') + '">' +
+              esc(soloTipo || 'SIN TIPO') + '</span>';
+          }
+          return '<span class="badge-novedad">' + esc(x.NOVEDAD || '') + '</span>';
+        }).join('');
+      } else {
+        novedadesHtml = '<span class="text-muted">S/N</span>';
+      }
+
       // El desplegable solo aparece en las filas SIN novedades (las no sombreadas).
       // En las filas sombreadas la novedad ya esta registrada.
       if (!novedades.length) novedadesHtml += selectorNovedadRapida_(f.cedula || f.CEDULA || '');
