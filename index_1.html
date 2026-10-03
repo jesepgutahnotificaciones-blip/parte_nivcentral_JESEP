@@ -1236,7 +1236,11 @@
       const conNov = (f.historialNovedades || []).length > 0;
       n++;
       const novedades = f.historialNovedades || [];
-      let novedadesHtml = novedades.length ? novedades.map(x => '<span class="badge-novedad">' + esc(x.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">S/N</span>';
+      // Los usuarios DISPONIBLE_* solo ven el TIPO; los demas, el texto concatenado.
+      let novedadesHtml = novedades.length
+        ? novedades.map(x => '<span class="badge-novedad">' +
+            esc((esUsuarioDisponible ? (x.TIPO || x.NOVEDAD) : x.NOVEDAD) || '') + '</span>').join('')
+        : '<span class="text-muted">S/N</span>';
       // El desplegable solo aparece en las filas SIN novedades (las no sombreadas).
       // En las filas sombreadas la novedad ya esta registrada.
       if (!novedades.length) novedadesHtml += selectorNovedadRapida_(f.cedula || f.CEDULA || '');

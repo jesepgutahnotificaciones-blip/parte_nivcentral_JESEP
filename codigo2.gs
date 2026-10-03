@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-03-r24';
+var VERSION_APP = 'JESEP-2026-10-03-r25';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -994,7 +994,9 @@ function consultarPorTurno(token, filtro) {
             }
 
             if (concatenado) {
-              novedadesCruzadas.push({ NOVEDAD: concatenado });
+              // NOVEDAD = texto concatenado (TIPO - detalle - dias)
+              // TIPO = solo el tipo, para las vistas simplificadas
+              novedadesCruzadas.push({ NOVEDAD: concatenado, TIPO: tipoNov });
             }
           }
         }
