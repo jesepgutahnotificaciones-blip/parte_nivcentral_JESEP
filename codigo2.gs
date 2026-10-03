@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-03-r32';
+var VERSION_APP = 'JESEP-2026-10-03-r31';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -869,11 +869,7 @@ return {
     dias: idxColumnaBase_(cab, [/^DIAS$/], 8),                         // I
     fechaInicial: idxColumnaBase_(cab, [/^FECHA INICIAL$/], 9),         // J
     fechaPresentacion: idxColumnaBase_(cab, [/^FECHA PRESENTACION$/], 10), // K
-    // L esta reservada para un requerimiento futuro (encabezado actual: "Comunicado").
-    // Se deja en -1 para que nunca se escriba en ella. La observacion del
-    // formulario se guarda dentro de TEXTO (columna N).
-    observacion: -1,                                                    // L (libre)
-    comunicado: idxColumnaBase_(cab, [/^COMUNICADO$/], 11),              // L (reservada)
+    observacion: idxColumnaBase_(cab, [/^OBSERVACION$/], 11),           // L
     placaChip: idxColumnaBase_(cab, [/^PLACA ?CHIP$/], 12),             // M
     texto: idxColumnaBase_(cab, [/^TEXTO$/], 13),                       // N
     fechaRegistro: idxColumnaBase_(cab, [/^FECHA REGISTRO$/, /^FECHA DE REGISTRO$/], -1)
@@ -900,22 +896,12 @@ function construirFilaNovedades_(m, datos) {
   // H = NOVEDAD (texto escrito por el usuario)
   if (m.novedad >= 0) fila[m.novedad] = detalle;
 
-  // I / J / K / N   (L queda libre, ver mapaColumnasNovedades_)
+  // I / J / K / L / N
   if (m.dias >= 0) fila[m.dias] = (datos.dias === undefined || datos.dias === null) ? '' : datos.dias;
   if (m.fechaInicial >= 0) fila[m.fechaInicial] = datos.fechaInicial || '';
   if (m.fechaPresentacion >= 0) fila[m.fechaPresentacion] = datos.fechaPresentacion || '';
-
-  // La observacion se guarda en TEXTO (N) junto con el tipo y el detalle,
-  // para no perderla y dejando la columna L disponible.
-  var observacion = String(datos.observacion || datos.descripcion || '').trim();
-  if (m.texto >= 0) {
-    var partes = [];
-    var baseTexto = String(datos.texto || detalle || '').trim();
-    if (baseTexto) partes.push(baseTexto);
-    if (observacion && partes.indexOf(observacion) === -1) partes.push(observacion);
-    fila[m.texto] = partes.join(' | ');
-  }
-
+  if (m.observacion >= 0) fila[m.observacion] = datos.observacion || datos.descripcion || '';
+  if (m.texto >= 0) fila[m.texto] = datos.texto || detalle || datos.descripcion || '';
   if (m.fechaRegistro >= 0) fila[m.fechaRegistro] = new Date();
 
   return fila;
@@ -924,14 +910,12 @@ function construirFilaNovedades_(m, datos) {
 // Rellena las columnas que no se escribieron a mano con los datos del
 // funcionario tomados de LISTADO_BASE. En la hoja NOVEDADES quedan
 // cubiertos GR, NIV, DEPENDENCIA, TURNO y Placa_Chip.
-// La columna L (Comunicado) queda reservada: nunca se rellena.
 function completarDesdeBase_(fila, m, base) {
   if (!base) return;
 
   var fijas = {};
   [m.cedula, m.funcionario, m.tipo, m.novedad, m.dias, m.fechaInicial,
-   m.fechaPresentacion, m.observacion, m.comunicado, m.texto,
-   m.fechaRegistro].forEach(function(k) {
+   m.fechaPresentacion, m.observacion, m.texto, m.fechaRegistro].forEach(function(k) {
     if (k !== undefined && k >= 0) fijas[k] = true;
   });
 
@@ -2344,15 +2328,13 @@ function diagnosticarEsquemaData() {
     } else {
       add('Fila de encabezados: ' + (m.filaCabecera + 1));
       add('');
-      add('Campo         Columna  Estado');
-      add('CEDULA        ' + letraColumna_(m.cedula + 1) + '         ' + (m.cedula === 0 ? 'OK' : 'REVISAR'));
-      add('TIPO          ' + letraColumna_(m.tipo + 1) + '         ' + (m.tipo === 6 ? 'OK' : 'REVISAR'));
-      add('NOVEDAD       ' + letraColumna_(m.novedad + 1) + '         ' + (m.novedad === 7 ? 'OK' : 'REVISAR'));
-      add('DIAS          ' + letraColumna_(m.dias + 1) + '         ' + (m.dias === 8 ? 'OK' : 'REVISAR'));
-      add('FECHA INICIAL ' + letraColumna_(m.fechaInicial + 1) + '         ' + (m.fechaInicial === 9 ? 'OK' : 'REVISAR'));
-      add('FECHA PRESENT ' + letraColumna_(m.fechaPresentacion + 1) + '         ' + (m.fechaPresentacion === 10 ? 'OK' : 'REVISAR'));
-      add('TEXTO         ' + letraColumna_(m.texto + 1) + '         ' + (m.texto === 13 ? 'OK' : 'REVISAR') + '   <- aqui va la Observacion');
-      add('COMUNICADO    ' + letraColumna_(m.comunicado + 1) + '         RESERVADA, no se escribe');
+      add('Campo         Detectada  Esperada  Estado');
+      add('CEDULA        ' + letraColumna_(m.cedula + 1) + '          B          ' + (m.cedula === 1 ? 'OK' : 'REVISAR'));
+      add('TIPO          ' + letraColumna_(m.tipo + 1) + '          E          ' + (m.tipo === 4 ? 'OK' : 'REVISAR'));
+      add('NOVEDAD       ' + letraColumna_(m.novedad + 1) + '          F          ' + (m.novedad === 5 ? 'OK' : 'REVISAR'));
+      add('DIAS          ' + letraColumna_(m.dias + 1) + '          G          ' + (m.dias === 6 ? 'OK' : 'REVISAR'));
+      add('FECHA INICIAL ' + letraColumna_(m.fechaInicial + 1) + '          H          ' + (m.fechaInicial === 7 ? 'OK' : 'REVISAR'));
+      add('FECHA PRESENT ' + letraColumna_(m.fechaPresentacion + 1) + '          I          ' + (m.fechaPresentacion === 8 ? 'OK' : 'REVISAR'));
       add('');
       add('Encabezados de NOVEDADES:');
       for (var c = 0; c < m.cabeceras.length; c++) {
