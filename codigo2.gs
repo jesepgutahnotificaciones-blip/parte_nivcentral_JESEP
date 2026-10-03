@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-03-r28';
+var VERSION_APP = 'JESEP-2026-10-03-r29';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -24,9 +24,27 @@ function versionApp() {
   return { estado: true, version: VERSION_APP };
 }
 
+// Abre el libro de trabajo.
+// Si falta el permiso de hojas de calculo, avisa con un mensaje claro
+// en vez de dejar el error generico de OAuth de Google.
 function abrirLibro_() {
-  if (ID_LIBRO) return SpreadsheetApp.openById(ID_LIBRO);
-  return SpreadsheetApp.getActiveSpreadsheet();
+  try {
+    if (ID_LIBRO) return SpreadsheetApp.openById(ID_LIBRO);
+    return SpreadsheetApp.getActiveSpreadsheet();
+  } catch (err) {
+    var msg = String((err && err.message) || err);
+    if (msg.indexOf('spreadsheets') !== -1 || msg.indexOf('permisos') !== -1 ||
+        msg.indexOf('Scopes') !== -1 || msg.indexOf('insufficient') !== -1) {
+      throw new Error(
+        'Falta el permiso de hojas de calculo (scope spreadsheets). ' +
+        'Abri Configuracion del proyecto > Mostrar el archivo de manifiesto appsscript.json, ' +
+        'agrega "https://www.googleapis.com/auth/spreadsheets" a oauthScopes, ' +
+        'guarda, vuelve a implementar (Implementar > Nueva implementacion) ' +
+        'y vuelve a autorizar la aplicacion. Detalle: ' + msg
+      );
+    }
+    throw err;
+  }
 }
 
 
