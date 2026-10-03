@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r21';
+var VERSION_APP = 'JESEP-2026-10-02-r22';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -734,24 +734,30 @@ function mapaColumnasNovedades_(hoja) {
   var cabeceras = hoja.getRange(fCab + 1, 1, 1, hoja.getLastColumn()).getDisplayValues()[0];
   var cab = cabeceras.map(normalizarCabColumna_);
 
-  // Las columnas B, E, F, G, H e I usan la POSICION fija que exige el usuario,
-  // sin importar como esten rotuladas. Asi el dato siempre cae en la letra correcta.
-  // Las columnas auxiliares si se detectan por nombre; si no existen, quedan en -1.
-  return {
+  // Todas las columnas se localizan por su encabezado real en la hoja NOVEDADES:
+//   A CEDULA | B GR | C NIV | D DEPENDENCIA | E TURNO | F FUNCIONARIO
+//   G TIPO | H NOVEDAD | I Dias | J Fecha INICIAL | K Fecha PRESENTACION
+//   L Observacion | M Placa_Chip | N TEXTO
+// El numero entre parentesis es la posicion de respaldo por si el titulo falta.
+return {
     filaCabecera: fCab,
     cabeceras: cabeceras,
     cabNorm: cab,
     numCols: hoja.getLastColumn(),
-    cedula: 1,               // B
-    tipo: 4,                 // E
-    novedad: 5,              // F
-    dias: 6,                 // G
-    fechaInicial: 7,         // H
-    fechaPresentacion: 8,    // I
-    descripcion: idxColumnaBase_(cab, [/^DESCRIPCION$/, /^DESCRIPCIÓN$/], -1),
-    observacion: idxColumnaBase_(cab, [/^OBSERVACION$/, /^OBSERVACIÓN$/], -1),
-    rv: idxColumnaBase_(cab, [/^RV$/], -1),
-    texto: idxColumnaBase_(cab, [/^TEXTO$/], -1),
+    cedula: idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/], 0),              // A
+    grado: idxColumnaBase_(cab, [/^GR$/, /^GRADO$/], 1),                // B
+    nivel: idxColumnaBase_(cab, [/^NIV$/, /^NIVEL$/], 2),               // C
+    dependencia: idxColumnaBase_(cab, [/^DEPENDENCIA$/], 3),            // D
+    turno: idxColumnaBase_(cab, [/^TURNO$/], 4),                        // E
+    funcionario: idxColumnaBase_(cab, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/], 5), // F
+    tipo: idxColumnaBase_(cab, [/^TIPO$/], 6),                          // G
+    novedad: idxColumnaBase_(cab, [/^NOVEDAD$/], 7),                   // H
+    dias: idxColumnaBase_(cab, [/^DIAS$/], 8),                         // I
+    fechaInicial: idxColumnaBase_(cab, [/^FECHA INICIAL$/], 9),         // J
+    fechaPresentacion: idxColumnaBase_(cab, [/^FECHA PRESENTACION$/], 10), // K
+    observacion: idxColumnaBase_(cab, [/^OBSERVACION$/], 11),           // L
+    placaChip: idxColumnaBase_(cab, [/^PLACA ?CHIP$/], 12),             // M
+    texto: idxColumnaBase_(cab, [/^TEXTO$/], 13),                       // N
     fechaRegistro: idxColumnaBase_(cab, [/^FECHA REGISTRO$/, /^FECHA DE REGISTRO$/], -1)
   };
 }
@@ -761,44 +767,46 @@ function construirFilaNovedades_(m, datos) {
   for (var i = 0; i < m.numCols; i++) fila.push('');
 
   var tipo = String(datos.tipo || '').trim();
-  // Nombre del funcionario elegido en la busqueda (es lo que va en la columna F)
-  var funcionario = String(datos.nombreFuncionario || '').trim();
-  // Texto de la novedad escrito por el usuario
   var detalle = String(datos.novedad || '').trim();
+  var funcionario = String(datos.nombreFuncionario || '').trim();
 
-  // B = cédula
-  fila[m.cedula] = datos.cedula || datos.cc || '';
+  // A = cédula
+  if (m.cedula >= 0) fila[m.cedula] = datos.cedula || datos.cc || '';
 
-  // E = Tipo
-  fila[m.tipo] = tipo;
+  // F = FUNCIONARIO (el seleccionado en la búsqueda)
+  if (m.funcionario >= 0) fila[m.funcionario] = funcionario;
 
-  // F = Tipo concatenado con el nombre del funcionario seleccionado
-  if (tipo && funcionario) fila[m.novedad] = tipo + SEPARADOR_NOVEDAD + funcionario;
-  else fila[m.novedad] = funcionario || tipo || detalle;
+  // G = TIPO
+  if (m.tipo >= 0) fila[m.tipo] = tipo;
 
-  // G / H / I
-  if (m.dias >= 0) fila[m.dias] = datos.dias === undefined || datos.dias === null ? '' : datos.dias;
+  // H = NOVEDAD (texto escrito por el usuario)
+  if (m.novedad >= 0) fila[m.novedad] = detalle;
+
+  // I / J / K / L / N
+  if (m.dias >= 0) fila[m.dias] = (datos.dias === undefined || datos.dias === null) ? '' : datos.dias;
   if (m.fechaInicial >= 0) fila[m.fechaInicial] = datos.fechaInicial || '';
   if (m.fechaPresentacion >= 0) fila[m.fechaPresentacion] = datos.fechaPresentacion || '';
-
-  // Columnas auxiliares (si existen en la hoja)
-  if (m.descripcion >= 0) fila[m.descripcion] = detalle || datos.descripcion || '';
-  if (m.observacion >= 0) fila[m.observacion] = datos.observacion || detalle || datos.descripcion || '';
-  if (m.rv >= 0) fila[m.rv] = datos.rv || '';
-  if (m.texto >= 0) fila[m.texto] = detalle || datos.descripcion || '';
+  if (m.observacion >= 0) fila[m.observacion] = datos.observacion || datos.descripcion || '';
+  if (m.texto >= 0) fila[m.texto] = datos.texto || detalle || datos.descripcion || '';
   if (m.fechaRegistro >= 0) fila[m.fechaRegistro] = new Date();
 
   return fila;
 }
 
-// Rellena las columnas no usadas con los datos del funcionario en LISTADO_BASE
+// Rellena las columnas que no se escribieron a mano con los datos del
+// funcionario tomados de LISTADO_BASE. En la hoja NOVEDADES quedan
+// cubiertos GR, NIV, DEPENDENCIA, TURNO y Placa_Chip.
 function completarDesdeBase_(fila, m, base) {
   if (!base) return;
 
   var fijas = {};
-  [m.cedula, m.tipo, m.novedad, m.dias, m.fechaInicial, m.fechaPresentacion,
-   m.descripcion, m.observacion, m.rv, m.texto, m.fechaRegistro].forEach(function(k) {
+  [m.cedula, m.funcionario, m.tipo, m.novedad, m.dias, m.fechaInicial,
+   m.fechaPresentacion, m.observacion, m.texto, m.fechaRegistro].forEach(function(k) {
     if (k !== undefined && k >= 0) fijas[k] = true;
+  });
+
+  var cabNormBase = base.cabeceras.map(function(c) {
+    return String(c).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s_\-]+/g, ' ').trim();
   });
 
   for (var c = 0; c < m.numCols; c++) {
@@ -808,6 +816,7 @@ function completarDesdeBase_(fila, m, base) {
     if (!nombreCol) continue;
 
     var idxBase = indiceBasePorAlias_(base.cabeceras, nombreCol);
+    if (idxBase === -1) idxBase = cabNormBase.indexOf(nombreCol);
     if (idxBase === -1 || idxBase >= base.valores.length) continue;
 
     var valor = base.valores[idxBase];
@@ -840,7 +849,7 @@ function registrarNovedad(token, datosNovedad) {
     var hoja = ss.getSheetByName('NOVEDADES');
     if (!hoja) {
       hoja = ss.insertSheet('NOVEDADES');
-      hoja.appendRow(['CEDULA', '', '', '', 'TIPO', 'NOVEDAD', 'DIAS', 'FECHA INICIAL', 'FECHA PRESENTACION', 'OBSERVACION', 'RV', 'FECHA REGISTRO']);
+      hoja.appendRow(['CEDULA', 'GR', 'NIV', 'DEPENDENCIA', 'TURNO', 'FUNCIONARIO', 'TIPO', 'NOVEDAD', 'Dias', 'Fecha INICIAL', 'Fecha PRESENTACION', 'Observacion', 'Placa_Chip', 'TEXTO']);
     }
 
     var mapa = mapaColumnasNovedades_(hoja);
@@ -940,13 +949,15 @@ function consultarPorTurno(token, filtro) {
         var cedulaFuncionarioNorm = normalizaCedula_(filaBase.cedula);
         var novedadesCruzadas = [];
 
-        // Cruce con la hoja NOVEDADES usando las mismas posiciones fijas
-        // del registro: B = cedula, E = tipo, F = novedad, G = dias.
+        // Cruce con la hoja NOVEDADES. Las posiciones corresponden a los
+        // titulos reales de esa hoja:
+        //   A CEDULA | G TIPO | H NOVEDAD | I Dias
         if (datosNovedades.length > 1 && cedulaFuncionarioNorm !== '') {
-          var idxCedulaNov = 1;
-          var idxTipoNov = 4;
-          var idxNovedadNov = 5;
-          var idxDiasNov = 6;
+          var cabNormNov = (datosNovedades[0] || []).map(normalizarCabColumna_);
+          var idxCedulaNov = idxColumnaBase_(cabNormNov, [/^CEDULA$/, /^CC$/], 0);
+          var idxTipoNov = idxColumnaBase_(cabNormNov, [/^TIPO$/], 6);
+          var idxNovedadNov = idxColumnaBase_(cabNormNov, [/^NOVEDAD$/], 7);
+          var idxDiasNov = idxColumnaBase_(cabNormNov, [/^DIAS$/], 8);
 
           for (var n = 1; n < datosNovedades.length; n++) {
             var filaNov = datosNovedades[n];
@@ -1648,7 +1659,7 @@ function registrarHorarioFlexible(token, datosHorario) {
     var hoja = ss.getSheetByName('NOVEDADES');
     if (!hoja) {
       hoja = ss.insertSheet('NOVEDADES');
-      hoja.appendRow(['CEDULA', '', '', '', 'TIPO', 'NOVEDAD', 'DIAS', 'FECHA INICIAL', 'FECHA PRESENTACION', 'OBSERVACION', 'RV', 'FECHA REGISTRO']);
+      hoja.appendRow(['CEDULA', 'GR', 'NIV', 'DEPENDENCIA', 'TURNO', 'FUNCIONARIO', 'TIPO', 'NOVEDAD', 'Dias', 'Fecha INICIAL', 'Fecha PRESENTACION', 'Observacion', 'Placa_Chip', 'TEXTO']);
     }
 
     var mapa = mapaColumnasNovedades_(hoja);

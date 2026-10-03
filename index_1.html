@@ -370,7 +370,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwmfqeWxiW-fIQ7s96wS0j4mbcOxabWVbC2n8HJKg7Dp3Yya1zgnOAtEC5XXSmB5DM2/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwQ7oJMqdY0kbUhOr6zJqQ_ueN7u_L7HZtNCUFbh5ltqXqvytpisqRl23MzwsU0RiZq/exec';
   const CLAVE_SESION = 'jesep_sesion';
   
 
@@ -748,18 +748,14 @@
           return;
         }
 
-        // Esquema fijo de NOVEDADES:
-        // B(1)=cedula  E(4)=tipo  F(5)=novedad  G(6)=dias
-        // H(7)=fecha inicial  I(8)=fecha presentacion
-        const NOMBRES = ['CEDULA', '', '', '', 'TIPO', 'NOVEDAD', 'DIAS', 'FECHA INICIAL', 'FECHA PRESENTACION'];
-
+        // Titulos reales de la hoja NOVEDADES (se leen por nombre)
         let html = '<div class="card"><div class="card-header">Historial de novedades</div><div class="card-body"><div class="table-wrapper"><table class="table table-bordered"><thead><tr><th>TIPO</th><th>NOVEDAD</th><th>DÍAS</th><th>FECHA INICIAL</th><th>FECHA PRESENTACIÓN</th></tr></thead><tbody>';
         historial.forEach(function(n) {
-          const tipo = n['TIPO'] || NOMBRES[4] || '';
-          const novedad = n['NOVEDAD'] || NOMBRES[5] || '';
-          const dias = n['DIAS'] || NOMBRES[6] || '';
-          const fIni = n['FECHA INICIAL'] || NOMBRES[7] || '';
-          const fPre = n['FECHA PRESENTACION'] || NOMBRES[8] || '';
+          const tipo = n['TIPO'] || '';
+          const novedad = n['NOVEDAD'] || '';
+          const dias = n['Dias'] || n['DIAS'] || '';
+          const fIni = n['Fecha INICIAL'] || n['FECHA INICIAL'] || '';
+          const fPre = n['Fecha PRESENTACION'] || n['FECHA PRESENTACION'] || '';
           html += '<tr><td><strong>' + esc(tipo) + '</strong></td>' +
             '<td><span class="badge-novedad">' + esc(novedad) + '</span></td>' +
             '<td>' + esc(dias) + '</td>' +
