@@ -69,10 +69,14 @@
     main {
       flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 28px 16px;
+      width: 100%;
     }
+
+    #avisoCumpleanos { width: 100%; max-width: 430px; }
 
     .oculto { display: none !important; }
 
@@ -229,6 +233,21 @@
     .modulo h3 { margin: 8px 0 6px; color: var(--verde-oscuro); font-size: 1.1rem; }
     .modulo p { margin: 0; font-size: .88rem; color: #51615a; line-height: 1.4; }
 
+    /* Aviso de cumpleaños (se muestra tras ingresar) */
+    .alerta-cumple {
+      background: #fff8e1;
+      border: 1px solid #f0c36d;
+      border-left: 6px solid #d99a1c;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      color: #5b4708;
+      font-size: .92rem;
+    }
+
+    .alerta-cumple ul { margin: 8px 0 0; padding-left: 20px; }
+    .alerta-cumple li { margin-bottom: 4px; }
+
     footer {
       background: var(--verde-oscuro);
       color: #cfe0d7;
@@ -257,6 +276,9 @@
   </header>
 
   <main>
+
+    <!-- AVISO DE CUMPLEAÑOS (se llena al ingresar) -->
+    <div id="avisoCumpleanos" class="oculto"></div>
 
     <!-- CARGA / VERIFICACIÓN DE SESIÓN -->
     <section id="pantallaCarga" class="panel oculto" aria-live="polite">
@@ -324,7 +346,7 @@
   </footer>
 
 <script>
-const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwQ7oJMqdY0kbUhOr6zJqQ_ueN7u_L7HZtNCUFbh5ltqXqvytpisqRl23MzwsU0RiZq/exec';
+const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxpu5phG4cC0_FmDvtOpm3V6CFHPiSYMch9qOHmTLVqjkOd6xq7maDGs6fgPYzKnrIX/exec';
 
 (function configurarPuenteAPI() {
   // Apps Script puede tardar unos segundos en arrancar en frío; 30 s es suficiente.
@@ -504,6 +526,7 @@ function iniciarSesion() {
       mostrarMensaje('');
       const sesion = { token: r.token, usuario: r.usuario, modulos: r.modulos || [] };
       guardarSesion(sesion);
+      avisarCumpleanos(r.token);
       enrutar(sesion);
     })
     .withFailureHandler(function(err) {
@@ -512,6 +535,43 @@ function iniciarSesion() {
       mostrarMensaje((err && err.message) || 'No fue posible validar el usuario.', 'error');
     })
     .validarUsuario(usuario, clave);
+}
+
+/* =====================================================
+   AVISO DE CUMPLEAÑOS AL INGRESAR
+   Lee FECHA_NACIMIENTO (columna M de LISTADO_BASE) y muestra
+   quienes cumplen años hoy y cuántos.
+   ===================================================== */
+function avisoCumpleanos_(html) {
+  const caja = document.getElementById('avisoCumpleanos');
+  if (!caja) return;
+  caja.innerHTML = html;
+  caja.classList.remove('oculto');
+}
+
+function avisarCumpleanos(token) {
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || r.estado !== true || !r.datos || !r.datos.length) return;
+
+      let html = '<div class="alerta-cumple"><strong>🎂 Cumpleaños de hoy (' +
+        escTexto(r.fecha || '') + ')</strong><ul>';
+      r.datos.forEach(function(p) {
+        html += '<li><strong>' + escTexto(p.funcionario || 'Funcionario') + '</strong>' +
+          (p.grado ? ' <small>(' + escTexto(p.grado) + ')</small>' : '') +
+          ' cumple <strong>' + p.anios + ' años</strong>' +
+          (p.cumpleanios ? ' — ' + escTexto(p.cumpleanios) : '') + '</li>';
+      });
+      html += '</ul></div>';
+      avisoCumpleanos_(html);
+    })
+    .withFailureHandler(function() { /* sin aviso: no interrumpe el ingreso */ })
+    .cumpleanerosHoy(token);
+}
+
+function escTexto(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function cerrarSesion() {

@@ -397,6 +397,7 @@
           </div>
         </div>
         <div id="resultadoReporte"></div>
+        <div id="avisoVacaciones" class="hidden"></div>
         <div id="ultimoArchivo"></div>
         <div class="card">
           <div class="card-header">Historial de reportes</div>
@@ -602,7 +603,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwQ7oJMqdY0kbUhOr6zJqQ_ueN7u_L7HZtNCUFbh5ltqXqvytpisqRl23MzwsU0RiZq/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxpu5phG4cC0_FmDvtOpm3V6CFHPiSYMch9qOHmTLVqjkOd6xq7maDGs6fgPYzKnrIX/exec';
   const CLAVE_SESION = 'jesep_sesion';
 
   (function configurarPuenteAPI() {
@@ -990,7 +991,7 @@
     const boton = document.getElementById(botones[nombre]);
     if (boton) boton.classList.add('active');
 
-    if (nombre === 'reportes') cargarReportes();
+    if (nombre === 'reportes') { cargarReportes(); avisarPresentacionVacaciones(); }
     if (nombre === 'usuarios') cargarUsuarios();
     if (nombre === 'funcionarios') cargarFuncionarios();
   }
@@ -1507,6 +1508,42 @@ function probarDescarga() {
         caja.textContent = 'Error de red: ' + ((e && e.message) || 'fallo de red');
       })
       .generarReporteTurno(tokenSesion, filtro);
+  }
+
+  /* =====================================================
+   AVISO DE PRESENTACIÓN DE VACACIONES
+   Revisa NOVEDADES: Tipo (columna G) con "VACACION" y
+   Fecha PRESENTACION (columna K) igual a hoy.
+   ===================================================== */
+function avisarPresentacionVacaciones() {
+  const caja = document.getElementById('avisoVacaciones');
+  if (!caja) return;
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || r.estado !== true) { caja.classList.add('hidden'); return; }
+      if (!r.datos || !r.datos.length) {
+        caja.className = 'alert alert-success mt-3';
+        caja.innerHTML = '<strong>✓ Vacaciones:</strong> nadie debe presentarse hoy (' +
+          esc(r.fecha || '') + ').';
+        return;
+      }
+
+      let html = '<div class="alert alert-warning mt-3 mb-0">' +
+        '<strong>⚠ Deben presentarse hoy de vacaciones (' + esc(r.fecha || ') + '):</strong>' +
+        '<ul class="mb-0 mt-2">';
+      r.datos.forEach(function(p) {
+        html += '<li><strong>' + esc(p.funcionario || 'Funcionario') + '</strong>' +
+          (p.grado ? ' <small>(' + esc(p.grado) + ')</small>' : '') +
+          (p.tipo ? ' — ' + esc(p.tipo) : '') +
+          (p.dias ? ' — ' + esc(p.dias) + ' día(s)' : '') + '</li>';
+      });
+      html += '</ul></div>';
+      caja.className = '';
+      caja.innerHTML = html;
+    })
+    .withFailureHandler(function() { caja.classList.add('hidden'); })
+    .presentarVacacionesHoy(tokenSesion);
   }
 
   function cargarReportes() {

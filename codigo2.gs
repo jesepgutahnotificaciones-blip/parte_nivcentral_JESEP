@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r22';
+var VERSION_APP = 'JESEP-2026-10-02-r23';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -175,6 +175,12 @@ function doGet(e) {
         break;
       case 'diagnosticarCruce':
         resultado = diagnosticarCruceDataSafe();
+        break;
+      case 'cumpleanerosHoy':
+        resultado = cumpleanerosHoy(args[0]);
+        break;
+      case 'presentarVacacionesHoy':
+        resultado = presentarVacacionesHoy(args[0]);
         break;
       case 'version':
         resultado = versionApp();
@@ -1702,6 +1708,138 @@ function registrarHorarioFlexible(token, datosHorario) {
    Ejecute esta función desde el editor de Apps Script para
    revisar en qué columna cae cada dato en sus hojas reales.
    ===================================================== */
+
+/* =====================================================
+   9. AVISOS: CUMPLEAÑOS Y PRESENTACIÓN DE VACACIONES
+   ===================================================== */
+
+var ZONA_ = 'America/Bogota';
+
+// Convierte un valor de celda (Date o texto) en año/mes/día.
+function partesFecha_(v, zona) {
+  if (v === null || v === undefined || v === '') return null;
+
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    if (isNaN(v.getTime())) return null;
+    var z = zona || ZONA_;
+    return {
+      anio: Number(Utilities.formatDate(v, z, 'yyyy')),
+      mes: Number(Utilities.formatDate(v, z, 'MM')),
+      dia: Number(Utilities.formatDate(v, z, 'dd'))
+    };
+  }
+
+  var s = String(v).trim();
+  var m = s.match(/^(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})/);
+  if (!m) return null;
+
+  var a = Number(m[1]);
+  if (a < 100) a += 2000;            // "85" -> 1985
+  return { anio: a, mes: Number(m[2]), dia: Number(m[3]) };
+}
+
+function quitarAcentos_(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+// Funcionarios que cumplen años hoy. Revisa FECHA_NACIMIENTO en LISTADO_BASE.
+function cumpleanerosHoy(token) {
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('LISTADO_BASE');
+    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
+
+    var datos = hoja.getDataRange().getValues();
+    if (datos.length < 2) return { estado: true, datos: [] };
+
+    var cabeceras = datos[0];
+    var cab = cabeceras.map(normalizarCabColumna_);
+    var iCed = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/], 0);
+    var iNom = idxColumnaBase_(cab, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/], -1);
+    var iGr = idxColumnaBase_(cab, [/^GR$/, /^GRADO$/], -1);
+    var iDep = idxColumnaBase_(cab, [/^DEPENDENCIA$/], -1);
+    // Columna M de LISTADO_BASE
+    var iNac = idxColumnaBase_(cab, [/^FECHA NACIMIENTO$/, /^FECHA DE NACIMIENTO$/, /^FNAC$/], 12);
+
+    var hoy = partesFecha_(new Date(), ZONA_);
+    var lista = [];
+
+    for (var i = 1; i < datos.length; i++) {
+      var nac = partesFecha_(datos[i][iNac], ZONA_);
+      if (!nac) continue;
+      if (!nac.anio) continue;                     // sin año: no se puede calcular
+      if (nac.mes !== hoy.mes || nac.dia !== hoy.dia) continue;
+
+      var anios = hoy.anio - nac.anio;
+      lista.push({
+        cedula: String(datos[i][iCed] === null ? '' : datos[i][iCed]),
+        funcionario: iNom >= 0 ? String(datos[i][iNom] || '') : '',
+        grado: iGr >= 0 ? String(datos[i][iGr] || '') : '',
+        dependencia: iDep >= 0 ? String(datos[i][iDep] || '') : '',
+        anios: anios,
+        cumpleanios: (anios % 10 === 0 && (anios % 100 !== 0)) ? '¡Feliz cumpleaños redondo!' : ''
+      });
+    }
+
+    return { estado: true, fecha: hoy.dia + '/' + hoy.mes + '/' + hoy.anio, datos: lista };
+  } catch (err) {
+    return { estado: false, mensaje: 'Error buscando cumpleaños: ' + err.message };
+  }
+}
+
+// Funcionarios que deben presentarse hoy de vacaciones.
+// Revisa NOVEDADES: G = TIPO (que contenga VACACION) y K = Fecha PRESENTACION.
+function presentarVacacionesHoy(token) {
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('NOVEDADES');
+    if (!hoja) return { estado: true, datos: [] };
+
+    var datos = hoja.getDataRange().getValues();
+    if (datos.length < 2) return { estado: true, datos: [] };
+
+    var cab = (datos[0] || []).map(normalizarCabColumna_);
+    var iCed = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/], 0);
+    var iNom = idxColumnaBase_(cab, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/], -1);
+    var iGr = idxColumnaBase_(cab, [/^GR$/, /^GRADO$/], -1);
+    var iTipo = idxColumnaBase_(cab, [/^TIPO$/], -1);
+    var iNov = idxColumnaBase_(cab, [/^NOVEDAD$/], -1);
+    var iDias = idxColumnaBase_(cab, [/^DIAS$/], -1);
+    var iFPre = idxColumnaBase_(cab, [/^FECHA PRESENTACION$/], -1);
+
+    var hoy = partesFecha_(new Date(), ZONA_);
+    var lista = [];
+
+    for (var i = 1; i < datos.length; i++) {
+      var fila = datos[i];
+
+      // Solo filas cuyo TIPO menciona vacaciones
+      var tipo = iTipo >= 0 ? String(fila[iTipo] || '') : '';
+      if (quitarAcentos_(tipo).indexOf('VACACION') === -1) continue;
+
+      // Y cuya fecha de presentacion sea hoy
+      var fPre = iFPre >= 0 ? partesFecha_(fila[iFPre], ZONA_) : null;
+      if (!fPre) continue;
+      if (fPre.anio !== hoy.anio || fPre.mes !== hoy.mes || fPre.dia !== hoy.dia) continue;
+
+      lista.push({
+        cedula: iCed >= 0 ? String(fila[iCed] === null ? '' : fila[iCed]) : '',
+        funcionario: iNom >= 0 ? String(fila[iNom] || '') : '',
+        grado: iGr >= 0 ? String(fila[iGr] || '') : '',
+        tipo: tipo,
+        novedad: iNov >= 0 ? String(fila[iNov] || '') : '',
+        dias: iDias >= 0 ? String(fila[iDias] === null ? '' : fila[iDias]) : ''
+      });
+    }
+
+    return { estado: true, fecha: hoy.dia + '/' + hoy.mes + '/' + hoy.anio, datos: lista };
+  } catch (err) {
+    return { estado: false, mensaje: 'Error buscando presentación de vacaciones: ' + err.message };
+  }
+}
 
 /* =====================================================
    DIAGNÓSTICO DEL CRUCE LISTADO_BASE <-> NOVEDADES
