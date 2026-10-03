@@ -76,8 +76,6 @@
       width: 100%;
     }
 
-    #avisoCumpleanos { width: 100%; max-width: 430px; }
-
     .oculto { display: none !important; }
 
     .panel {
@@ -232,21 +230,114 @@
     .modulo .icono { font-size: 2rem; }
     .modulo h3 { margin: 8px 0 6px; color: var(--verde-oscuro); font-size: 1.1rem; }
     .modulo p { margin: 0; font-size: .88rem; color: #51615a; line-height: 1.4; }
-
-    /* Aviso de cumpleaños (se muestra tras ingresar) */
-    .alerta-cumple {
-      background: #fff8e1;
-      border: 1px solid #f0c36d;
-      border-left: 6px solid #d99a1c;
-      border-radius: 8px;
-      padding: 14px 18px;
-      margin-bottom: 18px;
-      color: #5b4708;
-      font-size: .92rem;
+/* Modal de cumpleaños */
+    .mc-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 32, 24, .72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 9999;
     }
 
-    .alerta-cumple ul { margin: 8px 0 0; padding-left: 20px; }
-    .alerta-cumple li { margin-bottom: 4px; }
+    .mc-overlay.oculto { display: none !important; }
+
+    .mc-caja {
+      background: #fff;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .35);
+      overflow: hidden;
+      animation: mcEntra .18s ease-out;
+    }
+
+    @keyframes mcEntra {
+      from { transform: translateY(-10px) scale(.98); opacity: 0; }
+      to { transform: none; opacity: 1; }
+    }
+
+    .mc-cabecera {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--verde);
+      color: #fff;
+      padding: 18px 22px;
+    }
+
+    .mc-icono { font-size: 30px; line-height: 1; }
+    .mc-cabecera h2 { margin: 0; font-size: 1.12rem; font-weight: 700; }
+    .mc-fecha { font-size: .8rem; opacity: .85; }
+
+    .mc-lista {
+      list-style: none;
+      margin: 0;
+      padding: 8px 22px;
+      max-height: 52vh;
+      overflow-y: auto;
+    }
+
+    .mc-lista li {
+      padding: 11px 0;
+      border-bottom: 1px solid var(--borde);
+      font-size: .95rem;
+      line-height: 1.35;
+    }
+
+    .mc-lista li:last-child { border-bottom: none; }
+
+    .mc-grado {
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 700;
+      color: var(--verde);
+      background: var(--verde-claro);
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin-left: 6px;
+    }
+
+    .mc-dep { display: block; font-size: .78rem; color: #6b7c74; margin-top: 2px; }
+
+    .mc-edad {
+      display: block;
+      font-weight: 700;
+      color: var(--dorado-oscuro);
+      margin-top: 3px;
+    }
+
+    .mc-cumple {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: .78rem;
+      font-weight: 700;
+      color: #8a5a00;
+      background: #fdf3e3;
+      border: 1px solid #f0d9a8;
+      border-radius: 5px;
+      padding: 2px 8px;
+    }
+
+    .mc-pie { padding: 6px 22px 20px; }
+
+    .mc-btn {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      background: var(--verde);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .mc-btn:hover { background: var(--verde-oscuro); }
+    .mc-btn:focus-visible { outline: 3px solid rgba(201, 162, 39, .55); outline-offset: 2px; }
 
     footer {
       background: var(--verde-oscuro);
@@ -276,11 +367,7 @@
   </header>
 
   <main>
-
-    <!-- AVISO DE CUMPLEAÑOS (se llena al ingresar) -->
-    <div id="avisoCumpleanos" class="oculto"></div>
-
-    <!-- CARGA / VERIFICACIÓN DE SESIÓN -->
+<!-- CARGA / VERIFICACIÓN DE SESIÓN -->
     <section id="pantallaCarga" class="panel oculto" aria-live="polite">
       <div class="panel-cuerpo"><p class="mensaje info" style="margin:0">Verificando sesión…</p></div>
     </section>
@@ -344,6 +431,23 @@
   <footer>
     Policía Nacional de Colombia — JESEP / GUTAH · Uso institucional
   </footer>
+
+  <!-- MODAL: CUMPLEAÑOS DE HOY (bloquea el ingreso hasta cerrarlo) -->
+  <div id="modalCumpleanos" class="mc-overlay oculto" role="dialog" aria-modal="true" aria-labelledby="tituloCumpleanos">
+    <div class="mc-caja">
+      <div class="mc-cabecera">
+        <span class="mc-icono">🎂</span>
+        <div>
+          <h2 id="tituloCumpleanos">Cumpleaños de hoy</h2>
+          <span id="fechaCumpleanos" class="mc-fecha"></span>
+        </div>
+      </div>
+      <ul id="listaCumpleanos" class="mc-lista"></ul>
+      <div class="mc-pie">
+        <button type="button" id="btnCerrarCumpleanos" class="mc-btn">Continuar</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxpu5phG4cC0_FmDvtOpm3V6CFHPiSYMch9qOHmTLVqjkOd6xq7maDGs6fgPYzKnrIX/exec';
@@ -524,10 +628,19 @@ function iniciarSesion() {
 
       $('txtClave').value = '';
       mostrarMensaje('');
+
+      // Se espera el aviso de cumpleaños antes de entrar al módulo.
+      boton.disabled = true;
+      boton.textContent = 'Verificando...';
+
       const sesion = { token: r.token, usuario: r.usuario, modulos: r.modulos || [] };
       guardarSesion(sesion);
-      avisarCumpleanos(r.token);
-      enrutar(sesion);
+
+      avisarCumpleanos(r.token, function() {
+        boton.disabled = false;
+        boton.textContent = 'Ingresar';
+        enrutar(sesion);
+      });
     })
     .withFailureHandler(function(err) {
       boton.disabled = false;
@@ -540,32 +653,65 @@ function iniciarSesion() {
 /* =====================================================
    AVISO DE CUMPLEAÑOS AL INGRESAR
    Lee FECHA_NACIMIENTO (columna M de LISTADO_BASE) y muestra
-   quienes cumplen años hoy y cuántos.
+   un modal con quienes cumplen años hoy y cuántos.
+   El modal bloquea el ingreso hasta que el usuario lo cierre.
    ===================================================== */
-function avisoCumpleanos_(html) {
-  const caja = document.getElementById('avisoCumpleanos');
-  if (!caja) return;
-  caja.innerHTML = html;
-  caja.classList.remove('oculto');
+function mostrarModalCumpleanos_(lista, fecha) {
+  const overlay = document.getElementById('modalCumpleanos');
+  const cuerpo = document.getElementById('listaCumpleanos');
+  if (!overlay || !cuerpo) return false;
+
+  cuerpo.innerHTML = '';
+  lista.forEach(function(p) {
+    const li = document.createElement('li');
+    li.innerHTML = '<strong>' + escTexto(p.funcionario || 'Funcionario') + '</strong>' +
+      (p.grado ? ' <span class="mc-grado">' + escTexto(p.grado) + '</span>' : '') +
+      (p.dependencia ? ' <span class="mc-dep">' + escTexto(p.dependencia) + '</span>' : '') +
+      '<span class="mc-edad">cumple ' + p.anios + ' años</span>' +
+      (p.cumpleanios ? '<span class="mc-cumple">' + escTexto(p.cumpleanios) + '</span>' : '');
+    cuerpo.appendChild(li);
+  });
+
+  const f = document.getElementById('fechaCumpleanos');
+  if (f) f.textContent = fecha || '';
+
+  overlay.classList.remove('oculto');
+  const btn = document.getElementById('btnCerrarCumpleanos');
+  if (btn) btn.focus();
+  return true;
 }
 
-function avisarCumpleanos(token) {
+function cerrarModalCumpleanos_() {
+  const overlay = document.getElementById('modalCumpleanos');
+  if (overlay) overlay.classList.add('oculto');
+}
+
+// Consulta los cumpleaños de hoy. Si hay alguien, muestra el modal y espera
+// a que el usuario lo cierre antes de continuar con el ingreso.
+function avisarCumpleanos(token, alTerminar) {
+  let yaContinuo = false;
+  function continuar() {
+    if (yaContinuo) return;
+    yaContinuo = true;
+    cerrarModalCumpleanos_();
+    if (typeof alTerminar === 'function') alTerminar();
+  }
+
+  const overlay = document.getElementById('modalCumpleanos');
+  const btnCerrar = document.getElementById('btnCerrarCumpleanos');
+  if (btnCerrar) btnCerrar.onclick = continuar;
+  if (overlay) overlay.onclick = function(ev) { if (ev.target === overlay) continuar(); };
+  document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape' && overlay && !overlay.classList.contains('oculto')) continuar();
+  });
+
+  // Si el servidor falla o no hay cumpleaños, se continúa de una vez.
   google.script.run
     .withSuccessHandler(function(r) {
-      if (!r || r.estado !== true || !r.datos || !r.datos.length) return;
-
-      let html = '<div class="alerta-cumple"><strong>🎂 Cumpleaños de hoy (' +
-        escTexto(r.fecha || '') + ')</strong><ul>';
-      r.datos.forEach(function(p) {
-        html += '<li><strong>' + escTexto(p.funcionario || 'Funcionario') + '</strong>' +
-          (p.grado ? ' <small>(' + escTexto(p.grado) + ')</small>' : '') +
-          ' cumple <strong>' + p.anios + ' años</strong>' +
-          (p.cumpleanios ? ' — ' + escTexto(p.cumpleanios) : '') + '</li>';
-      });
-      html += '</ul></div>';
-      avisoCumpleanos_(html);
+      if (!r || r.estado !== true || !r.datos || !r.datos.length) { continuar(); return; }
+      mostrarModalCumpleanos_(r.datos, r.fecha);
     })
-    .withFailureHandler(function() { /* sin aviso: no interrumpe el ingreso */ })
+    .withFailureHandler(function() { continuar(); })
     .cumpleanerosHoy(token);
 }
 
