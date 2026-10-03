@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-02-r23';
+var VERSION_APP = 'JESEP-2026-10-03-r24';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -181,6 +181,9 @@ function doGet(e) {
         break;
       case 'presentarVacacionesHoy':
         resultado = presentarVacacionesHoy(args[0]);
+        break;
+      case 'registrarNovedadRapida':
+        resultado = registrarNovedadRapida(args[0], args[1], args[2]);
         break;
       case 'version':
         resultado = versionApp();
@@ -1838,6 +1841,114 @@ function presentarVacacionesHoy(token) {
     return { estado: true, fecha: hoy.dia + '/' + hoy.mes + '/' + hoy.anio, datos: lista };
   } catch (err) {
     return { estado: false, mensaje: 'Error buscando presentación de vacaciones: ' + err.message };
+  }
+}
+
+/* =====================================================
+   10. NOVEDADES RÁPIDAS DESDE LA TABLA DE TURNOS
+   Permite asignar una novedad directamente sobre el listado
+   del turno, sin pasar por el formulario "Registrar novedad".
+   ===================================================== */
+
+var NOVEDADES_RAPIDAS_ = [
+  'OFICINA',
+  'EN VACACIONES',
+  'SERVICIO',
+  'ESTADO DE GRAVIDEZ',
+  'EXCUSA TOTAL',
+  'PERMISO',
+  'CITA MEDICA',
+  'LICENCIA DE MATERNIDAD',
+  'EXCUSADO DEL SERVICIO',
+  'OTRA NOVEDAD',
+  'RETARDADA',
+  'EXCUSA PARCIAL',
+  'CURSO DE ASCENSO'
+];
+
+// Valida el tipo recibido contra la lista blanca.
+// Acepta "RETARDAD@" (como figura en la interfaz) y lo guarda como "RETARDADA".
+function novedadRapidaValida_(tipo) {
+  var t = quitarAcentos_(String(tipo || '').trim().toUpperCase());
+  if (!t) return null;
+
+  t = t.replace(/@/g, 'A').replace(/\s+/g, ' ').trim();
+
+  for (var i = 0; i < NOVEDADES_RAPIDAS_.length; i++) {
+    if (quitarAcentos_(NOVEDADES_RAPIDAS_[i]) === t) return NOVEDADES_RAPIDAS_[i];
+  }
+  return null;
+}
+
+// Registra una novedadrapida para un funcionario.
+// No aplica la restriccion de novedades por usuario: es una operacion
+// propia del modulo de turnos.
+function registrarNovedadRapida(token, cedula, tipo) {
+  try {
+    var tipoOk = novedadRapidaValida_(tipo);
+    if (!tipoOk) {
+      return { estado: false, version: VERSION_APP, mensaje: 'Tipo de novedad no permitido.' };
+    }
+
+    var cedulaIn = normalizaCedula_(cedula);
+    if (!cedulaIn) {
+      return { estado: false, version: VERSION_APP, mensaje: 'Cédula inválida o vacía.' };
+    }
+
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('NOVEDADES');
+    if (!hoja) {
+      return { estado: false, version: VERSION_APP, mensaje: 'No existe la hoja NOVEDADES.' };
+    }
+
+    var mapa = mapaColumnasNovedades_(hoja);
+    if (!mapa) {
+      return { estado: false, version: VERSION_APP, mensaje: 'No se pudo leer el encabezado de NOVEDADES.' };
+    }
+
+    var base = renglonBasePorCedula_(cedulaIn);
+    if (!base) {
+      return { estado: false, version: VERSION_APP, mensaje: 'Funcionario no encontrado en LISTADO_BASE.' };
+    }
+
+    // Nombre del funcionario para la columna F
+    var nombre = '';
+    var cabBase = base.cabeceras.map(normalizarCabColumna_);
+    var idxNombre = idxColumnaBase_(cabBase,
+      [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/], -1);
+    if (idxNombre !== -1 && idxNombre < base.valores.length) {
+      nombre = String(base.valores[idxNombre] === null ? '' : base.valores[idxNombre]).trim();
+    }
+
+    var hoy = Utilities.formatDate(new Date(), ZONA_, 'yyyy-MM-dd');
+
+    var fila = construirFilaNovedades_(mapa, {
+      cedula: cedulaIn,
+      nombreFuncionario: nombre,
+      tipo: tipoOk,
+      novedad: tipoOk,
+      dias: '',
+      fechaInicial: hoy,
+      fechaPresentacion: hoy,
+      observacion: '',
+      texto: tipoOk
+    });
+
+    // GR, NIV, DEPENDENCIA, TURNO y Placa_Chip se copian de LISTADO_BASE
+    completarDesdeBase_(fila, mapa, base);
+
+    hoja.appendRow(fila);
+
+    return {
+      estado: true,
+      version: VERSION_APP,
+      mensaje: 'Novedad "' + tipoOk + '" registrada.',
+      tipo: tipoOk,
+      cedula: cedulaIn,
+      funcionario: nombre
+    };
+  } catch (err) {
+    return { estado: false, version: VERSION_APP, mensaje: 'Error registrando novedad: ' + err.message };
   }
 }
 

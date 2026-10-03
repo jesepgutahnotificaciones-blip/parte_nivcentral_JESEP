@@ -135,6 +135,50 @@
       font-size: 11px;
     }
 
+    /* Selector de novedad rapida dentro de la tabla del turno */
+    .nov-rapida {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 5px;
+    }
+
+    .nov-rapida select {
+      flex: 1;
+      min-width: 145px;
+      padding: 4px 6px;
+      font-size: 11px;
+      border: 1px solid var(--borde);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--verde);
+      font-weight: 600;
+    }
+
+    .nov-rapida select:focus {
+      outline: 2px solid var(--dorado);
+      outline-offset: 1px;
+    }
+
+    .nov-rapida button {
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--verde);
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .nov-rapida button:hover:not(:disabled) { background: var(--verde-oscuro); }
+    .nov-rapida button:disabled { opacity: .5; cursor: not-allowed; }
+
+    @media print {
+      .nov-rapida { display: none !important; }
+    }
+
     .empty { padding: 25px; text-align: center; color: #78909c; background: white; border-radius: 10px; }
     .loading { padding: 25px; text-align: center; background: white; border-radius: 10px; color: var(--verde); }
 
@@ -254,7 +298,7 @@
                   <option value="CITA MEDICA">CITA MEDICA</option>
                   <option value="LICENCIA">LICENCIA</option>
                   <option value="OTRA NOVEDAD">OTRA NOVEDAD</option>
-                  <option value="RETARDADO">RETARDADO</option>
+                  <option value="RETARDADO">RETARDAD@</option>
                 </select>
               </div>
               <div class="col-md-6">
@@ -852,6 +896,81 @@
       .consultarPorTurno(tokenSesion, filtro);
   }
 
+  /* =====================================================
+     NOVEDADES RAPIDAS DESDE LA TABLA DEL TURNO
+     Permite asignar una novedad con el desplegable de la
+     columna NOVEDADES, sin pasar por el formulario.
+     Al guardar, la tabla y el conteo de fuerza se recargan.
+     ===================================================== */
+  const NOVEDADES_RAPIDAS_ = [
+    'OFICINA',
+    'EN VACACIONES',
+    'SERVICIO',
+    'ESTADO DE GRAVIDEZ',
+    'EXCUSA TOTAL',
+    'PERMISO',
+    'CITA MEDICA',
+    'LICENCIA DE MATERNIDAD',
+    'EXCUSADO DEL SERVICIO',
+    'OTRA NOVEDAD',
+    'RETARDAD@',
+    'EXCUSA PARCIAL',
+    'CURSO DE ASCENSO'
+  ];
+
+  let _contSelectorNov = 0;
+
+  function selectorNovedadRapida_(cedula) {
+    const idSel = 'selNov' + (++_contSelectorNov);
+    const idBtn = 'btnNov' + _contSelectorNov;
+    let html = '<div class="nov-rapida">';
+    html += '<select id="' + idSel + '" data-cedula="' + esc(cedula) + '" aria-label="Novedad para ' + esc(cedula) + '">';
+    html += '<option value="">— Elegir —</option>';
+    NOVEDADES_RAPIDAS_.forEach(function(t) {
+      html += '<option value="' + esc(t) + '">' + esc(t) + '</option>';
+    });
+    html += '</select>';
+    html += '<button type="button" id="' + idBtn + '" onclick="guardarNovedadRapida(\'' + idSel + '\')">💾</button>';
+    html += '</div>';
+    return html;
+  }
+
+  function guardarNovedadRapida(idSel) {
+    const sel = document.getElementById(idSel);
+    if (!sel) return;
+
+    const tipo = sel.value;
+    if (!tipo) { mostrarToast('Seleccione una novedad.', 'error'); return; }
+
+    const cedula = sel.getAttribute('data-cedula') || '';
+    const btn = sel.parentNode ? sel.parentNode.querySelector('button') : null;
+    if (btn) btn.disabled = true;
+    sel.disabled = true;
+
+    mostrarToast('Guardando novedad...');
+
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          mostrarToast((respuesta && respuesta.mensaje) || 'No fue posible registrar la novedad.', 'error');
+          if (btn) btn.disabled = false;
+          sel.disabled = false;
+          return;
+        }
+
+        mostrarToast(respuesta.mensaje || 'Novedad registrada.');
+        // Recarga el turno: la tabla muestra el badge y el conteo de
+        // fuerza efectiva / disponible queda actualizado.
+        if (ultimoTurnoConsultado) cargarTurno(ultimoTurnoConsultado);
+      })
+      .withFailureHandler(function(error) {
+        mostrarToast('Error registrando novedad: ' + ((error && error.message) || 'fallo de red'), 'error');
+        if (btn) btn.disabled = false;
+        sel.disabled = false;
+      })
+      .registrarNovedadRapida(tokenSesion, cedula, tipo);
+  }
+
   function renderTurno(respuesta) {
     const contenedor = document.getElementById('resultadoTurno');
     const datos = respuesta.datos || {};
@@ -960,7 +1079,8 @@
       const conNov = (f.historialNovedades || []).length > 0;
       n++;
       const novedades = f.historialNovedades || [];
-      let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">S/N</span>';
+      let novedadesHtml = novedades.length ? novedades.map(x => '<span class="badge-novedad">' + esc(x.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">S/N</span>';
+      novedadesHtml += selectorNovedadRapida_(f.cedula || f.CEDULA || '');
       html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
