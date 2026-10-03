@@ -194,6 +194,13 @@
     .stat-number { font-size: 24px; font-weight: 700; color: var(--verde); }
     .stat-label { color: #607d8b; font-size: 12px; font-weight: 600; text-transform: uppercase; }
 
+    /* Formato de las cifras dentro de cada tarjeta */
+    .stat-slash { font-size: 15px; color: #90a4ae; font-weight: 600; }
+    .stat-paren { font-size: 11px; color: #90a4ae; font-weight: 600; }
+    .stat-mini { font-size: 10px; color: #90a4ae; text-transform: uppercase; letter-spacing: .02em; }
+    .stat-card-total { border-top-color: var(--dorado); }
+    .stat-card-total .stat-number { color: var(--dorado); }
+
     .toast-app {
       position: fixed;
       right: 20px;
@@ -1017,37 +1024,42 @@
         }
       }
 
-      fuerzaDisponible[catAsignada]++;
-      totalDisponible++;
+      // fEfectiva = total de funcionarios del turno
+      fuerzaEfectiva[catAsignada]++;
+      totalEfectiva++;
 
+      // fDisponible = los que NO tienen novedad registrada
       const novedades = f.historialNovedades || [];
       if (novedades.length === 0) {
-        fuerzaEfectiva[catAsignada]++;
-        totalEfectiva++;
+        fuerzaDisponible[catAsignada]++;
+        totalDisponible++;
       }
     });
 
     let html = '<div class="card mb-3"><div class="card-header bg-white">📊 <strong>CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + esc(filtro) + '</strong></div><div class="card-body">';
     html += '<div class="row g-2 mb-3">';
     
-    categorias.forEach(cat => {
-      let disp = fuerzaDisponible[cat];
-      let efec = fuerzaEfectiva[cat];
+    categorias.forEach(function(cat) {
+      const total = fuerzaEfectiva[cat];
+      const disp = fuerzaDisponible[cat];
       // Cambiar etiqueta EJE por "Nivel EJEC"
-      let etiqueta = cat === 'EJE' ? 'Nivel EJEC' : cat;
+      const etiqueta = cat === 'EJE' ? 'Nivel EJEC' : cat;
+
       html += '<div class="col-6 col-md-3 col-lg">';
       html += '<div class="stat-card">';
       html += '<div class="stat-label">' + etiqueta + '</div>';
-      html += '<div class="stat-number">' + efec + ' <small class="text-muted fs-6">/ ' + disp + '</small></div>';
-      html += '<div class="text-muted" style="font-size: 11px;">Efectiva / Total</div>';
+      html += '<div class="stat-number">' + disp + ' <span class="stat-slash">/ ' + total + '</span>' +
+        ' <span class="stat-paren">(Efectiva)</span></div>';
+      html += '<div class="stat-mini">Disponible / Total</div>';
       html += '</div></div>';
     });
 
     html += '<div class="col-6 col-md-3 col-lg">';
-    html += '<div class="stat-card" style="border-top-color: var(--dorado);">';
+    html += '<div class="stat-card stat-card-total">';
     html += '<div class="stat-label">En formacion</div>';
-    html += '<div class="stat-number" style="color: var(--dorado);">' + totalEfectiva + ' <small class="text-muted fs-6">/ ' + totalDisponible + '</small></div>';
-    html += '<div class="text-muted" style="font-size: 11px;">Total Efectiva / Total</div>';
+    html += '<div class="stat-number">' + totalDisponible + ' <span class="stat-slash">/ ' + totalEfectiva + '</span>' +
+      ' <span class="stat-paren">(Efectiva)</span></div>';
+    html += '<div class="stat-mini">Disponible / Total</div>';
     html += '</div></div>';
 
     html += '</div>';
