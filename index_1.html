@@ -578,7 +578,7 @@
           <div class="card-body">
             <div class="row g-2">
               <div class="col-md-9">
-                <input type="text" id="buscarValor" class="form-control" placeholder="Digite cédula, nombre, grado, nivel o dependencia" onkeydown="if(event.key === 'Enter'){ buscarFuncionario(); }">
+                <input type="text" id="buscarValor" class="form-control" autocomplete="off" placeholder="Digite cédula, nombre, grado, nivel o dependencia" aria-label="Digite cédula, nombre, grado, nivel o dependencia" onkeydown="if(event.key === 'Enter'){ buscarFuncionario(); }">
               </div>
               <div class="col-md-3">
                 <button type="button" class="btn btn-pol w-100" onclick="buscarFuncionario()">🔎 Buscar</button>
@@ -889,9 +889,17 @@
   function mostrarAplicacion() {
     document.getElementById('aplicacion').classList.remove('hidden');
 
-    // Actualizar info de usuario
+    // Actualizar info de usuario.
+    // A los usuarios DISPONIBLE_* no se les muestra el nombre de la cuenta
+    // (DISPONIBLE_A, DISPONIBLE_B, DISPONIBLE_C): se muestra su turno.
     const infoUsuario = document.getElementById('usuarioActual');
-    infoUsuario.innerHTML = '<strong>' + esc(usuarioSesion) + '</strong><br><small>' + esc(rolSesion) + (dependenciaSesion ? ' — ' + esc(dependenciaSesion) : '') + '</small>';
+    if (esUsuarioDisponible) {
+      const t = turnoPermitido ? 'Turno ' + turnoPermitido : 'Turnos';
+      infoUsuario.innerHTML = '<strong>' + esc(t) + '</strong>';
+    } else {
+      infoUsuario.innerHTML = '<strong>' + esc(usuarioSesion) + '</strong><br><small>' +
+        esc(rolSesion) + (dependenciaSesion ? ' — ' + esc(dependenciaSesion) : '') + '</small>';
+    }
 
     configurarPermisos();
     mostrarSeccion('consulta');
