@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-03-r31';
+var VERSION_APP = 'JESEP-2026-10-03-r33';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -146,15 +146,18 @@ function modulosDeUsuario_(usuarioId, rol) {
   // Administradores: ven los dos módulos y el selector de módulo se los muestra
   if (esAdmin) return ['index_1', 'index_2'];
 
-  // Usuarios del módulo de áreas JESEP -> solo index_2
+  // Usuarios de turnos DISPONIBLE_* -> solo index_1.
+  // Se aceptan variantes: DISPONIBLE_A, "DISPONIBLE A", DISPONIBLE-A.
+  if (/^DISPONIBLE[\s_\-]*[ABC]?$/.test(id)) return ['index_1'];
+
+  // Usuarios del módulo de áreas JESEP -> solo index_2.
+  // Se comprueba con hasOwnProperty para que un usuario llamado
+  // "CONSTRUCTOR" o "TOSTRING" no herede una propiedad del objeto.
   var usuariosArea = {
     'SGSST_JESEP': 1, 'VAC_JESEP': 1, 'PAS_JESEP': 1, 'CIT_JESEP': 1,
     'HIS_JESEP': 1, 'PRO_JESEP': 1, 'UBL_JESEP': 1, 'GH_JESEP': 1
   };
-  if (usuariosArea[id]) return ['index_2'];
-
-  // Usuarios de turnos DISPONIBLE_* -> solo index_1
-  if (id.indexOf('DISPONIBLE_') === 0) return ['index_1'];
+  if (Object.prototype.hasOwnProperty.call(usuariosArea, id)) return ['index_2'];
 
   // Cualquier otro OPERADOR -> solo index_1 (comportamiento previo)
   return ['index_1'];
@@ -292,6 +295,9 @@ function doGet(e) {
         break;
       case 'version':
         resultado = versionApp();
+        break;
+      case 'diagnosticarUsuarios':
+        resultado = diagnosticarUsuarios();
         break;
       default:
         resultado = {
@@ -1461,6 +1467,68 @@ function listarReportes(token, limite) {
 /* =====================================================
    5. GESTIÓN DE USUARIOS (SOLO ADMIN)
    ===================================================== */
+
+// Muestra la hoja USUARIOS con el módulo que le corresponde a cada cuenta.
+// Sirve para verificar por que un usuario entra al módulo equivocado.
+// No requiere contraseña: solo abre la URL con ?accion=diagnosticarUsuarios
+function diagnosticarUsuarios() {
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('USUARIOS');
+    if (!hoja) {
+      return { estado: false, version: VERSION_APP, mensaje: 'No existe la hoja USUARIOS.' };
+    }
+
+    var datos = hoja.getDataRange().getValues();
+    if (datos.length < 2) {
+      return { estado: true, version: VERSION_APP, mensaje: 'La hoja USUARIOS no tiene filas.', datos: [] };
+    }
+
+    var cab = (datos[0] || []).map(normalizarCabColumna_);
+    var iUser = idxColumnaBase_(cab, [/^USUARIO$/, /^USUARIOS?$/, /^LOGIN$/, /^NOMBRE$/], 0);
+    var iRol = idxColumnaBase_(cab, [/^ROL$/, /^PERFIL$/, /^PERMISO$/], 1);
+    var iTurno = idxColumnaBase_(cab, [/^TURNO$/, /^TURNO PERMITIDO$/], -1);
+
+    var lista = [];
+    for (var i = 1; i < datos.length; i++) {
+      var fila = datos[i];
+      var nombre = iUser >= 0 ? String((fila[iUser] === null ? '' : fila[iUser])) : '';
+      if (!nombre.trim()) continue;
+
+      var rol = iRol >= 0 ? String((fila[iRol] === null ? '' : fila[iRol])) : '';
+      var id = nombre.trim().toUpperCase();
+      var turno = iTurno >= 0 ? String((fila[iTurno] === null ? '' : fila[iTurno])) : '';
+
+      if (!turno.trim()) {
+        if (id.indexOf('DISPONIBLE_A') !== -1) turno = 'A (inferido)';
+        else if (id.indexOf('DISPONIBLE_B') !== -1) turno = 'B (inferido)';
+        else if (id.indexOf('DISPONIBLE_C') !== -1) turno = 'C (inferido)';
+      }
+
+      var modulos = modulosDeUsuario_(id, rol);
+      lista.push({
+        USUARIO: nombre,
+        ROL: rol,
+        TURNO: turno,
+        MODULOS: modulos.join(' + '),
+        DESTINO: modulos.length === 1
+          ? (modulos[0] === 'index_1' ? 'Turnos' : 'Áreas')
+          : 'Selector de módulo'
+      });
+    }
+
+    return {
+      estado: true,
+      version: VERSION_APP,
+      total: lista.length,
+      mensaje: 'Usuarios en la hoja USUARIOS. ' +
+        'Si un usuario tipo DISPONIBLE aparece en "Áreas", su nombre no esta escrito como DISPONIBLE_A/B/C.',
+      datos: lista
+    };
+  } catch (err) {
+    return { estado: false, version: VERSION_APP, mensaje: 'Error en diagnostico de usuarios: ' + err.message };
+  }
+}
 
 function listarUsuarios(token) {
   try {
