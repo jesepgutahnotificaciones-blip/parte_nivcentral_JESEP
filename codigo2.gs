@@ -151,11 +151,13 @@ function modulosDeUsuario_(usuarioId, rol) {
   if (/^DISPONIBLE[\s_\-]*[ABC]?$/.test(id)) return ['index_1'];
 
   // Usuarios del módulo de áreas JESEP -> solo index_2.
+  // UBL_JESEP no va aquí: entra a index_1 (turnos), donde administra
+  // el LISTADO_BASE desde la sección Funcionarios.
   // Se comprueba con hasOwnProperty para que un usuario llamado
   // "CONSTRUCTOR" o "TOSTRING" no herede una propiedad del objeto.
   var usuariosArea = {
     'SGSST_JESEP': 1, 'VAC_JESEP': 1, 'PAS_JESEP': 1, 'CIT_JESEP': 1,
-    'HIS_JESEP': 1, 'PRO_JESEP': 1, 'UBL_JESEP': 1, 'GH_JESEP': 1
+    'HIS_JESEP': 1, 'PRO_JESEP': 1, 'GH_JESEP': 1
   };
   if (Object.prototype.hasOwnProperty.call(usuariosArea, id)) return ['index_2'];
 

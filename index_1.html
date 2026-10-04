@@ -569,6 +569,7 @@
         <button type="button" id="menuTurnos" onclick="mostrarSeccion('turnos')">📋 Turnos</button>
         <button type="button" id="menuReportes" onclick="mostrarSeccion('reportes')">📄 Reportes</button>
         <button type="button" id="menuUsuarios" class="soloAdministrador hidden" onclick="mostrarSeccion('usuarios')">👤 Usuarios</button>
+        <button type="button" id="menuFuncionarios" class="soloUBL hidden" onclick="mostrarSeccion('funcionarios')">👥 Funcionarios</button>
       </nav>
 
       <!-- CONSULTA FUNCIONARIO -->
@@ -747,6 +748,176 @@
         <div id="listaUsuarios"></div>
       </section>
 
+      <!-- FUNCIONARIOS (SOLO UBL_JESEP) -->
+      <section id="seccionFuncionarios" class="section soloUBL">
+        <div class="card">
+          <div class="card-header">👥 Gestión de Funcionarios (LISTADO_BASE)</div>
+          <div class="card-body">
+            <h5>Agregar Nuevo Funcionario</h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Cédula</label>
+                <input type="text" id="funcCedula" class="form-control" autocomplete="off">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">NIV</label>
+                <select id="funcNiv" class="form-select">
+                  <option value="OF">OF</option>
+                  <option value="NIV">NIV</option>
+                  <option value="EJE">EJE</option>
+                  <option value="PT">PT</option>
+                  <option value="PP">PP</option>
+                  <option value="NO UNI">NO UNI</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">GR</label>
+                <select id="funcGr" class="form-select">
+                  <option value="MG">MG</option>
+                  <option value="BG">BG</option>
+                  <option value="CR">CR</option>
+                  <option value="TC">TC</option>
+                  <option value="MY">MY</option>
+                  <option value="CT">CT</option>
+                  <option value="TE">TE</option>
+                  <option value="ST">ST</option>
+                  <option value="CM">CM</option>
+                  <option value="SC">SC</option>
+                  <option value="IJ">IJ</option>
+                  <option value="IT">IT</option>
+                  <option value="SI">SI</option>
+                  <option value="PT">PT</option>
+                  <option value="PP">PP</option>
+                  <option value="AXP">AXP</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Apellidos y Nombres</label>
+                <input type="text" id="funcNombre" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Dependencia</label>
+                <input type="text" id="funcDependencia" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">PERT</label>
+                <select id="funcPert" class="form-select">
+                  <option value="AP">AP</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Turno (Obligatorio)</label>
+                <select id="funcTurno" class="form-select">
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="No Aplica">No Aplica</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Mes</label>
+                <select id="funcMes" class="form-select">
+                  <option value="ENERO">ENERO</option>
+                  <option value="FEBRERO">FEBRERO</option>
+                  <option value="MARZO">MARZO</option>
+                  <option value="ABRIL">ABRIL</option>
+                  <option value="MAYO">MAYO</option>
+                  <option value="JUNIO">JUNIO</option>
+                  <option value="JULIO">JULIO</option>
+                  <option value="AGOSTO">AGOSTO</option>
+                  <option value="SEPTIEMBRE">SEPTIEMBRE</option>
+                  <option value="OCTUBRE">OCTUBRE</option>
+                  <option value="NOVIEMBRE">NOVIEMBRE</option>
+                  <option value="DICIEMBRE">DICIEMBRE</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Día</label>
+                <select id="funcDia" class="form-select">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                  <option value="13">13</option>
+                  <option value="14">14</option>
+                  <option value="15">15</option>
+                  <option value="16">16</option>
+                  <option value="17">17</option>
+                  <option value="18">18</option>
+                  <option value="19">19</option>
+                  <option value="20">20</option>
+                  <option value="21">21</option>
+                  <option value="22">22</option>
+                  <option value="23">23</option>
+                  <option value="24">24</option>
+                  <option value="25">25</option>
+                  <option value="26">26</option>
+                  <option value="27">27</option>
+                  <option value="28">28</option>
+                  <option value="29">29</option>
+                  <option value="30">30</option>
+                  <option value="31">31</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Fecha Nacimiento</label>
+                <input type="date" id="funcFechaNac" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Correo Electrónico</label>
+                <input type="email" id="funcCorreo" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Sexo</label>
+                <select id="funcSexo" class="form-select">
+                  <option value="MASCULINO">MASCULINO</option>
+                  <option value="FEMENINO">FEMENINO</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Estado Civil</label>
+                <select id="funcEstadoCivil" class="form-select">
+                  <option value="CASADO">CASADO</option>
+                  <option value="UNION LIBRE">UNION LIBRE</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Situación Laboral</label>
+                <select id="funcSituacion" class="form-select">
+                  <option value="LABORANDO">LABORANDO</option>
+                  <option value="VACACIONES">VACACIONES</option>
+                  <option value="COMISION DEL SERVICIO">COMISION DEL SERVICIO</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Comunicado Oficial</label>
+                <input type="text" id="funcComunicado" class="form-control">
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="button" class="btn btn-pol" onclick="agregarFuncionario()">➕ Agregar Funcionario</button>
+              <button type="button" class="btn btn-secondary" onclick="limpiarFormularioFuncionario()">Limpiar</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">Lista de Funcionarios</div>
+          <div class="card-body">
+            <button type="button" class="btn btn-pol mb-3" onclick="cargarFuncionarios()">🔄 Actualizar</button>
+            <div id="listaFuncionarios"></div>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -755,7 +926,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzBTDglBYrEs7safHzXrG02zEwsWcfjW7JcO7wHJHJe6MG_V3RTksOYE2fhcsI1EEAE/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbx-dEoCOEItWyacfjQisYgQEEtE74TOQPV1N9OuaEf-shTvhzsaxPG6_8kqfaOxtaBe/exec';
   const CLAVE_SESION = 'jesep_sesion';
   
 
@@ -850,6 +1021,9 @@
   // Usuario DISPONIBLE_A / _B / _C: solo consulta su turno, sin registrar
   // novedades ni generar reportes.
   let esUsuarioDisponible = false;
+  // UBL_JESEP: administra el LISTADO_BASE desde la sección Funcionarios
+  // y no registra novedades.
+  let esUsuarioUBL = false;
 
   function esUsuarioTurno_(idUsuario) {
     const id = String(idUsuario || '').trim().toUpperCase();
@@ -868,6 +1042,9 @@
       esUsuarioDisponible = esUsuarioTurno_(
         sesionGuardada.usuario ? (sesionGuardada.usuario.usuarioId || sesionGuardada.usuario.usuario) : ''
       );
+      esUsuarioUBL = String(
+        (sesionGuardada.usuario ? (sesionGuardada.usuario.usuarioId || sesionGuardada.usuario.usuario) : '')
+      ).trim().toUpperCase() === 'UBL_JESEP';
 
       if (!usuarioSesion) {
         // Redirigir al login si no hay sesión válida
@@ -1036,6 +1213,21 @@
       seccionReportes.classList.remove('hidden');
     }
 
+    // Sección Funcionarios: solo UBL_JESEP.
+    // UBL no registra novedades, así que esa sección tampoco le aparece.
+    const menuFuncionarios = document.getElementById('menuFuncionarios');
+    const seccionFuncionarios = document.getElementById('seccionFuncionarios');
+
+    if (esUsuarioUBL) {
+      menuFuncionarios.classList.remove('hidden');
+      seccionFuncionarios.classList.remove('hidden');
+      menuNovedad.classList.add('hidden');
+      seccionNovedad.classList.add('hidden');
+    } else {
+      menuFuncionarios.classList.add('hidden');
+      seccionFuncionarios.classList.add('hidden');
+    }
+
     // Botones de turno: según turnoPermitido
     const contenedorTurnos = document.getElementById('contenedorTurnos');
     const todosLosTurnos = [
@@ -1068,13 +1260,23 @@
   }
 
   function mostrarSeccion(nombre) {
-    const mapa = { consulta: 'seccionConsulta', novedad: 'seccionNovedad', turnos: 'seccionTurnos', reportes: 'seccionReportes', usuarios: 'seccionUsuarios' };
-    const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', turnos: 'menuTurnos', reportes: 'menuReportes', usuarios: 'menuUsuarios' };
+    const mapa = { consulta: 'seccionConsulta', novedad: 'seccionNovedad', turnos: 'seccionTurnos', reportes: 'seccionReportes', usuarios: 'seccionUsuarios', funcionarios: 'seccionFuncionarios' };
+    const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', turnos: 'menuTurnos', reportes: 'menuReportes', usuarios: 'menuUsuarios', funcionarios: 'menuFuncionarios' };
 
     // Los usuarios DISPONIBLE_* solo acceden a Consulta y Turnos.
-    if (esUsuarioDisponible && (nombre === 'novedad' || nombre === 'reportes' || nombre === 'usuarios')) {
+    if (esUsuarioDisponible && (nombre === 'novedad' || nombre === 'reportes' || nombre === 'usuarios' || nombre === 'funcionarios')) {
       mostrarToast('Su usuario no tiene acceso a esta sección.', 'error');
       nombre = 'turnos';
+    }
+
+    // Funcionarios es solo de UBL_JESEP. No registra novedades.
+    if (nombre === 'funcionarios' && !esUsuarioUBL) {
+      mostrarToast('Su usuario no tiene acceso a esta sección.', 'error');
+      nombre = 'turnos';
+    }
+    if (esUsuarioUBL && nombre === 'novedad') {
+      mostrarToast('UBL_JESEP no registra novedades. Use la sección Funcionarios.', 'error');
+      nombre = 'funcionarios';
     }
 
     document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
@@ -1087,6 +1289,7 @@
 
     if (nombre === 'reportes') { cargarReportes(); avisarPresentacionVacaciones(); }
     if (nombre === 'usuarios') cargarUsuarios();
+    if (nombre === 'funcionarios') cargarFuncionarios();
   }
 
   function buscarFuncionario() {
@@ -1919,6 +2122,108 @@ function avisarPresentacionVacaciones() {
       .withSuccessHandler(() => { mostrarToast('Estado actualizado.'); cargarUsuarios(); })
       .withFailureHandler(() => mostrarToast('Error.', 'error'))
       .cambiarEstadoUsuario(tokenSesion, usuario, nuevoEstado);
+  }
+
+  // ========== FUNCIONES PARA UBL_JESEP ==========
+  // Agregan y eliminan funcionarios de la hoja LISTADO_BASE.
+
+  function cargarFuncionarios() {
+    const contenedor = document.getElementById('listaFuncionarios');
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (!respuesta || respuesta.estado !== true) {
+          contenedor.innerHTML = '<div class="alert alert-danger">Error cargando funcionarios.</div>';
+          return;
+        }
+        const funcionarios = respuesta.datos || respuesta.funcionarios || [];
+        if (!funcionarios.length) {
+          contenedor.innerHTML = '<div class="empty">No hay funcionarios registrados.</div>';
+          return;
+        }
+        let html = '<div class="table-wrapper"><table class="table table-bordered"><thead><tr>' +
+          '<th>CÉDULA</th><th>NIV</th><th>GR</th><th>NOMBRE</th>' +
+          '<th>DEPENDENCIA</th><th>TURNO</th><th>ACCIONES</th></tr></thead><tbody>';
+        funcionarios.forEach(f => {
+          const cc = f.cedula || f.CEDULA || '';
+          html += '<tr><td>' + esc(cc) + '</td><td>' + esc(f.nivel || f.NIV || '') + '</td>' +
+            '<td>' + esc(f.grado || f.GR || '') + '</td>' +
+            '<td>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</td>' +
+            '<td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td>' +
+            '<td>' + esc(f.turno || f.TURNO || '') + '</td>' +
+            '<td><button type="button" class="btn btn-sm btn-danger" onclick="eliminarFuncionario(\'' +
+            esc(cc) + '\')">Eliminar</button></td></tr>';
+        });
+        html += '</tbody></table></div>';
+        contenedor.innerHTML = html;
+      })
+      .withFailureHandler(function() {
+        contenedor.innerHTML = '<div class="alert alert-danger">Error cargando funcionarios.</div>';
+      })
+      .listarFuncionarios(tokenSesion);
+  }
+
+  function agregarFuncionario() {
+    const datos = {
+      cedula: document.getElementById('funcCedula').value.trim(),
+      nivel: document.getElementById('funcNiv').value,
+      grado: document.getElementById('funcGr').value,
+      funcionario: document.getElementById('funcNombre').value.trim(),
+      dependencia: document.getElementById('funcDependencia').value.trim(),
+      pert: document.getElementById('funcPert').value,
+      turno: document.getElementById('funcTurno').value,
+      mes: document.getElementById('funcMes').value,
+      dia: document.getElementById('funcDia').value,
+      fechaNacimiento: document.getElementById('funcFechaNac').value,
+      correo: document.getElementById('funcCorreo').value.trim(),
+      sexo: document.getElementById('funcSexo').value,
+      estadoCivil: document.getElementById('funcEstadoCivil').value,
+      situacionLaboral: document.getElementById('funcSituacion').value,
+      comunicado: document.getElementById('funcComunicado').value.trim()
+    };
+
+    if (!datos.cedula || !datos.funcionario || !datos.turno) {
+      mostrarToast('Complete los campos obligatorios (Cédula, Nombre, Turno).', 'error');
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (respuesta && respuesta.estado === true) {
+          mostrarToast(respuesta.mensaje || 'Funcionario agregado correctamente.');
+          limpiarFormularioFuncionario();
+          cargarFuncionarios();
+        } else {
+          mostrarToast((respuesta && respuesta.mensaje) || 'No fue posible agregar.', 'error');
+        }
+      })
+      .withFailureHandler(function() {
+        mostrarToast('Error agregando funcionario.', 'error');
+      })
+      .agregarFuncionario(tokenSesion, datos);
+  }
+
+  function eliminarFuncionario(cedula) {
+    if (!confirm('¿Está seguro de eliminar este funcionario?')) return;
+
+    google.script.run
+      .withSuccessHandler(function(respuesta) {
+        if (respuesta && respuesta.estado === true) {
+          mostrarToast('Funcionario eliminado correctamente.');
+          cargarFuncionarios();
+        } else {
+          mostrarToast('No fue posible eliminar.', 'error');
+        }
+      })
+      .withFailureHandler(function() { mostrarToast('Error eliminando funcionario.', 'error'); })
+      .eliminarFuncionario(tokenSesion, cedula);
+  }
+
+  function limpiarFormularioFuncionario() {
+    document.getElementById('funcCedula').value = '';
+    document.getElementById('funcNombre').value = '';
+    document.getElementById('funcDependencia').value = '';
+    document.getElementById('funcCorreo').value = '';
+    document.getElementById('funcComunicado').value = '';
   }
 
   function formatearValor(valor) {

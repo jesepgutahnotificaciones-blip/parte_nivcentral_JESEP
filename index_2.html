@@ -1579,7 +1579,7 @@ function avisarPresentacionVacaciones() {
       }
 
       let html = '<div class="alert alert-warning mt-3 mb-0">' +
-        '<strong>⚠ Deben presentarse hoy de vacaciones (' + esc(r.fecha || ') + '):</strong>' +
+        '<strong>⚠ Deben presentarse hoy de vacaciones (' + esc(r.fecha || '') + '):</strong>' +
         '<ul class="mb-0 mt-2">';
       r.datos.forEach(function(p) {
         html += '<li><strong>' + esc(p.funcionario || 'Funcionario') + '</strong>' +
