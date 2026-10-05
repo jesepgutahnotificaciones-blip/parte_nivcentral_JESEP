@@ -631,10 +631,6 @@
                 <label class="form-label">Fecha presentación</label>
                 <input type="date" id="fechaPresentacion" class="form-control">
               </div>
-              <div class="col-md-12">
-                <label class="form-label">Descripción</label>
-                <textarea id="descripcionNovedad" class="form-control" rows="2" placeholder="Descripción de la novedad"></textarea>
-
             </div>
             <div class="mt-3">
               <button type="button" class="btn btn-pol" onclick="registrarNovedad()">💾 Guardar novedad</button>
@@ -1411,11 +1407,9 @@
       nombreFuncionario: funcionarioSeleccionado.funcionario || funcionarioSeleccionado.FUNCIONARIO ||
                          funcionarioSeleccionado.nombres || funcionarioSeleccionado.NOMBRES || '',
       tipo: document.getElementById('tipoNovedad').value,
-      descripcion: document.getElementById('descripcionNovedad').value.trim(),
       dias: document.getElementById('novedadDias').value,
       fechaInicial: document.getElementById('fechaInicial').value,
-      fechaPresentacion: document.getElementById('fechaPresentacion').value,
-
+      fechaPresentacion: document.getElementById('fechaPresentacion').value
     };
 
     google.script.run
@@ -1439,7 +1433,6 @@
     document.getElementById('novedadDias').value = '';
     document.getElementById('fechaInicial').value = '';
     document.getElementById('fechaPresentacion').value = '';
-    document.getElementById('descripcionNovedad').value = '';
   }
 
   function cargarTurno(filtro) {
