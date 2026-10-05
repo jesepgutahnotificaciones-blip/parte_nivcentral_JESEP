@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-03-r33';
+var VERSION_APP = 'JESEP-2026-10-05-r34';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -300,6 +300,12 @@ function doGet(e) {
         break;
       case 'diagnosticarUsuarios':
         resultado = diagnosticarUsuarios();
+        break;
+      case 'listarNovedades':
+        resultado = listarNovedades(args[0], args[1]);
+        break;
+      case 'eliminarNovedad':
+        resultado = eliminarNovedad(args[0], args[1], args[2], args[3]);
         break;
       default:
         resultado = {
@@ -1787,6 +1793,179 @@ function eliminarFuncionario(token, cedula) {
     return { estado: false, mensaje: 'Funcionario no encontrado.' };
   } catch (err) {
     return { estado: false, mensaje: 'Error eliminando funcionario: ' + err.message };
+  }
+}
+
+
+/* =====================================================
+   12. GESTION DE NOVEDADES (USUARIOS DE AREAS)
+   SGSST_JESEP, VAC_JESEP, PAS_JESEP, CIT_JESEP, HIS_JESEP,
+   PRO_JESEP y GH_JESEP pueden consultar y eliminar filas
+   de la hoja NOVEDADES.
+   ===================================================== */
+
+// Verifica que el usuario exista en USUARIOS y sea de areas (o administrador).
+function esUsuarioArea_(usuario) {
+  var id = normalizarUsuario_(usuario);
+  if (!id) return false;
+
+  var areas = {
+    'SGSST_JESEP': 1, 'VAC_JESEP': 1, 'PAS_JESEP': 1, 'CIT_JESEP': 1,
+    'HIS_JESEP': 1, 'PRO_JESEP': 1, 'GH_JESEP': 1
+  };
+
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('USUARIOS');
+    if (!hoja) return false;
+
+    var datos = hoja.getDataRange().getDisplayValues();
+    if (datos.length < 2) return false;
+
+    var filaCab = -1, idxUser = -1, idxRol = -1, i;
+    for (i = 0; i < Math.min(datos.length, 10); i++) {
+      var cab = datos[i].map(normalizarCab_);
+      var u = buscarCab_(cab, /USUARIO|USER|LOGIN/);
+      var c = buscarCab_(cab, /CLAVE|CONTRASE|PASS|HASH/, /SALT/);
+      if (u !== -1 && c !== -1) {
+        filaCab = i; idxUser = u;
+        idxRol = buscarCab_(cab, /^ROL|PERFIL/);
+        break;
+      }
+    }
+    if (filaCab === -1) return false;
+
+    for (i = filaCab + 1; i < datos.length; i++) {
+      if (normalizarUsuario_(datos[i][idxUser]) === id) {
+        var rol = idxRol >= 0 ? String(datos[i][idxRol] || '').trim().toUpperCase() : '';
+        if (rol === 'ADMINISTRADOR' || rol === 'ADMIN') return true;
+        return Object.prototype.hasOwnProperty.call(areas, id);
+      }
+    }
+  } catch (e) {
+    return false;
+  }
+  return false;
+}
+
+// Convierte el valor de una celda de fecha a texto dd/mm/aaaa.
+function formatearFechaCelda_(v) {
+  var p = partesFecha_(v, ZONA_);
+  if (!p) return (v === null || v === undefined) ? '' : String(v);
+  var dd = p.dia < 10 ? '0' + p.dia : String(p.dia);
+  var mm = p.mes < 10 ? '0' + p.mes : String(p.mes);
+  return dd + '/' + mm + '/' + p.anio;
+}
+
+// Lista las filas de NOVEDADES con su numero real dentro de la hoja,
+// para poder borrarlas de forma precisa.
+function listarNovedades(token, usuario) {
+  try {
+    if (!esUsuarioArea_(usuario)) {
+      return { estado: false, mensaje: 'Su usuario no puede gestionar las novedades.' };
+    }
+
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('NOVEDADES');
+    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja NOVEDADES.' };
+
+    var datos = hoja.getDataRange().getValues();
+    if (datos.length < 2) {
+      return { estado: true, mensaje: 'La hoja NOVEDADES no tiene registros.', datos: [] };
+    }
+
+    var cab = (datos[0] || []).map(normalizarCabColumna_);
+    var iCed = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/], 0);
+    var iNom = idxColumnaBase_(cab, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/], -1);
+    var iGr = idxColumnaBase_(cab, [/^GR$/, /^GRADO$/], -1);
+    var iTur = idxColumnaBase_(cab, [/^TURNO$/], -1);
+    var iTipo = idxColumnaBase_(cab, [/^TIPO$/], -1);
+    var iNov = idxColumnaBase_(cab, [/^NOVEDAD$/], -1);
+    var iDias = idxColumnaBase_(cab, [/^DIAS$/], -1);
+    var iFIni = idxColumnaBase_(cab, [/^FECHA INICIAL$/], -1);
+    var iFPre = idxColumnaBase_(cab, [/^FECHA PRESENTACION$/], -1);
+
+    var lista = [];
+    for (var i = 1; i < datos.length; i++) {
+      var fila = datos[i];
+
+      // Ignora filas totalmente vacias
+      var tieneAlgo = false;
+      for (var c = 0; c < fila.length; c++) {
+        if (fila[c] !== null && fila[c] !== undefined && String(fila[c]).trim() !== '') {
+          tieneAlgo = true; break;
+        }
+      }
+      if (!tieneAlgo) continue;
+
+      var cedula = iCed >= 0 ? String(fila[iCed] === null ? '' : fila[iCed]) : '';
+
+      lista.push({
+        fila: i + 1,
+        cedula: cedula,
+        funcionario: iNom >= 0 ? String(fila[iNom] === null ? '' : fila[iNom]) : '',
+        grado: iGr >= 0 ? String(fila[iGr] === null ? '' : fila[iGr]) : '',
+        turno: iTur >= 0 ? String(fila[iTur] === null ? '' : fila[iTur]) : '',
+        tipo: iTipo >= 0 ? String(fila[iTipo] === null ? '' : fila[iTipo]) : '',
+        novedad: iNov >= 0 ? String(fila[iNov] === null ? '' : fila[iNov]) : '',
+        dias: iDias >= 0 ? String(fila[iDias] === null ? '' : fila[iDias]) : '',
+        fechaInicial: iFIni >= 0 ? formatearFechaCelda_(fila[iFIni]) : '',
+        fechaPresentacion: iFPre >= 0 ? formatearFechaCelda_(fila[iFPre]) : '',
+        sello: cedula + '|' + (iTipo >= 0 ? fila[iTipo] : '') + '|' + (iNov >= 0 ? fila[iNov] : '')
+      });
+    }
+
+    return { estado: true, total: lista.length, datos: lista };
+  } catch (err) {
+    return { estado: false, mensaje: 'Error listando novedades: ' + err.message };
+  }
+}
+
+// Elimina una fila de NOVEDADES.
+// Se exige el "sello" (cedula + tipo + novedad) para confirmar que la fila
+// sigue siendo la misma que el usuario vio. Si la lista cambio entre la
+// consulta y el borrado, se rechaza en vez de borrar el registro equivocado.
+function eliminarNovedad(token, usuario, fila, sello) {
+  try {
+    if (!esUsuarioArea_(usuario)) {
+      return { estado: false, mensaje: 'Su usuario no puede eliminar novedades.' };
+    }
+
+    var nFila = parseInt(fila, 10);
+    if (isNaN(nFila) || nFila < 2) {
+      return { estado: false, mensaje: 'Fila no válida.' };
+    }
+
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('NOVEDADES');
+    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja NOVEDADES.' };
+
+    var datos = hoja.getDataRange().getValues();
+    if (nFila > datos.length) {
+      return { estado: false, mensaje: 'La fila ya no existe. Actualice la lista.' };
+    }
+
+    if (sello) {
+      var cab = (datos[0] || []).map(normalizarCabColumna_);
+      var iCed = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/], 0);
+      var iTipo = idxColumnaBase_(cab, [/^TIPO$/], -1);
+      var iNov = idxColumnaBase_(cab, [/^NOVEDAD$/], -1);
+      var f = datos[nFila - 1];
+      var actual = (iCed >= 0 ? String(f[iCed] === null ? '' : f[iCed]) : '') + '|' +
+                   (iTipo >= 0 ? f[iTipo] : '') + '|' +
+                   (iNov >= 0 ? f[iNov] : '');
+      if (String(actual) !== String(sello)) {
+        return {
+          estado: false,
+          mensaje: 'La lista cambió. Actualice y vuelva a intentarlo, para no borrar el registro equivocado.'
+        };
+      }
+    }
+
+    hoja.deleteRow(nFila);
+    return { estado: true, mensaje: 'Novedad eliminada de la hoja NOVEDADES.' };
+  } catch (err) {
+    return { estado: false, mensaje: 'Error eliminando novedad: ' + err.message };
   }
 }
 
