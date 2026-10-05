@@ -634,15 +634,7 @@
               <div class="col-md-12">
                 <label class="form-label">Descripción</label>
                 <textarea id="descripcionNovedad" class="form-control" rows="2" placeholder="Descripción de la novedad"></textarea>
-              </div>
-              <div class="col-md-12">
-                <label class="form-label">Observación</label>
-                <textarea id="observacionNovedad" class="form-control" rows="3" placeholder="Observación"></textarea>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">RV</label>
-                <input type="text" id="rvNovedad" class="form-control">
-              </div>
+
             </div>
             <div class="mt-3">
               <button type="button" class="btn btn-pol" onclick="registrarNovedad()">💾 Guardar novedad</button>
@@ -1423,8 +1415,7 @@
       dias: document.getElementById('novedadDias').value,
       fechaInicial: document.getElementById('fechaInicial').value,
       fechaPresentacion: document.getElementById('fechaPresentacion').value,
-      observacion: document.getElementById('observacionNovedad').value.trim(),
-      rv: document.getElementById('rvNovedad').value.trim()
+
     };
 
     google.script.run
@@ -1449,8 +1440,6 @@
     document.getElementById('fechaInicial').value = '';
     document.getElementById('fechaPresentacion').value = '';
     document.getElementById('descripcionNovedad').value = '';
-    document.getElementById('observacionNovedad').value = '';
-    document.getElementById('rvNovedad').value = '';
   }
 
   function cargarTurno(filtro) {
