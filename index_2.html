@@ -251,6 +251,18 @@
         <button type="button" id="menuGestionarNovedades" class="soloArea hidden" onclick="mostrarSeccion('gestionarNovedades')">🗂️ Eliminar novedad</button>
       </nav>
 
+      <!-- Aviso de diagnostico: se muestra si el usuario NO tiene la seccion
+           "Eliminar novedad" porque su cuenta no esta en la lista de roles. -->
+      <div id="avisoSinPermisoNovedades" class="container-app" style="display: none;">
+        <div class="alert alert-info mb-2">
+          <strong>Diagnóstico:</strong> no ve la sección <strong>🗂️ Eliminar novedad</strong> porque su
+          cuenta no figura entre los roles con acceso
+          (<code>SGSST_JESEP</code>, <code>VAC_JESEP</code>, <code>PAS_JESEP</code>, <code>CIT_JESEP</code>,
+          <code>HIS_JESEP</code>, <code>PRO_JESEP</code>, <code>GH_JESEP</code>).
+          Usuario recibido: <code id="diagUsuario">—</code> · Rol: <code id="diagRol">—</code>
+        </div>
+      </div>
+
       <!-- CONSULTA FUNCIONARIO -->
       <section id="seccionConsulta" class="section active">
         <div class="card">
@@ -445,6 +457,14 @@
             <button type="button" class="btn btn-sm btn-pol" onclick="cargarNovedadesHoja()">🔄 Actualizar</button>
           </div>
           <div class="card-body">
+            <div id="avisoPermisoNovedades" class="alert alert-info" style="display: none;">
+              <strong>Diagnóstico:</strong> esta sección se muestra a los usuarios
+              <code>SGSST_JESEP</code>, <code>VAC_JESEP</code>, <code>PAS_JESEP</code>,
+              <code>CIT_JESEP</code>, <code>HIS_JESEP</code>, <code>PRO_JESEP</code> y
+              <code>GH_JESEP</code>. Si le aparece este aviso, su usuario es
+              <code id="diagUsuarioActual">—</code> y el rol es
+              <code id="diagRolActual">—</code>.
+            </div>
             <div class="alert alert-warning mb-3">
               <strong>Atención:</strong> al eliminar una fila se borra de forma permanente de la hoja NOVEDADES.
               El funcionario volverá a aparecer sin novedad en el conteo de fuerza.
@@ -745,6 +765,20 @@
   const USUARIOS_AREAS_ = ['SGSST_JESEP', 'VAC_JESEP', 'PAS_JESEP', 'CIT_JESEP',
                            'HIS_JESEP', 'PRO_JESEP', 'GH_JESEP'];
 
+  // Compara nombres de usuario ignorando espacios, guiones y guiones bajos:
+  // "VAC JESEP", "vac-jesep" y "VAC_JESEP" se consideran el mismo rol.
+  function esRolArea_(valor) {
+    var compacto = String(valor === null || valor === undefined ? '' : valor)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!compacto) return false;
+    for (var i = 0; i < USUARIOS_AREAS_.length; i++) {
+      var ref = USUARIOS_AREAS_[i].replace(/[^A-Z0-9]/g, '');
+      if (ref === compacto) return true;
+    }
+    return false;
+  }
+
   /* Normaliza el identificador de usuario para comparar sin tildes,
      sin espacios sobrantes y en mayúsculas (ej. " sgsst_jesep " -> "SGSST_JESEP") */
   function idUsuarioNormalizado_(valor) {
@@ -943,9 +977,15 @@
     }
 
     // Sección "Eliminar novedad" (hoja NOVEDADES): usuarios de áreas.
-    const esArea = USUARIOS_AREAS_.indexOf(usuarioId) !== -1;
+    // Se comparan varias formas del nombre por si viniera con espacios,
+    // guiones bajos o distinta capitalización.
+    const esArea = esRolArea_(usuarioId) || esRolArea_(usuarioSesion);
     const menuGestionarNovedades = document.getElementById('menuGestionarNovedades');
     const seccionGestionarNovedades = document.getElementById('seccionGestionarNovedades');
+
+    console.log('[permisos] usuarioId=' + JSON.stringify(usuarioId) +
+                ' usuarioSesion=' + JSON.stringify(usuarioSesion) +
+                ' esArea=' + esArea);
 
     if (esArea) {
       menuGestionarNovedades.classList.remove('hidden');
@@ -953,6 +993,16 @@
     } else {
       menuGestionarNovedades.classList.add('hidden');
       seccionGestionarNovedades.classList.add('hidden');
+
+      // Aviso visible para que quede claro por que no aparece la seccion
+      const aviso = document.getElementById('avisoSinPermisoNovedades');
+      if (aviso) {
+        aviso.style.display = '';
+        const du = document.getElementById('diagUsuario');
+        const dr = document.getElementById('diagRol');
+        if (du) du.textContent = usuarioSesion || '(vacio)';
+        if (dr) dr.textContent = rolSesion || '(vacio)';
+      }
     }
 
     // UBL_JESEP no registra novedades: se oculta la sección de novedad
@@ -1032,7 +1082,7 @@
     const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', turnos: 'menuTurnos', reportes: 'menuReportes', usuarios: 'menuUsuarios', funcionarios: 'menuFuncionarios', gestionarNovedades: 'menuGestionarNovedades' };
 
     // "Eliminar novedad" es solo para usuarios de areas.
-    if (nombre === 'gestionarNovedades' && USUARIOS_AREAS_.indexOf(usuarioId) === -1) {
+    if (nombre === 'gestionarNovedades' && !esRolArea_(usuarioId) && !esRolArea_(usuarioSesion)) {
       mostrarToast('Su usuario no tiene acceso a esta sección.', 'error');
       nombre = 'consulta';
     }
