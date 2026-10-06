@@ -675,6 +675,58 @@ function iniciarSesion() {
   boton.textContent = 'Validando…';
   mostrarMensaje('Verificando credenciales…', 'info');
 
+  // Los cumpleaños solo leen LISTADO_BASE: no dependen del token ni de la
+  // validación. Se piden EN PARALELO con validarUsuario para no encadenar
+  // dos esperas de ~20 s cada una cuando la red va lenta.
+  let validado = false;
+  let sesionActual = null;
+  let cumpleanosListos = false;
+  let cumpleanosDatos = [];
+  let cumpleanosFecha = '';
+
+  function avanzarSiCorresponde() {
+    if (!validado || !cumpleanosListos) return;
+
+    boton.disabled = false;
+    boton.textContent = 'Ingresar';
+
+    if (!cumpleanosDatos.length) { enrutar(sesionActual); return; }
+
+    let yaCerrado = false;
+    function continuar() {
+      if (yaCerrado) return;
+      yaCerrado = true;
+      enrutar(sesionActual);
+    }
+
+    const overlay = document.getElementById('modalCumpleanos');
+    const btnCerrar = document.getElementById('btnCerrarCumpleanos');
+    if (btnCerrar) btnCerrar.onclick = cerrarModalCumpleanosYCerrar;
+    if (overlay) overlay.onclick = function(ev) { if (ev.target === overlay) cerrarModalCumpleanosYCerrar(); };
+
+    _continuarTrasCumpleanos = continuar;
+
+    if (!mostrarModalCumpleanos_(cumpleanosDatos, cumpleanosFecha)) cerrarModalCumpleanosYCerrar();
+  }
+
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.estado === true) {
+        cumpleanosDatos = r.datos || [];
+        cumpleanosFecha = r.fecha || '';
+      } else {
+        cumpleanosDatos = [];
+      }
+      cumpleanosListos = true;
+      avanzarSiCorresponde();
+    })
+    .withFailureHandler(function() {
+      cumpleanosDatos = [];
+      cumpleanosListos = true;
+      avanzarSiCorresponde();
+    })
+    .cumpleanerosHoy('');
+
   google.script.run
     .withSuccessHandler(function(r) {
       boton.disabled = false;
@@ -688,18 +740,13 @@ function iniciarSesion() {
       $('txtClave').value = '';
       mostrarMensaje('');
 
-      // Se espera el aviso de cumpleaños antes de entrar al módulo.
+      sesionActual = { token: r.token, usuario: r.usuario, modulos: r.modulos || [] };
+      guardarSesion(sesionActual);
+
+      validado = true;
       boton.disabled = true;
       boton.textContent = 'Verificando...';
-
-      const sesion = { token: r.token, usuario: r.usuario, modulos: r.modulos || [] };
-      guardarSesion(sesion);
-
-      avisarCumpleanos(r.token, function() {
-        boton.disabled = false;
-        boton.textContent = 'Ingresar';
-        enrutar(sesion);
-      });
+      avanzarSiCorresponde();
     })
     .withFailureHandler(function(err) {
       boton.disabled = false;
@@ -745,34 +792,23 @@ function cerrarModalCumpleanos_() {
   if (overlay) overlay.classList.add('oculto');
 }
 
-// Consulta los cumpleaños de hoy. Si hay alguien, muestra el modal y espera
-// a que el usuario lo cierre antes de continuar con el ingreso.
-function avisarCumpleanos(token, alTerminar) {
-  let yaContinuo = false;
-  function continuar() {
-    if (yaContinuo) return;
-    yaContinuo = true;
-    cerrarModalCumpleanos_();
-    if (typeof alTerminar === 'function') alTerminar();
-  }
+/* Callback que se dispara al cerrar el modal de cumpleaños.
+   Vive en scope global porque el listener de la tecla Escape lo necesita. */
+let _continuarTrasCumpleanos = null;
 
-  const overlay = document.getElementById('modalCumpleanos');
-  const btnCerrar = document.getElementById('btnCerrarCumpleanos');
-  if (btnCerrar) btnCerrar.onclick = continuar;
-  if (overlay) overlay.onclick = function(ev) { if (ev.target === overlay) continuar(); };
-  document.addEventListener('keydown', function(ev) {
-    if (ev.key === 'Escape' && overlay && !overlay.classList.contains('oculto')) continuar();
-  });
-
-  // Si el servidor falla o no hay cumpleaños, se continúa de una vez.
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (!r || r.estado !== true || !r.datos || !r.datos.length) { continuar(); return; }
-      mostrarModalCumpleanos_(r.datos, r.fecha);
-    })
-    .withFailureHandler(function() { continuar(); })
-    .cumpleanerosHoy(token);
+function cerrarModalCumpleanosYCerrar() {
+  const continuar = _continuarTrasCumpleanos;
+  _continuarTrasCumpleanos = null;
+  cerrarModalCumpleanos_();
+  if (typeof continuar === 'function') continuar();
 }
+
+document.addEventListener('keydown', function(ev) {
+  const overlay = document.getElementById('modalCumpleanos');
+  if (ev.key === 'Escape' && overlay && !overlay.classList.contains('oculto')) {
+    cerrarModalCumpleanosYCerrar();
+  }
+});
 
 function escTexto(v) {
   if (v === null || v === undefined) return '';
@@ -815,36 +851,15 @@ document.addEventListener('DOMContentLoaded', function() {
   let aviso = '';
   try { aviso = sessionStorage.getItem('jesep_aviso') || ''; sessionStorage.removeItem('jesep_aviso'); } catch (e) {}
 
-  // Si ya hay una sesión, se valida en el servidor antes de enrutar
+  // Si ya hay una sesión guardada, se enruta de inmediato.
+  // Antes se llamaba a verificarSesion en el servidor, pero esa acción siempre
+  // devuelve estado:true y solo añadía una espera completa (~20 s con red
+  // lenta) en cada carga de la página. Los módulos ya validan por su cuenta.
   const guardada = leerSesion();
-  if (guardada && guardada.token) {
-    mostrarPantalla('pantallaCarga');
-    google.script.run
-      .withSuccessHandler(function(r) {
-        if (r && r.estado === true) {
-          // Si el servidor devuelve datos actualizados, se usan; si no, se conservan los guardados
-          if (r.usuario) guardada.usuario = r.usuario;
-          if (r.modulos) guardada.modulos = r.modulos;
-          guardarSesion(guardada);
-          enrutar(guardada);
-          return;
-        }
-        // Backend sin la acción "verificarSesion": no se expulsa al usuario por eso
-        if (r && /Acción no válida/i.test(String(r.mensaje || ''))) {
-          enrutar(guardada);
-          return;
-        }
-        borrarSesion();
-        mostrarPantalla('pantallaLogin');
-        mostrarMensaje('Su sesión expiró. Ingrese nuevamente.', 'error');
-      })
-      .withFailureHandler(function(err) {
-        borrarSesion();
-        mostrarPantalla('pantallaLogin');
-        mostrarMensaje((err && err.message) || 'No fue posible verificar la sesión. Ingrese nuevamente.', 'error');
-      })
-      .verificarSesion(guardada.token);
+  if (guardada && guardada.token && guardada.usuario) {
+    enrutar(guardada);
   } else {
+    if (guardada && guardada.token) borrarSesion();
     if (aviso) mostrarMensaje(aviso, 'error');
     $('txtUsuario').focus();
   }
