@@ -132,7 +132,7 @@ function llamarJsonp(accion, argumentos, alTerminar) {
     alTerminar(estado, detalle, Date.now() - t0);
   }
 
-  const t = setTimeout(function() { fin('AVISO', 'Sin respuesta en 30 s'); }, 30000);
+  const t = setTimeout(function() { fin('AVISO', 'Sin respuesta en 90 s'); }, 90000);
 
   window[cb] = function(r) {
     if (r && r.__jsonp_error === true) { fin('FALLO', r.mensaje || 'Error del servidor'); return; }
@@ -168,17 +168,24 @@ function ejecutar() {
     probarRed('https://script.google.com/', 'script.google.com', function(ok2, estado2, ms2, detalle2) {
       agregar('2. Dominio script.google.com', estado2, ms2, detalle2);
 
-      // 3) Llamada real al backend
+      // 3) Llamada real al backend. La primera puede tardar por arranque en frío.
       llamarJsonp('version', [], function(estado3, detalle3, ms3) {
-        agregar('3. Backend acción "version"', estado3, ms3, detalle3);
+        agregar('3. Backend "version" (1ª vez, puede ser lenta)', estado3, ms3, detalle3);
 
-        llamarJsonp('diagnosticarEsquema', [], function(estado4, detalle4, ms4) {
-          agregar('4. Backend abre la hoja', estado4, ms4, detalle4);
+        // 4) Segunda llamada: si el arranque en frío era el problema,
+        //    esta debe ser mucho más rápida.
+        llamarJsonp('version', [], function(estado4, detalle4, ms4) {
+          agregar('4. Backend "version" (2ª vez)', estado4, ms4, detalle4 +
+            (ms3 && ms4 ? ' · diferencia: ' + (ms4 - ms3) + ' ms' : ''));
 
-          document.getElementById('btn').disabled = false;
-          const tr = document.createElement('tr');
-          tr.innerHTML = '<td colspan="4" style="font-weight:700">Fin del diagnóstico.</td>';
-          cuerpo.appendChild(tr);
+          llamarJsonp('diagnosticarEsquema', [], function(estado5, detalle5, ms5) {
+            agregar('5. Backend abre la hoja', estado5, ms5, detalle5);
+
+            document.getElementById('btn').disabled = false;
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="4" style="font-weight:700">Fin del diagnóstico.</td>';
+            cuerpo.appendChild(tr);
+          });
         });
       });
     });
