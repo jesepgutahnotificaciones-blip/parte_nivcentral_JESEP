@@ -3,59 +3,69 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prueba de conexión — JESEP</title>
+<title>Diagnóstico de conexión — JESEP</title>
 <style>
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6f5; margin: 0; padding: 22px; color: #263238; }
-  .caja { max-width: 780px; margin: 0 auto; }
+  .caja { max-width: 900px; margin: 0 auto; }
   h1 { font-size: 1.25rem; color: #1b5e3f; }
   p.sub { color: #607d8b; font-size: .88rem; margin-top: 4px; }
-  .url { font-family: Consolas, monospace; font-size: .74rem; background: #fff; border: 1px solid #dfe7e4;
+  .url { font-family: Consolas, monospace; font-size: .72rem; background: #fff; border: 1px solid #dfe7e4;
          border-radius: 8px; padding: 10px; margin: 14px 0; word-break: break-all; }
   button { padding: 10px 18px; font-size: .9rem; font-weight: 700; color: #fff; background: #1b5e3f;
            border: none; border-radius: 8px; cursor: pointer; margin-right: 8px; }
   button.sec { background: #fff; color: #1b5e3f; border: 1px solid #1b5e3f; }
   button:disabled { opacity: .5; cursor: not-allowed; }
   table { width: 100%; border-collapse: collapse; margin-top: 16px; background: #fff;
-          border-radius: 8px; overflow: hidden; font-size: .84rem; }
-  th { background: #1b5e3f; color: #fff; text-align: left; padding: 9px 10px; font-size: .72rem;
+          border-radius: 8px; overflow: hidden; font-size: .82rem; }
+  th { background: #1b5e3f; color: #fff; text-align: left; padding: 9px 10px; font-size: .7rem;
        text-transform: uppercase; letter-spacing: .02em; }
-  td { padding: 9px 10px; border-bottom: 1px solid #eef2f0; vertical-align: middle; }
+  td { padding: 8px 10px; border-bottom: 1px solid #eef2f0; vertical-align: top; }
   td.estado { font-weight: 700; white-space: nowrap; }
   .ok { color: #1b5e3f; }
   .mal { color: #c62828; }
   .espera { color: #b0782a; }
-  .nota { margin-top: 16px; font-size: .8rem; color: #607d8b; background: #fdf3e3;
-          border: 1px solid #f0d9a8; border-radius: 8px; padding: 12px 14px; line-height: 1.55; }
-  .nota code { background: #fff; padding: 1px 5px; border-radius: 4px; font-size: .78rem; }
-  .nota strong { color: #8a5a00; }
+  .nota { margin-top: 16px; font-size: .82rem; color: #455a64; background: #fff;
+          border: 1px solid #dfe7e4; border-radius: 8px; padding: 14px 16px; line-height: 1.6; }
+  .nota h3 { margin: 0 0 8px; font-size: .9rem; color: #1b5e3f; }
+  .nota ol { margin: 8px 0 0; padding-left: 22px; }
+  .nota li { margin-bottom: 6px; }
+  .nota code { background: #eef2f0; padding: 1px 5px; border-radius: 4px; font-size: .78rem; }
+  .recorte { font-size: .78rem; color: #607d8b; margin-top: 20px; word-break: break-all; }
+  .recorte div { margin-top: 4px; padding: 8px 10px; background: #263238; color: #c8e6d4;
+                border-radius: 6px; font-family: Consolas, monospace; font-size: .72rem; }
 </style>
 </head>
 <body>
 <div class="caja">
-  <h1>🔌 Prueba de conexión con el backend</h1>
-  <p class="sub">Esta página no tiene nada más: solo verifica si el navegador puede llamar a Apps Script.</p>
+  <h1>🔌 Diagnóstico de conexión con el backend</h1>
+  <p class="sub">Comprueba por separado: internet, acceso a Google y por último el backend.</p>
 
   <div class="url" id="urlMostrada"></div>
 
-  <button type="button" id="btn">Ejecutar prueba completa</button>
-  <button type="button" class="sec" onclick="location.reload()">Recargar página</button>
+  <button type="button" id="btn">Ejecutar diagnóstico</button>
+  <button type="button" class="sec" onclick="location.reload()">Recargar</button>
 
   <table>
-    <thead><tr><th>PRUEBA</th><th>RESULTADO</th><th>TIEMPO</th></tr></thead>
-    <tbody id="salida">
-      <tr><td>Pulse el botón para empezar</td><td class="estado espera">—</td><td>—</td></tr>
-    </tbody>
+    <thead><tr><th>PRUEBA</th><th>RESULTADO</th><th>TIEMPO</th><th>DETALLE</th></tr></thead>
+    <tbody id="salida"><tr><td colspan="4">Pulse el botón para empezar</td></tr></tbody>
   </table>
 
+  <div class="recorte" id="recorte"></div>
+
   <div class="nota">
-    <strong>Cómo leer el resultado:</strong><br>
-    · <strong>Una sola prueba falla y las demás pasan</strong> → es un problema puntual de esa acción.<br>
-    · <strong>Todas fallan con menos de 1 segundo</strong> → el navegador no está llegando a Google.
-      Revisa bloqueadores de anuncios, VPN, antivirus o la red wifi.<br>
-    · <strong>Todas pasan pero la aplicación falla</strong> → el problema está en
-    <code>index.html</code>, no en la red. Carga la aplicación en incógnito y revisa la consola (F12).<br>
-    · <strong>La primera tarda y las siguientes son rápidas</strong> → es el arranque en frío de
-    Apps Script, es normal.
+    <h3>Cómo leer el resultado</h3>
+    <ol>
+      <li><strong>Internet</strong> falla → no hay red. Revisa wifi, datos móviles o VPN.</li>
+      <li>Internet funciona pero <strong>Google</strong> falla → hay un bloqueo a
+          <code>script.google.com</code>: bloqueador de anuncios, antivirus corporativo,
+          proxy del centro de trabajo o DNS filtering.</li>
+      <li>Las dos anteriores funcionan y <strong>JSONP al backend</strong> falla →
+          el despliegue no responde. Revisa en Apps Script → Manage deployments si sigue
+          con acceso <em>Cualquier persona</em> y si la URL es correcta.</li>
+      <li>Todo funciona aquí pero la <strong>aplicación falla</strong> → el problema está en
+          los archivos del sitio, no en la red. Carga la aplicación en incógnito y revisa
+          la consola con F12.</li>
+    </ol>
   </div>
 </div>
 
@@ -65,91 +75,114 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwi
 document.getElementById('urlMostrada').textContent = APPS_SCRIPT_API_URL;
 
 const cuerpo = document.getElementById('salida');
+const recorte = document.getElementById('recorte');
 
-// Llama al backend por JSONP, igual que lo hace la aplicación.
-function llamar(nombre, accion, argumentos, alTerminar) {
-  const cb = '__t_' + nombre + '_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+function agregar(nombre, estado, ms, detalle) {
+  const clase = estado === 'OK' ? 'ok' : (estado === 'AVISO' ? 'espera' : 'mal');
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td>' + esc(nombre) + '</td>' +
+    '<td class="estado ' + clase + '">' + esc(estado) + '</td>' +
+    '<td>' + (ms === undefined ? '—' : ms + ' ms') + '</td>' +
+    '<td>' + esc(detalle === undefined ? '' : detalle) + '</td>';
+  cuerpo.appendChild(tr);
+}
+
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function recorte_(titulo, texto) {
+  const d = document.createElement('div');
+  d.textContent = titulo + ': ' + String(texto).slice(0, 700);
+  recorte.appendChild(d);
+}
+
+// Prueba de red pura: no-cors resuelve si la peticion llego al servidor.
+// Si hay fallo de red real, fetch rechaza con TypeError.
+function probarRed(url, nombre, alTerminar) {
+  const t0 = Date.now();
+  fetch(url, { mode: 'no-cors', cache: 'no-store' })
+    .then(function(r) {
+      alTerminar(true, 'OK', Date.now() - t0,
+        'La red funciona (respuesta opaca tipo ' + r.type + '). El servidor respondió.');
+    })
+    .catch(function(e) {
+      const msg = (e && e.message) || 'TypeError';
+      alTerminar(false, 'FALLO', Date.now() - t0, 'No se pudo conectar: ' + msg);
+      recorte_(nombre, msg);
+    });
+}
+
+// Llamada JSONP real al backend. El nombre del callback se mantiene limpio
+// porque el servidor elimina espacios y parentesis de ese valor.
+function llamarJsonp(accion, argumentos, alTerminar) {
+  const cb = '__j' + Date.now() + '_' + Math.floor(Math.random() * 100000);
   const script = document.createElement('script');
-  const inicio = Date.now();
+  const t0 = Date.now();
   let listo = false;
 
-  const fin = function(estado, detalle) {
+  function fin(estado, detalle) {
     if (listo) return;
     listo = true;
     clearTimeout(t);
     try { delete window[cb]; } catch (e) {}
     if (script.parentNode) script.parentNode.removeChild(script);
-    alTerminar(estado, detalle, Date.now() - inicio);
-  };
+    alTerminar(estado, detalle, Date.now() - t0);
+  }
 
-  const t = setTimeout(function() { fin('TIMEOUT', 'Sin respuesta en 60 s'); }, 60000);
+  const t = setTimeout(function() { fin('AVISO', 'Sin respuesta en 30 s'); }, 30000);
 
   window[cb] = function(r) {
-    if (r && r.__jsonp_error === true) { fin('ERROR', r.mensaje || 'Error del servidor'); return; }
-    fin('OK', r);
+    if (r && r.__jsonp_error === true) { fin('FALLO', r.mensaje || 'Error del servidor'); return; }
+    if (r && r.version) { fin('OK', 'Versión ' + r.version); return; }
+    if (r && r.estado === false) { fin('FALLO', r.mensaje || 'estado=false'); return; }
+    fin('OK', JSON.stringify(r).slice(0, 120));
   };
 
   const p = new URLSearchParams();
   p.set('accion', accion);
   p.set('callback', cb);
   p.set('args', JSON.stringify(argumentos || []));
+
+  script.onerror = function() { fin('FALLO', 'El navegador rechazó o no pudo cargar la respuesta'); };
   script.src = APPS_SCRIPT_API_URL + '?' + p.toString();
-  script.onerror = function() { fin('ERROR', 'El navegador rechazó la petición'); };
   document.head.appendChild(script);
-}
-
-function agregar(nombre, estado, detalle, ms) {
-  const tr = document.createElement('tr');
-  const clase = estado === 'OK' ? 'ok' : (estado === 'TIMEOUT' ? 'espera' : 'mal');
-
-  let resumen;
-  if (estado === 'OK' && detalle && detalle.version) {
-    resumen = 'Respondió — versión ' + detalle.version;
-    if (detalle.estado === false) { resumen = 'Respondió con estado=false: ' + (detalle.mensaje || ''); }
-  } else {
-    resumen = String(detalle === undefined ? estado : detalle);
-  }
-
-  tr.innerHTML = '<td>' + nombre + '</td>' +
-    '<td class="estado ' + clase + '">' + escapar(estado) + '</td>' +
-    '<td>' + (ms === undefined ? '—' : ms + ' ms') + '</td>' +
-    '<td style="font-size:.78rem;color:#607d8b">' + escapar(resumen) + '</td>';
-  cuerpo.appendChild(tr);
-}
-
-function escapar(s) {
-  return String(s === undefined || s === null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function ejecutar() {
   cuerpo.innerHTML = '';
+  recorte.innerHTML = '';
   document.getElementById('btn').disabled = true;
 
-  const pruebas = [
-    { nombre: '1. Version (no abre la hoja)', accion: 'version', args: [] },
-    { nombre: '2. Diagnóstico del esquema (abre el libro)', accion: 'diagnosticarEsquema', args: [] },
-    { nombre: '3. Listar novedades del área', accion: 'listarNovedades', args: ['PRUEBA', 'VAC_JESEP', { pagina: 1, porPagina: 25 }] },
-    { nombre: '4. Version otra vez (comprueba caché)', accion: 'version', args: [] },
-    { nombre: '5. Consultar por turno', accion: 'consultarPorTurno', args: ['PRUEBA', 'A'] }
-  ];
+  agregar('0. Estado del navegador', navigator.onLine ? 'OK' : 'FALLO', undefined,
+    'navigator.onLine = ' + navigator.onLine +
+    (navigator.connection ? ' · tipo de red: ' + navigator.connection.effectiveType : ''));
 
-  let i = 0;
-  (function siguiente() {
-    if (i >= pruebas.length) {
-      document.getElementById('btn').disabled = false;
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td colspan="4" style="font-weight:700">Fin de las pruebas. ' +
-        'Anote qué pruebas fallaron.</td>';
-      cuerpo.appendChild(tr);
-      return;
-    }
-    const p = pruebas[i++];
-    llamar(p.nombre, p.accion, p.args, function(estado, detalle, ms) {
-      agregar(p.nombre, estado, detalle, ms);
-      setTimeout(siguiente, 250);
+  // 1) Internet en general
+  probarRed('https://www.google.com/generate_204', 'Internet', function(ok, estado, ms, detalle) {
+    agregar('1. Internet (google.com)', estado, ms, detalle);
+
+    // 2) Acceso al dominio de Apps Script
+    probarRed('https://script.google.com/', 'script.google.com', function(ok2, estado2, ms2, detalle2) {
+      agregar('2. Dominio script.google.com', estado2, ms2, detalle2);
+
+      // 3) Llamada real al backend
+      llamarJsonp('version', [], function(estado3, detalle3, ms3) {
+        agregar('3. Backend acción "version"', estado3, ms3, detalle3);
+
+        llamarJsonp('diagnosticarEsquema', [], function(estado4, detalle4, ms4) {
+          agregar('4. Backend abre la hoja', estado4, ms4, detalle4);
+
+          document.getElementById('btn').disabled = false;
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td colspan="4" style="font-weight:700">Fin del diagnóstico.</td>';
+          cuerpo.appendChild(tr);
+        });
+      });
     });
-  })();
+  });
 }
 
 document.getElementById('btn').addEventListener('click', ejecutar);
