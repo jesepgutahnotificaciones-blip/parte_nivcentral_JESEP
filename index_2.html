@@ -127,6 +127,40 @@
     th { background: var(--verde) !important; color: white !important; white-space: nowrap; }
     td { vertical-align: middle; }
 
+    /* Controles de la gestion de novedades */
+    .pv-resumen-nov {
+      font-size: .8rem;
+      color: #607d8b;
+    }
+
+    .pv-resumen-nov b { color: var(--verde); }
+
+    .pv-paginacion {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 12px;
+    }
+
+    .pv-paginacion button {
+      min-width: 36px;
+      padding: 5px 9px;
+      font-size: .78rem;
+      font-weight: 600;
+      color: #607d8b;
+      background: #fff;
+      border: 1px solid var(--borde);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .pv-paginacion button:hover:not(:disabled) { background: #f1f5f3; }
+    .pv-paginacion button.activo { color: #fff; background: var(--verde); border-color: var(--verde); }
+    .pv-paginacion button:disabled { opacity: .4; cursor: not-allowed; }
+    .pv-paginacion .pv-info { font-size: .78rem; color: #90a4ae; margin: 0 6px; }
+
     .badge-novedad {
       background: #e8f3ed;
       color: var(--verde);
@@ -457,21 +491,44 @@
             <button type="button" class="btn btn-sm btn-pol" onclick="cargarNovedadesHoja()">🔄 Actualizar</button>
           </div>
           <div class="card-body">
-            <div id="avisoPermisoNovedades" class="alert alert-info" style="display: none;">
-              <strong>Diagnóstico:</strong> esta sección se muestra a los usuarios
-              <code>SGSST_JESEP</code>, <code>VAC_JESEP</code>, <code>PAS_JESEP</code>,
-              <code>CIT_JESEP</code>, <code>HIS_JESEP</code>, <code>PRO_JESEP</code> y
-              <code>GH_JESEP</code>. Si le aparece este aviso, su usuario es
-              <code id="diagUsuarioActual">—</code> y el rol es
-              <code id="diagRolActual">—</code>.
+            <div class="row g-2 mb-2">
+              <div class="col-md-5">
+                <input type="text" id="pvBuscar" class="form-control" autocomplete="off"
+                       placeholder="Buscar cédula, nombre, grado o novedad..."
+                       oninput="programarBusquedaNovedades()">
+              </div>
+              <div class="col-md-3">
+                <select id="pvFiltroTipo" class="form-select" onchange="filtrarNovedadesHoja()">
+                  <option value="">Todos los tipos</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <select id="pvFiltroTurno" class="form-select" onchange="filtrarNovedadesHoja()">
+                  <option value="">Todos los turnos</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <select id="pvPorPagina" class="form-select" onchange="cambiarPorPaginaNovedades()">
+                  <option value="25">25 por página</option>
+                  <option value="50">50 por página</option>
+                  <option value="100">100 por página</option>
+                  <option value="200">200 por página</option>
+                </select>
+              </div>
             </div>
+
+            <div id="pvResumenNovedades" class="pv-resumen-nov mb-2"></div>
+
             <div class="alert alert-warning mb-3">
               <strong>Atención:</strong> al eliminar una fila se borra de forma permanente de la hoja NOVEDADES.
               El funcionario volverá a aparecer sin novedad en el conteo de fuerza.
             </div>
+
             <div id="listaNovedadesHoja">
               <div class="empty">Pulse «Actualizar» para cargar las novedades.</div>
             </div>
+
+            <div id="pvPaginacion" class="pv-paginacion"></div>
           </div>
         </div>
       </section>
@@ -1762,60 +1819,191 @@ function avisarPresentacionVacaciones() {
   // ========== GESTION DE LA HOJA NOVEDADES (USUARIOS DE AREAS) ==========
   // Permite eliminar una novedad registrada por error. La fila se borra de
   // NOVEDADES y el funcionario vuelve a contar como disponible.
+  // La carga es paginada y con filtros: el servidor nunca devuelve toda
+  // la hoja, solo la pagina pedida.
+  let _novPagina = 1;
+  let _novCargando = false;
 
   function cargarNovedadesHoja() {
+    _novPagina = 1;
+    _novCargando = true;
+    consultarNovedadesHoja_();
+  }
+
+  // Consulta una pagina concreta con los filtros activos.
+  function consultarNovedadesHoja_() {
     const contenedor = document.getElementById('listaNovedadesHoja');
+    const resumen = document.getElementById('pvResumenNovedades');
+    const pag = document.getElementById('pvPaginacion');
+    if (!contenedor) return;
+
+    const selTipo = document.getElementById('pvFiltroTipo');
+    const selTurno = document.getElementById('pvFiltroTurno');
+    const selCant = document.getElementById('pvPorPagina');
+    const inpBusca = document.getElementById('pvBuscar');
+
+    const opciones = {
+      pagina: _novPagina,
+      porPagina: selCant ? parseInt(selCant.value, 10) || 25 : 25,
+      cedula: inpBusca ? inpBusca.value.trim() : '',
+      tipo: selTipo ? selTipo.value : '',
+      turno: selTurno ? selTurno.value : ''
+    };
+
     contenedor.innerHTML = '<div class="loading">🔄 Consultando la hoja NOVEDADES...</div>';
+    if (resumen) resumen.textContent = '';
+    if (pag) pag.innerHTML = '';
 
     google.script.run
       .withSuccessHandler(function(respuesta) {
+        _novCargando = false;
         if (!respuesta || respuesta.estado !== true) {
           contenedor.innerHTML = '<div class="alert alert-danger">' +
             esc((respuesta && respuesta.mensaje) || 'No fue posible consultar las novedades.') + '</div>';
           return;
         }
 
-        const novedades = respuesta.datos || [];
-        if (!novedades.length) {
-          contenedor.innerHTML = '<div class="empty">' +
-            esc(respuesta.mensaje || 'La hoja NOVEDADES no tiene registros.') + '</div>';
-          return;
-        }
-
-        let html = '<div class="alert alert-info">Se encontraron <strong>' + novedades.length +
-          '</strong> novedad(es) registradas.</div>';
-        html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr>' +
-          '<th>Fila</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>TURNO</th>' +
-          '<th>TIPO</th><th>NOVEDAD</th><th>DÍAS</th><th>F. INICIAL</th><th>F. PRESENTACIÓN</th>' +
-          '<th>ACCIÓN</th></tr></thead><tbody>';
-
-        novedades.forEach(function(n) {
-          const sello = esc(n.sello === undefined || n.sello === null ? '' : n.sello);
-          html += '<tr>';
-          html += '<td>' + n.fila + '</td>';
-          html += '<td>' + esc(n.cedula) + '</td>';
-          html += '<td>' + esc(n.grado) + '</td>';
-          html += '<td><strong>' + esc(n.funcionario) + '</strong></td>';
-          html += '<td>' + esc(n.turno) + '</td>';
-          html += '<td>' + esc(n.tipo) + '</td>';
-          html += '<td>' + esc(n.novedad) + '</td>';
-          html += '<td>' + esc(n.dias) + '</td>';
-          html += '<td>' + esc(n.fechaInicial) + '</td>';
-          html += '<td>' + esc(n.fechaPresentacion) + '</td>';
-          html += '<td><button type="button" class="btn btn-sm btn-danger" data-fila="' + n.fila +
-            '" data-sello="' + sello + '" data-nombre="' + esc(n.funcionario) +
-            '" onclick="eliminarNovedadHoja(this)">🗑 Eliminar</button></td>';
-          html += '</tr>';
-        });
-
-        html += '</tbody></table></div>';
-        contenedor.innerHTML = html;
+        actualizarFiltrosNovedades_(respuesta, selTipo, selTurno);
+        pintarNovedadesHoja_(respuesta, contenedor, resumen, pag);
       })
       .withFailureHandler(function(e) {
+        _novCargando = false;
         contenedor.innerHTML = '<div class="alert alert-danger">Error consultando: ' +
           esc((e && e.message) || 'fallo de red') + '</div>';
       })
-      .listarNovedades(tokenSesion, usuarioId);
+      .listarNovedades(tokenSesion, usuarioId, opciones);
+  }
+
+  // Rellena los desplegables de tipo y turno con lo que hay en la hoja,
+  // conservando la seleccion actual.
+  function actualizarFiltrosNovedades_(r, selTipo, selTurno) {
+    if (selTipo) {
+      const previo = selTipo.value;
+      let h = '<option value="">Todos los tipos</option>';
+      (r.tipos || []).forEach(function(t) {
+        const n = (r.porTipo && r.porTipo[t]) || 0;
+        h += '<option value="' + esc(t) + '"' + (t === previo ? ' selected' : '') + '>' +
+          esc(t) + ' (' + n + ')</option>';
+      });
+      selTipo.innerHTML = h;
+      selTipo.value = previo;
+    }
+
+    if (selTurno) {
+      const previo = selTurno.value;
+      let h = '<option value="">Todos los turnos</option>';
+      (r.turnos || []).forEach(function(t) {
+        h += '<option value="' + esc(t) + '"' + (t === previo ? ' selected' : '') + '>' + esc(t) + '</option>';
+      });
+      selTurno.innerHTML = h;
+      selTurno.value = previo;
+    }
+  }
+
+  function pintarNovedadesHoja_(r, contenedor, resumen, pag) {
+    const novedades = r.datos || [];
+    const total = r.total || 0;
+    const pagina = r.pagina || 1;
+    const paginas = r.paginas || 0;
+
+    if (!total) {
+      contenedor.innerHTML = '<div class="empty">No hay novedades que coincidan con el filtro.</div>';
+      if (resumen) resumen.textContent = '0 registros';
+      if (pag) pag.innerHTML = '';
+      return;
+    }
+
+    if (resumen) {
+      const desde = (pagina - 1) * r.porPagina + 1;
+      const hasta = Math.min(pagina * r.porPagina, total);
+      resumen.innerHTML = 'Mostrando <b>' + desde + '–' + hasta + '</b> de <b>' + total + '</b> novedad(es)';
+      if (r.totalHoja !== undefined && r.totalHoja !== total) {
+        resumen.innerHTML += ' (la hoja tiene ' + r.totalHoja + ' en total)';
+      }
+    }
+
+    let html = '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr>' +
+      '<th>Fila</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>TURNO</th>' +
+      '<th>TIPO</th><th>NOVEDAD</th><th>DÍAS</th><th>F. INICIAL</th><th>F. PRESENTACIÓN</th>' +
+      '<th>ACCIÓN</th></tr></thead><tbody>';
+
+    novedades.forEach(function(n) {
+      const sello = esc(n.sello === undefined || n.sello === null ? '' : n.sello);
+      html += '<tr>';
+      html += '<td>' + n.fila + '</td>';
+      html += '<td>' + esc(n.cedula) + '</td>';
+      html += '<td>' + esc(n.grado) + '</td>';
+      html += '<td><strong>' + esc(n.funcionario) + '</strong></td>';
+      html += '<td>' + esc(n.turno) + '</td>';
+      html += '<td>' + esc(n.tipo) + '</td>';
+      html += '<td>' + esc(n.novedad) + '</td>';
+      html += '<td>' + esc(n.dias) + '</td>';
+      html += '<td>' + esc(n.fechaInicial) + '</td>';
+      html += '<td>' + esc(n.fechaPresentacion) + '</td>';
+      html += '<td><button type="button" class="btn btn-sm btn-danger" data-fila="' + n.fila +
+        '" data-sello="' + sello + '" data-nombre="' + esc(n.funcionario) +
+        '" onclick="eliminarNovedadHoja(this)">🗑 Eliminar</button></td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    contenedor.innerHTML = html;
+
+    if (pag) pintarPaginacionNovedades_(pag, pagina, paginas);
+  }
+
+  function pintarPaginacionNovedades_(pag, pagina, paginas) {
+    if (paginas <= 1) { pag.innerHTML = ''; return; }
+
+    let h = '<button type="button" onclick="irPaginaNovedades(1)"' + (pagina === 1 ? ' disabled' : '') + '>« Primera</button>';
+    h += '<button type="button" onclick="irPaginaNovedades(' + (pagina - 1) + ')"' + (pagina === 1 ? ' disabled' : '') + '>‹</button>';
+
+    // Ventana de 5 páginas alrededor de la actual
+    var desde = Math.max(1, pagina - 2);
+    var hasta = Math.min(paginas, desde + 4);
+    desde = Math.max(1, hasta - 4);
+
+    if (desde > 1) h += '<span class="pv-info">…</span>';
+    for (var i = desde; i <= hasta; i++) {
+      h += '<button type="button" class="' + (i === pagina ? 'activo' : '') +
+        '" onclick="irPaginaNovedades(' + i + ')">' + i + '</button>';
+    }
+    if (hasta < paginas) h += '<span class="pv-info">…</span>';
+
+    h += '<button type="button" onclick="irPaginaNovedades(' + (pagina + 1) + ')"' + (pagina === paginas ? ' disabled' : '') + '>›</button>';
+    h += '<button type="button" onclick="irPaginaNovedades(' + paginas + ')"' + (pagina === paginas ? ' disabled' : '') + '>Última »</button>';
+    h += '<span class="pv-info">Página ' + pagina + ' de ' + paginas + '</span>';
+
+    pag.innerHTML = h;
+  }
+
+  function irPaginaNovedades(n) {
+    if (_novCargando) return;
+    _novPagina = n;
+    consultarNovedadesHoja_();
+    document.getElementById('listaNovedadesHoja').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function filtrarNovedadesHoja() {
+    if (_novCargando) return;
+    _novPagina = 1;
+    consultarNovedadesHoja_();
+  }
+
+  function cambiarPorPaginaNovedades() {
+    _novPagina = 1;
+    consultarNovedadesHoja_();
+  }
+
+  // Espera a que el usuario deje de escribir para no lanzar una
+  // consulta por cada tecla en hojas con muchas novedades.
+  var _temporizadorBusqueda = null;
+  function programarBusquedaNovedades() {
+    if (_temporizadorBusqueda) clearTimeout(_temporizadorBusqueda);
+    _temporizadorBusqueda = setTimeout(function() {
+      _novPagina = 1;
+      consultarNovedadesHoja_();
+    }, 400);
   }
 
   function eliminarNovedadHoja(boton) {
@@ -1823,9 +2011,7 @@ function avisarPresentacionVacaciones() {
     const sello = boton.getAttribute('data-sello') || '';
     const nombreFuncionario = boton.getAttribute('data-nombre') || '';
 
-    const texto = nombreFuncionario
-      ? ('\n\nFuncionario: ' + nombreFuncionario)
-      : '';
+    const texto = nombreFuncionario ? ('\n\nFuncionario: ' + nombreFuncionario) : '';
     if (!confirm('¿Eliminar la novedad de la fila ' + fila + '?' + texto +
       '\n\nSe borra de forma permanente de la hoja NOVEDADES.')) return;
 
@@ -1836,7 +2022,7 @@ function avisarPresentacionVacaciones() {
       .withSuccessHandler(function(respuesta) {
         if (respuesta && respuesta.estado === true) {
           mostrarToast(respuesta.mensaje || 'Novedad eliminada.');
-          cargarNovedadesHoja();
+          consultarNovedadesHoja_();
         } else {
           mostrarToast((respuesta && respuesta.mensaje) || 'No fue posible eliminar.', 'error');
           boton.disabled = false;

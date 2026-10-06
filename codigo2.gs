@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-05-r34';
+var VERSION_APP = 'JESEP-2026-10-06-r36';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -302,7 +302,10 @@ function doGet(e) {
         resultado = diagnosticarUsuarios();
         break;
       case 'listarNovedades':
-        resultado = listarNovedades(args[0], args[1]);
+        resultado = listarNovedades(args[0], args[1], args[2]);
+        break;
+      case 'diagnosticarCarga':
+        resultado = diagnosticarCarga(args[0]);
         break;
       case 'eliminarNovedad':
         resultado = eliminarNovedad(args[0], args[1], args[2], args[3]);
@@ -1805,7 +1808,8 @@ function eliminarFuncionario(token, cedula) {
    ===================================================== */
 
 // Verifica que el usuario exista en USUARIOS y sea de areas (o administrador).
-function esUsuarioArea_(usuario) {
+// Acepta el libro ya abierto para no volver a abrirlo.
+function esUsuarioArea_(usuario, libroPrevio) {
   var id = normalizarUsuario_(usuario);
   if (!id) return false;
 
@@ -1815,7 +1819,7 @@ function esUsuarioArea_(usuario) {
   };
 
   try {
-    var ss = abrirLibro_();
+    var ss = libroPrevio || abrirLibro_();
     var hoja = ss.getSheetByName('USUARIOS');
     if (!hoja) return false;
 
@@ -1859,19 +1863,38 @@ function formatearFechaCelda_(v) {
 
 // Lista las filas de NOVEDADES con su numero real dentro de la hoja,
 // para poder borrarlas de forma precisa.
-function listarNovedades(token, usuario) {
+//
+// Recibe un objeto de opciones para no enviar nunca toda la hoja:
+//   { pagina, porPagina, cedula, tipo, turno }
+//
+// Devuelve solo la pagina solicitada, el total de coincidencias y el
+// conteo por tipo (para pintar los filtros sin pedir otra consulta).
+function listarNovedades(token, usuario, opciones) {
   try {
-    if (!esUsuarioArea_(usuario)) {
+    var op = (opciones && typeof opciones === 'object') ? opciones : {};
+
+    var pagina = Math.max(1, parseInt(op.pagina, 10) || 1);
+    var porPagina = Math.min(200, Math.max(5, parseInt(op.porPagina, 10) || 25));
+    var fCedula = String(op.cedula || '').trim();
+    var fTipo = String(op.tipo || '').trim().toUpperCase();
+    var fTurno = String(op.turno || '').trim().toUpperCase();
+
+    // Se abre el libro una sola vez y se reutiliza para las dos hojas.
+    var ss = abrirLibro_();
+
+    if (!esUsuarioArea_(usuario, ss)) {
       return { estado: false, mensaje: 'Su usuario no puede gestionar las novedades.' };
     }
 
-    var ss = abrirLibro_();
     var hoja = ss.getSheetByName('NOVEDADES');
     if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja NOVEDADES.' };
 
     var datos = hoja.getDataRange().getValues();
     if (datos.length < 2) {
-      return { estado: true, mensaje: 'La hoja NOVEDADES no tiene registros.', datos: [] };
+      return {
+        estado: true, mensaje: 'La hoja NOVEDADES no tiene registros.',
+        total: 0, pagina: 1, paginas: 0, porPagina: porPagina, datos: [], porTipo: {}
+      };
     }
 
     var cab = (datos[0] || []).map(normalizarCabColumna_);
@@ -1885,7 +1908,12 @@ function listarNovedades(token, usuario) {
     var iFIni = idxColumnaBase_(cab, [/^FECHA INICIAL$/], -1);
     var iFPre = idxColumnaBase_(cab, [/^FECHA PRESENTACION$/], -1);
 
-    var lista = [];
+    var busqueda = fCedula.toUpperCase();
+    var coincidencias = [];
+    var porTipo = {};
+    var turnosVistos = {};
+    var totalHoja = 0;
+
     for (var i = 1; i < datos.length; i++) {
       var fila = datos[i];
 
@@ -1897,25 +1925,63 @@ function listarNovedades(token, usuario) {
         }
       }
       if (!tieneAlgo) continue;
+      totalHoja++;
 
-      var cedula = iCed >= 0 ? String(fila[iCed] === null ? '' : fila[iCed]) : '';
+      var sCed = iCed >= 0 ? String(fila[iCed] === null ? '' : fila[iCed]) : '';
+      var sNom = iNom >= 0 ? String(fila[iNom] === null ? '' : fila[iNom]) : '';
+      var sTur = iTur >= 0 ? String(fila[iTur] === null ? '' : fila[iTur]) : '';
+      var sTipo = iTipo >= 0 ? String(fila[iTipo] === null ? '' : fila[iTipo]) : '';
+      var sNov = iNov >= 0 ? String(fila[iNov] === null ? '' : fila[iNov]) : '';
+      var sGr = iGr >= 0 ? String(fila[iGr] === null ? '' : fila[iGr]) : '';
 
-      lista.push({
+      // Los conteos por tipo y turno se hacen sobre toda la hoja para
+      // que los filtros reflejen el total real, no solo la pagina visible.
+      if (sTipo) porTipo[sTipo] = (porTipo[sTipo] || 0) + 1;
+      if (sTur) turnosVistos[sTur.trim().toUpperCase()] = 1;
+
+      // Filtros
+      if (fTipo && sTipo.trim().toUpperCase() !== fTipo) continue;
+      if (fTurno && sTur.trim().toUpperCase() !== fTurno) continue;
+      if (busqueda) {
+        var heno = (sCed + ' ' + sNom + ' ' + sTipo + ' ' + sNov + ' ' + sGr).toUpperCase();
+        if (heno.indexOf(busqueda) === -1) continue;
+      }
+
+      coincidencias.push({
         fila: i + 1,
-        cedula: cedula,
-        funcionario: iNom >= 0 ? String(fila[iNom] === null ? '' : fila[iNom]) : '',
-        grado: iGr >= 0 ? String(fila[iGr] === null ? '' : fila[iGr]) : '',
-        turno: iTur >= 0 ? String(fila[iTur] === null ? '' : fila[iTur]) : '',
-        tipo: iTipo >= 0 ? String(fila[iTipo] === null ? '' : fila[iTipo]) : '',
-        novedad: iNov >= 0 ? String(fila[iNov] === null ? '' : fila[iNov]) : '',
+        cedula: sCed,
+        funcionario: sNom,
+        grado: sGr,
+        turno: sTur,
+        tipo: sTipo,
+        novedad: sNov,
         dias: iDias >= 0 ? String(fila[iDias] === null ? '' : fila[iDias]) : '',
         fechaInicial: iFIni >= 0 ? formatearFechaCelda_(fila[iFIni]) : '',
         fechaPresentacion: iFPre >= 0 ? formatearFechaCelda_(fila[iFPre]) : '',
-        sello: cedula + '|' + (iTipo >= 0 ? fila[iTipo] : '') + '|' + (iNov >= 0 ? fila[iNov] : '')
+        sello: sCed + '|' + (iTipo >= 0 ? fila[iTipo] : '') + '|' + (iNov >= 0 ? fila[iNov] : '')
       });
     }
 
-    return { estado: true, total: lista.length, datos: lista };
+    var total = coincidencias.length;
+    var paginas = Math.ceil(total / porPagina);
+    if (paginas === 0) paginas = 0;
+    if (pagina > paginas && paginas > 0) pagina = paginas;
+
+    var desde = (pagina - 1) * porPagina;
+    var paginaDatos = coincidencias.slice(desde, desde + porPagina);
+
+    return {
+      estado: true,
+      total: total,
+      totalHoja: totalHoja,
+      pagina: pagina,
+      paginas: paginas,
+      porPagina: porPagina,
+      tipos: Object.keys(porTipo).sort(),
+      porTipo: porTipo,
+      turnos: Object.keys(turnosVistos).sort(),
+      datos: paginaDatos
+    };
   } catch (err) {
     return { estado: false, mensaje: 'Error listando novedades: ' + err.message };
   }
@@ -1927,16 +1993,17 @@ function listarNovedades(token, usuario) {
 // consulta y el borrado, se rechaza en vez de borrar el registro equivocado.
 function eliminarNovedad(token, usuario, fila, sello) {
   try {
-    if (!esUsuarioArea_(usuario)) {
-      return { estado: false, mensaje: 'Su usuario no puede eliminar novedades.' };
-    }
-
     var nFila = parseInt(fila, 10);
     if (isNaN(nFila) || nFila < 2) {
       return { estado: false, mensaje: 'Fila no válida.' };
     }
 
     var ss = abrirLibro_();
+
+    if (!esUsuarioArea_(usuario, ss)) {
+      return { estado: false, mensaje: 'Su usuario no puede eliminar novedades.' };
+    }
+
     var hoja = ss.getSheetByName('NOVEDADES');
     if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja NOVEDADES.' };
 
@@ -2080,12 +2147,12 @@ function partesFecha_(v, zona) {
 
   if (Object.prototype.toString.call(v) === '[object Date]') {
     if (isNaN(v.getTime())) return null;
-    var z = zona || ZONA_;
-    return {
-      anio: Number(Utilities.formatDate(v, z, 'yyyy')),
-      mes: Number(Utilities.formatDate(v, z, 'MM')),
-      dia: Number(Utilities.formatDate(v, z, 'dd'))
-    };
+    // Una sola llamada a formatDate en lugar de tres: al listar muchas
+    // filas esta funcion se ejecuta cientos de veces y cada llamada
+    // tiene un costo medible.
+    var txt = Utilities.formatDate(v, zona || ZONA_, 'yyyy-MM-dd');
+    var p = txt.split('-');
+    return { anio: Number(p[0]), mes: Number(p[1]), dia: Number(p[2]) };
   }
 
   var s = String(v).trim();
@@ -2426,6 +2493,62 @@ function registrarNovedadRapida(token, cedula, tipo) {
     };
   } catch (err) {
     return { estado: false, version: VERSION_APP, mensaje: 'Error registrando novedad: ' + err.message };
+  }
+}
+
+// Mide cuanto tarda cada parte del backend para detectar cuellos de botella.
+// No necesita token ni usuario: solo informa tiempos.
+function diagnosticarCarga() {
+  var t0 = Date.now();
+  var L = [];
+  L.push('diagnosticarCarga inicio');
+
+  try {
+    var tA = Date.now();
+    var ss = abrirLibro_();
+    L.push('abrirLibro_          : ' + (Date.now() - tA) + ' ms');
+
+    var tB = Date.now();
+    var nom = ss.getName();
+    L.push('getName               : ' + (Date.now() - tB) + ' ms  -> ' + nom);
+
+    var tC = Date.now();
+    var hojas = ss.getSheets().map(function(h) { return h.getName(); });
+    L.push('getSheets            : ' + (Date.now() - tC) + ' ms  -> ' + hojas.join(', '));
+
+    var tD = Date.now();
+    var us = ss.getSheetByName('USUARIOS');
+    var filasUs = us ? us.getLastRow() : -1;
+    L.push('getSheetByName USUAR  : ' + (Date.now() - tD) + ' ms  -> ' + filasUs + ' filas');
+
+    var tE = Date.now();
+    var nov = ss.getSheetByName('NOVEDADES');
+    var filasNov = nov ? nov.getLastRow() : -1;
+    L.push('getSheetByName NOVED  : ' + (Date.now() - tE) + ' ms  -> ' + filasNov + ' filas');
+
+    var tF = Date.now();
+    var datos = nov ? nov.getDataRange().getValues() : [];
+    L.push('getValues NOVEDADES   : ' + (Date.now() - tF) + ' ms  -> ' + datos.length + ' filas');
+
+    var tG = Date.now();
+    var lista = listarNovedades('DIAG', 'VAC_JESEP', { pagina: 1, porPagina: 25 });
+    L.push('listarNovedades(25)   : ' + (Date.now() - tG) + ' ms  estado=' + (lista && lista.estado) +
+      ' total=' + (lista && lista.total !== undefined ? lista.total : '?') +
+      ' paginas=' + (lista && lista.paginas !== undefined ? lista.paginas : '?') +
+      (lista && lista.estado !== true ? '  msg=' + lista.mensaje : ''));
+
+    var tH = Date.now();
+    var filtrada = listarNovedades('DIAG', 'VAC_JESEP', { pagina: 1, porPagina: 25, cedula: '111' });
+    L.push('listarNovedades(busc) : ' + (Date.now() - tH) + ' ms  total=' + (filtrada && filtrada.total));
+
+    L.push('');
+    L.push('TOTAL: ' + (Date.now() - t0) + ' ms');
+
+    return { estado: true, version: VERSION_APP, reporte: L.join('\n') };
+  } catch (err) {
+    L.push('ERROR: ' + err.message);
+    L.push('TOTAL hasta el fallo: ' + (Date.now() - t0) + ' ms');
+    return { estado: false, version: VERSION_APP, reporte: L.join('\n') };
   }
 }
 
