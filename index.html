@@ -450,11 +450,14 @@
   </div>
 
 <script>
-const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwivgsKVgz6Oskos6t9Mnrnl467vF38FJKj2lzj1IXP6_Y1ZU_fC_r9OSx-/exec';
+const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwF2FntJb0M6Ct4MDf0-gw_ki-jyxZCrbACCktLH8FIq3CNaoeIWlviJE98lqUjX0v8/exec';
 
 (function configurarPuenteAPI() {
   // Apps Script puede tardar bastante en arrancar en frío o tras un rato sin uso.
   const TIMEOUT_MS = 60000;
+  // Reintentos ante un fallo de red. Un rechazo puntual no debe impedir
+  // entrar al sistema.
+  const REINTENTOS = 2;
 
   // Historial de tiempos: se puede consultar en la consola con __jespTimings()
   window.__jespTimings = window.__jespTimings || [];
@@ -470,29 +473,37 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwi
 
   function llamarAPI_(accion, argumentos, alExito, alFallar) {
     const nombreCallback = '__cb_' + String(accion).replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
-    const elementoScript = document.createElement('script');
     let finalizado = false;
     let idTimeout = null;
+    let intentos = 0;
     const inicio = performance.now();
 
+    // Quita el <script> y cancela el temporizador.
+    // NO anula el callback: hace falta vivo para poder reintentar.
     function limpiar() {
       clearTimeout(idTimeout);
-      // Se deja una función vacía por si el servidor responde tarde (evita errores en consola)
+      const s = document.getElementById('js_' + nombreCallback);
+      if (s && s.parentNode) s.parentNode.removeChild(s);
+    }
+
+    // Cierra la peticion: limpia y deja el callback como no-op para que una
+    // respuesta tardia del servidor no genere errores en consola.
+    function finalizar() {
+      limpiar();
       window[nombreCallback] = function() {};
-      if (elementoScript.parentNode) elementoScript.parentNode.removeChild(elementoScript);
     }
 
     function fallar(mensaje) {
       if (finalizado) return;
       finalizado = true;
-      limpiar();
+      finalizar();
       if (alFallar) alFallar({ message: mensaje });
     }
 
     window[nombreCallback] = function(respuesta) {
       if (finalizado) return;
       finalizado = true;
-      limpiar();
+      finalizar();
       registrarTiempo_(accion, Math.round(performance.now() - inicio), 'OK');
       if (respuesta && respuesta.__jsonp_error === true) {
         if (alFallar) alFallar({ message: respuesta.mensaje || 'Se presentó un error en el servidor.' });
@@ -500,13 +511,6 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwi
       }
       if (alExito) alExito(respuesta);
     };
-
-    idTimeout = setTimeout(function() {
-      const ms = Math.round(performance.now() - inicio);
-      registrarTiempo_(accion, ms, 'TIMEOUT');
-      fallar('Tiempo de espera agotado (' + ms + ' ms) al llamar "' + accion + '". ' +
-        'El servidor está lento o no responde.');
-    }, TIMEOUT_MS);
 
     const parametros = new URLSearchParams();
     parametros.set('accion', accion);
@@ -519,26 +523,58 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwi
       return;
     }
 
-    elementoScript.src = APPS_SCRIPT_API_URL + '?' + parametros.toString();
+    // Envia la peticion. Se puede volver a invocar para reintentar.
+    function enviar() {
+      if (finalizado) return;
 
-    // Error de red / URL inexistente
-    elementoScript.onerror = function() {
-      const ms = Math.round(performance.now() - inicio);
-      registrarTiempo_(accion, ms, 'ERROR');
-      fallar('No se pudo contactar el servidor al llamar "' + accion + '" (' + ms + ' ms). ' +
-        'Verifique la URL del backend y que el Web App esté como "Cualquier persona".');
-    };
+      idTimeout = setTimeout(function() {
+        if (finalizado) return;
+        const ms = Math.round(performance.now() - inicio);
+        registrarTiempo_(accion, ms, 'TIMEOUT');
+        fallar('Tiempo de espera agotado (' + ms + ' ms) al llamar "' + accion + '". ' +
+          'El servidor está lento o no responde.');
+      }, TIMEOUT_MS);
 
-    // El script se descargó pero NUNCA llamó al callback: Google devolvió una página HTML
-    // (permisos del Web App, inicio de sesión de Google o error) en lugar de JSONP.
-    elementoScript.onload = function() {
-      const ms = Math.round(performance.now() - inicio);
-      registrarTiempo_(accion, ms, 'FORMATO_INVALIDO');
-      fallar('El servidor devolvió una página web en vez de datos (' + ms + ' ms) al llamar "' + accion +
-        '". Suele significar que el Web App pide iniciar sesión o no está como "Cualquier persona".');
-    };
+      const script = document.createElement('script');
+      script.id = 'js_' + nombreCallback;
 
-    document.head.appendChild(elementoScript);
+      // Error de red / URL inexistente. Puede ser puntual: se reintenta
+      // antes de rendirse, porque un fallo transitorio no debe tumbar el login.
+      script.onerror = function() {
+        if (finalizado) return;
+        clearTimeout(idTimeout);
+        limpiar();
+
+        if (intentos < REINTENTOS) {
+          intentos++;
+          console.warn('[JESEP] "' + accion + '" falló. Reintento ' + intentos + ' de ' + REINTENTOS);
+          setTimeout(enviar, 700);
+          return;
+        }
+
+        const ms = Math.round(performance.now() - inicio);
+        registrarTiempo_(accion, ms, 'ERROR');
+        fallar('No se pudo contactar el servidor al llamar "' + accion + '" (' + ms + ' ms, ' +
+          (REINTENTOS + 1) + ' intentos). Verifique la URL del backend y que el Web App esté ' +
+          'implementado como "Cualquier persona".');
+      };
+
+      // El script se descargó pero NUNCA llamó al callback: Google devolvió
+      // una página HTML (permisos, inicio de sesión o error) en vez de JSONP.
+      script.onload = function() {
+        if (finalizado) return;
+        const ms = Math.round(performance.now() - inicio);
+        registrarTiempo_(accion, ms, 'FORMATO_INVALIDO');
+        fallar('El servidor devolvió una página web en vez de datos (' + ms + ' ms) al llamar "' +
+          accion + '". Suele significar que el Web App pide iniciar sesión o no está ' +
+          'como "Cualquier persona".');
+      };
+
+      script.src = APPS_SCRIPT_API_URL + '?' + parametros.toString();
+      document.head.appendChild(script);
+    }
+
+    enviar();
   }
 
   function crearEjecutor_() {

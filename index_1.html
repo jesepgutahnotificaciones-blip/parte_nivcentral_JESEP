@@ -914,12 +914,16 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwivgsKVgz6Oskos6t9Mnrnl467vF38FJKj2lzj1IXP6_Y1ZU_fC_r9OSx-/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwF2FntJb0M6Ct4MDf0-gw_ki-jyxZCrbACCktLH8FIq3CNaoeIWlviJE98lqUjX0v8/exec';
   const CLAVE_SESION = 'jesep_sesion';
   
 
   (function configurarPuenteAPI() {
     const TIMEOUT_MS = 60000;
+
+    // Reintentos ante un fallo de red: un rechazo puntual no debe
+    // impedir usar el sistema.
+    const REINTENTOS = 2;
 
     // Historial de tiempos: se consulta en la consola con __jespTimings()
     window.__jespLog = window.__jespLog || [];
@@ -932,18 +936,28 @@
     function llamarAPI_(accion, argumentos, alExito, alFallar) {
       const nombreCallback = '__cb_' + accion.replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
       let finalizado = false;
+      let intentos = 0;
       const inicio = performance.now();
 
+      // Quita el <script> y cancela el temporizador.
+      // NO anula el callback: hace falta vivo para poder reintentar.
       function limpiar() {
-        delete window[nombreCallback];
-        if (elementoScript.parentNode) elementoScript.parentNode.removeChild(elementoScript);
         clearTimeout(idTimeout);
+        const s = document.getElementById('js_' + nombreCallback);
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+      }
+
+      // Cierra la peticion. Deja el callback como no-op para que una
+      // respuesta tardia del servidor no genere errores en consola.
+      function finalizar() {
+        limpiar();
+        window[nombreCallback] = function() {};
       }
 
       window[nombreCallback] = function(respuesta) {
         if (finalizado) return;
         finalizado = true;
-        limpiar();
+        finalizar();
         registrarTiempo_(accion, Math.round(performance.now() - inicio), 'OK');
         if (respuesta && respuesta.__jsonp_error === true) {
           if (alFallar) alFallar({ message: respuesta.mensaje || 'Se presentó un error en el servidor.' });
@@ -951,15 +965,6 @@
         }
         if (alExito) alExito(respuesta);
       };
-
-      const idTimeout = setTimeout(function() {
-        if (finalizado) return;
-        finalizado = true;
-        limpiar();
-        const ms = Math.round(performance.now() - inicio);
-        registrarTiempo_(accion, ms, 'TIMEOUT');
-        if (alFallar) alFallar({ message: 'Tiempo de espera agotado (' + ms + ' ms) al llamar "' + accion + '".' });
-      }, TIMEOUT_MS);
 
       const parametros = new URLSearchParams();
       parametros.set('accion', accion);
@@ -973,18 +978,48 @@
         return;
       }
 
-      const elementoScript = document.createElement('script');
-      elementoScript.src = APPS_SCRIPT_API_URL + '?' + parametros.toString();
-      elementoScript.onerror = function() {
+      function enviar() {
         if (finalizado) return;
-        finalizado = true;
-        limpiar();
-        const ms = Math.round(performance.now() - inicio);
-        registrarTiempo_(accion, ms, 'ERROR');
-        if (alFallar) alFallar({ message: 'No se pudo contactar el servidor al llamar "' + accion + '" (' + ms +
-          ' ms). Verifique la URL del backend y que el Web App esté como "Cualquier persona".' });
-      };
-      document.head.appendChild(elementoScript);
+
+        idTimeout = setTimeout(function() {
+          if (finalizado) return;
+          finalizado = true;
+          finalizar();
+          const ms = Math.round(performance.now() - inicio);
+          registrarTiempo_(accion, ms, 'TIMEOUT');
+          if (alFallar) alFallar({ message: 'Tiempo de espera agotado (' + ms + ' ms) al llamar "' + accion + '".' });
+        }, TIMEOUT_MS);
+
+        const elementoScript = document.createElement('script');
+        elementoScript.id = 'js_' + nombreCallback;
+
+        // Un fallo puntual de red no debe dejar al usuario fuera: reintentamos.
+        elementoScript.onerror = function() {
+          if (finalizado) return;
+          clearTimeout(idTimeout);
+          limpiar();
+
+          if (intentos < REINTENTOS) {
+            intentos++;
+            console.warn('[JESEP] "' + accion + '" falló. Reintento ' + intentos + ' de ' + REINTENTOS);
+            setTimeout(enviar, 700);
+            return;
+          }
+
+          finalizado = true;
+          const ms = Math.round(performance.now() - inicio);
+          registrarTiempo_(accion, ms, 'ERROR');
+          window[nombreCallback] = function() {};
+          if (alFallar) alFallar({ message: 'No se pudo contactar el servidor al llamar "' + accion + '" (' + ms +
+            ' ms, ' + (REINTENTOS + 1) + ' intentos). Verifique la URL del backend y que el Web App esté ' +
+            'como "Cualquier persona".' });
+        };
+
+        elementoScript.src = APPS_SCRIPT_API_URL + '?' + parametros.toString();
+        document.head.appendChild(elementoScript);
+      }
+
+      enviar();
     }
 
     function crearEjecutor_() {

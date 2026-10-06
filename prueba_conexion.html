@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de conexión — JESEP</title>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6f5; margin: 0; padding: 22px; color: #263238; }
+  .caja { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 1.25rem; color: #1b5e3f; }
+  p.sub { color: #607d8b; font-size: .88rem; margin-top: 4px; }
+  .url { font-family: Consolas, monospace; font-size: .74rem; background: #fff; border: 1px solid #dfe7e4;
+         border-radius: 8px; padding: 10px; margin: 14px 0; word-break: break-all; }
+  button { padding: 10px 18px; font-size: .9rem; font-weight: 700; color: #fff; background: #1b5e3f;
+           border: none; border-radius: 8px; cursor: pointer; margin-right: 8px; }
+  button.sec { background: #fff; color: #1b5e3f; border: 1px solid #1b5e3f; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; background: #fff;
+          border-radius: 8px; overflow: hidden; font-size: .84rem; }
+  th { background: #1b5e3f; color: #fff; text-align: left; padding: 9px 10px; font-size: .72rem;
+       text-transform: uppercase; letter-spacing: .02em; }
+  td { padding: 9px 10px; border-bottom: 1px solid #eef2f0; vertical-align: middle; }
+  td.estado { font-weight: 700; white-space: nowrap; }
+  .ok { color: #1b5e3f; }
+  .mal { color: #c62828; }
+  .espera { color: #b0782a; }
+  .nota { margin-top: 16px; font-size: .8rem; color: #607d8b; background: #fdf3e3;
+          border: 1px solid #f0d9a8; border-radius: 8px; padding: 12px 14px; line-height: 1.55; }
+  .nota code { background: #fff; padding: 1px 5px; border-radius: 4px; font-size: .78rem; }
+  .nota strong { color: #8a5a00; }
+</style>
+</head>
+<body>
+<div class="caja">
+  <h1>🔌 Prueba de conexión con el backend</h1>
+  <p class="sub">Esta página no tiene nada más: solo verifica si el navegador puede llamar a Apps Script.</p>
+
+  <div class="url" id="urlMostrada"></div>
+
+  <button type="button" id="btn">Ejecutar prueba completa</button>
+  <button type="button" class="sec" onclick="location.reload()">Recargar página</button>
+
+  <table>
+    <thead><tr><th>PRUEBA</th><th>RESULTADO</th><th>TIEMPO</th></tr></thead>
+    <tbody id="salida">
+      <tr><td>Pulse el botón para empezar</td><td class="estado espera">—</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <div class="nota">
+    <strong>Cómo leer el resultado:</strong><br>
+    · <strong>Una sola prueba falla y las demás pasan</strong> → es un problema puntual de esa acción.<br>
+    · <strong>Todas fallan con menos de 1 segundo</strong> → el navegador no está llegando a Google.
+      Revisa bloqueadores de anuncios, VPN, antivirus o la red wifi.<br>
+    · <strong>Todas pasan pero la aplicación falla</strong> → el problema está en
+    <code>index.html</code>, no en la red. Carga la aplicación en incógnito y revisa la consola (F12).<br>
+    · <strong>La primera tarda y las siguientes son rápidas</strong> → es el arranque en frío de
+    Apps Script, es normal.
+  </div>
+</div>
+
+<script>
+const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwF2FntJb0M6Ct4MDf0-gw_ki-jyxZCrbACCktLH8FIq3CNaoeIWlviJE98lqUjX0v8/exec';
+
+document.getElementById('urlMostrada').textContent = APPS_SCRIPT_API_URL;
+
+const cuerpo = document.getElementById('salida');
+
+// Llama al backend por JSONP, igual que lo hace la aplicación.
+function llamar(nombre, accion, argumentos, alTerminar) {
+  const cb = '__t_' + nombre + '_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+  const script = document.createElement('script');
+  const inicio = Date.now();
+  let listo = false;
+
+  const fin = function(estado, detalle) {
+    if (listo) return;
+    listo = true;
+    clearTimeout(t);
+    try { delete window[cb]; } catch (e) {}
+    if (script.parentNode) script.parentNode.removeChild(script);
+    alTerminar(estado, detalle, Date.now() - inicio);
+  };
+
+  const t = setTimeout(function() { fin('TIMEOUT', 'Sin respuesta en 60 s'); }, 60000);
+
+  window[cb] = function(r) {
+    if (r && r.__jsonp_error === true) { fin('ERROR', r.mensaje || 'Error del servidor'); return; }
+    fin('OK', r);
+  };
+
+  const p = new URLSearchParams();
+  p.set('accion', accion);
+  p.set('callback', cb);
+  p.set('args', JSON.stringify(argumentos || []));
+  script.src = APPS_SCRIPT_API_URL + '?' + p.toString();
+  script.onerror = function() { fin('ERROR', 'El navegador rechazó la petición'); };
+  document.head.appendChild(script);
+}
+
+function agregar(nombre, estado, detalle, ms) {
+  const tr = document.createElement('tr');
+  const clase = estado === 'OK' ? 'ok' : (estado === 'TIMEOUT' ? 'espera' : 'mal');
+
+  let resumen;
+  if (estado === 'OK' && detalle && detalle.version) {
+    resumen = 'Respondió — versión ' + detalle.version;
+    if (detalle.estado === false) { resumen = 'Respondió con estado=false: ' + (detalle.mensaje || ''); }
+  } else {
+    resumen = String(detalle === undefined ? estado : detalle);
+  }
+
+  tr.innerHTML = '<td>' + nombre + '</td>' +
+    '<td class="estado ' + clase + '">' + escapar(estado) + '</td>' +
+    '<td>' + (ms === undefined ? '—' : ms + ' ms') + '</td>' +
+    '<td style="font-size:.78rem;color:#607d8b">' + escapar(resumen) + '</td>';
+  cuerpo.appendChild(tr);
+}
+
+function escapar(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function ejecutar() {
+  cuerpo.innerHTML = '';
+  document.getElementById('btn').disabled = true;
+
+  const pruebas = [
+    { nombre: '1. Version (no abre la hoja)', accion: 'version', args: [] },
+    { nombre: '2. Diagnóstico del esquema (abre el libro)', accion: 'diagnosticarEsquema', args: [] },
+    { nombre: '3. Listar novedades del área', accion: 'listarNovedades', args: ['PRUEBA', 'VAC_JESEP', { pagina: 1, porPagina: 25 }] },
+    { nombre: '4. Version otra vez (comprueba caché)', accion: 'version', args: [] },
+    { nombre: '5. Consultar por turno', accion: 'consultarPorTurno', args: ['PRUEBA', 'A'] }
+  ];
+
+  let i = 0;
+  (function siguiente() {
+    if (i >= pruebas.length) {
+      document.getElementById('btn').disabled = false;
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="4" style="font-weight:700">Fin de las pruebas. ' +
+        'Anote qué pruebas fallaron.</td>';
+      cuerpo.appendChild(tr);
+      return;
+    }
+    const p = pruebas[i++];
+    llamar(p.nombre, p.accion, p.args, function(estado, detalle, ms) {
+      agregar(p.nombre, estado, detalle, ms);
+      setTimeout(siguiente, 250);
+    });
+  })();
+}
+
+document.getElementById('btn').addEventListener('click', ejecutar);
+</script>
+</body>
+</html>
