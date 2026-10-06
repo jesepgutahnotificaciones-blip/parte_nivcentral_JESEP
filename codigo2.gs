@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-06-r36';
+var VERSION_APP = 'JESEP-2026-10-06-r37';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -219,6 +219,9 @@ function doGet(e) {
     switch (accion) {
       case 'validarUsuario':
         resultado = validarUsuario(args[0], args[1]);
+        break;
+      case 'iniciarSesionCompleta':
+        resultado = iniciarSesionCompleta(args[0], args[1]);
         break;
       case 'verificarSesion':
         resultado = verificarSesion(args[0]);
@@ -2172,48 +2175,72 @@ function quitarAcentos_(s) {
 }
 
 // Funcionarios que cumplen años hoy. Revisa FECHA_NACIMIENTO en LISTADO_BASE.
+/* Calcula los cumpleaños de hoy sobre un libro YA abierto.
+   Se separa de cumpleanerosHoy para que iniciarSesionCompleta pueda
+   reutilizar la misma conexion en vez de abrirla dos veces. */
+function cumpleanerosEnLibro_(ss) {
+  var hoja = ss.getSheetByName('LISTADO_BASE');
+  if (!hoja) return { fecha: '', lista: [] };
+
+  var datos = hoja.getDataRange().getValues();
+  if (datos.length < 2) return { fecha: '', lista: [] };
+
+  var cabeceras = datos[0];
+  var cab = cabeceras.map(normalizarCabColumna_);
+  var iCed = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/], 0);
+  var iNom = idxColumnaBase_(cab, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/], -1);
+  var iGr = idxColumnaBase_(cab, [/^GR$/, /^GRADO$/], -1);
+  var iDep = idxColumnaBase_(cab, [/^DEPENDENCIA$/], -1);
+  // Columna M de LISTADO_BASE
+  var iNac = idxColumnaBase_(cab, [/^FECHA NACIMIENTO$/, /^FECHA DE NACIMIENTO$/, /^FNAC$/], 12);
+
+  var hoy = partesFecha_(new Date(), ZONA_);
+  var lista = [];
+
+  for (var i = 1; i < datos.length; i++) {
+    var nac = partesFecha_(datos[i][iNac], ZONA_);
+    if (!nac) continue;
+    if (!nac.anio) continue;                     // sin año: no se puede calcular
+    if (nac.mes !== hoy.mes || nac.dia !== hoy.dia) continue;
+
+    var anios = hoy.anio - nac.anio;
+    lista.push({
+      cedula: String(datos[i][iCed] === null ? '' : datos[i][iCed]),
+      funcionario: iNom >= 0 ? String(datos[i][iNom] || '') : '',
+      grado: iGr >= 0 ? String(datos[i][iGr] || '') : '',
+      dependencia: iDep >= 0 ? String(datos[i][iDep] || '') : '',
+      anios: anios,
+      cumpleanios: (anios % 10 === 0 && (anios % 100 !== 0)) ? '¡Feliz cumpleaños redondo!' : ''
+    });
+  }
+
+  return { fecha: hoy.dia + '/' + hoy.mes + '/' + hoy.anio, lista: lista };
+}
+
 function cumpleanerosHoy(token) {
   try {
-    var ss = abrirLibro_();
-    var hoja = ss.getSheetByName('LISTADO_BASE');
-    if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
-
-    var datos = hoja.getDataRange().getValues();
-    if (datos.length < 2) return { estado: true, datos: [] };
-
-    var cabeceras = datos[0];
-    var cab = cabeceras.map(normalizarCabColumna_);
-    var iCed = idxColumnaBase_(cab, [/^CEDULA$/, /^CC$/, /^NUMERO DE CEDULA$/], 0);
-    var iNom = idxColumnaBase_(cab, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/], -1);
-    var iGr = idxColumnaBase_(cab, [/^GR$/, /^GRADO$/], -1);
-    var iDep = idxColumnaBase_(cab, [/^DEPENDENCIA$/], -1);
-    // Columna M de LISTADO_BASE
-    var iNac = idxColumnaBase_(cab, [/^FECHA NACIMIENTO$/, /^FECHA DE NACIMIENTO$/, /^FNAC$/], 12);
-
-    var hoy = partesFecha_(new Date(), ZONA_);
-    var lista = [];
-
-    for (var i = 1; i < datos.length; i++) {
-      var nac = partesFecha_(datos[i][iNac], ZONA_);
-      if (!nac) continue;
-      if (!nac.anio) continue;                     // sin año: no se puede calcular
-      if (nac.mes !== hoy.mes || nac.dia !== hoy.dia) continue;
-
-      var anios = hoy.anio - nac.anio;
-      lista.push({
-        cedula: String(datos[i][iCed] === null ? '' : datos[i][iCed]),
-        funcionario: iNom >= 0 ? String(datos[i][iNom] || '') : '',
-        grado: iGr >= 0 ? String(datos[i][iGr] || '') : '',
-        dependencia: iDep >= 0 ? String(datos[i][iDep] || '') : '',
-        anios: anios,
-        cumpleanios: (anios % 10 === 0 && (anios % 100 !== 0)) ? '¡Feliz cumpleaños redondo!' : ''
-      });
-    }
-
-    return { estado: true, fecha: hoy.dia + '/' + hoy.mes + '/' + hoy.anio, datos: lista };
+    var r = cumpleanerosEnLibro_(abrirLibro_());
+    return { estado: true, fecha: r.fecha, datos: r.lista };
   } catch (err) {
     return { estado: false, mensaje: 'Error buscando cumpleaños: ' + err.message };
   }
+}
+
+/* Validacion + cumpleaños en un SOLO viaje de red.
+   En redes lentas o moviles cada llamada al backend puede tardar 20-35 s y la
+   conexion se cae antes de responder. Reducir el login de dos viajes a uno
+   elimina de raiz esa exposicion. */
+function iniciarSesionCompleta(usuarioIngresado, claveIngresada) {
+  var r = validarUsuario(usuarioIngresado, claveIngresada);
+  if (!r || r.estado !== true) return r;   // si la clave falla, no se calcula nada
+
+  try {
+    var c = cumpleanerosEnLibro_(abrirLibro_());
+    r.cumpleanos = { fecha: c.fecha, datos: c.lista };
+  } catch (err) {
+    r.cumpleanos = { fecha: '', datos: [] };   // el login nunca debe fallar por esto
+  }
+  return r;
 }
 
 // Funcionarios que deben presentarse HOY de vacaciones o permiso.

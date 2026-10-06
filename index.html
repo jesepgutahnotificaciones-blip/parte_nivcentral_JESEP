@@ -675,58 +675,11 @@ function iniciarSesion() {
   boton.textContent = 'Validando…';
   mostrarMensaje('Verificando credenciales…', 'info');
 
-  // Los cumpleaños solo leen LISTADO_BASE: no dependen del token ni de la
-  // validación. Se piden EN PARALELO con validarUsuario para no encadenar
-  // dos esperas de ~20 s cada una cuando la red va lenta.
-  let validado = false;
-  let sesionActual = null;
-  let cumpleanosListos = false;
-  let cumpleanosDatos = [];
-  let cumpleanosFecha = '';
-
-  function avanzarSiCorresponde() {
-    if (!validado || !cumpleanosListos) return;
-
-    boton.disabled = false;
-    boton.textContent = 'Ingresar';
-
-    if (!cumpleanosDatos.length) { enrutar(sesionActual); return; }
-
-    let yaCerrado = false;
-    function continuar() {
-      if (yaCerrado) return;
-      yaCerrado = true;
-      enrutar(sesionActual);
-    }
-
-    const overlay = document.getElementById('modalCumpleanos');
-    const btnCerrar = document.getElementById('btnCerrarCumpleanos');
-    if (btnCerrar) btnCerrar.onclick = cerrarModalCumpleanosYCerrar;
-    if (overlay) overlay.onclick = function(ev) { if (ev.target === overlay) cerrarModalCumpleanosYCerrar(); };
-
-    _continuarTrasCumpleanos = continuar;
-
-    if (!mostrarModalCumpleanos_(cumpleanosDatos, cumpleanosFecha)) cerrarModalCumpleanosYCerrar();
-  }
-
-  google.script.run
-    .withSuccessHandler(function(r) {
-      if (r && r.estado === true) {
-        cumpleanosDatos = r.datos || [];
-        cumpleanosFecha = r.fecha || '';
-      } else {
-        cumpleanosDatos = [];
-      }
-      cumpleanosListos = true;
-      avanzarSiCorresponde();
-    })
-    .withFailureHandler(function() {
-      cumpleanosDatos = [];
-      cumpleanosListos = true;
-      avanzarSiCorresponde();
-    })
-    .cumpleanerosHoy('');
-
+  /* UNA sola llamada al backend.
+     Antes eran dos (validarUsuario + cumpleanerosHoy). En redes moviles cada
+     llamada puede tardar 20-35 s y la conexion se cae antes de responder, con
+     lo que dos viajes duplicaban la probabilidad de fallo. El backend ahora
+     resuelve las dos cosas en un solo viaje. */
   google.script.run
     .withSuccessHandler(function(r) {
       boton.disabled = false;
@@ -740,20 +693,30 @@ function iniciarSesion() {
       $('txtClave').value = '';
       mostrarMensaje('');
 
-      sesionActual = { token: r.token, usuario: r.usuario, modulos: r.modulos || [] };
-      guardarSesion(sesionActual);
+      const sesion = { token: r.token, usuario: r.usuario, modulos: r.modulos || [] };
+      guardarSesion(sesion);
 
-      validado = true;
-      boton.disabled = true;
-      boton.textContent = 'Verificando...';
-      avanzarSiCorresponde();
+      const cumple = r.cumpleanos || {};
+      const lista = cumple.datos || [];
+
+      if (!lista.length) { enrutar(sesion); return; }
+
+      let yaCerrado = false;
+      function continuar() {
+        if (yaCerrado) return;
+        yaCerrado = true;
+        enrutar(sesion);
+      }
+      _continuarTrasCumpleanos = continuar;
+
+      if (!mostrarModalCumpleanos_(lista, cumple.fecha || '')) cerrarModalCumpleanosYCerrar();
     })
     .withFailureHandler(function(err) {
       boton.disabled = false;
       boton.textContent = 'Ingresar';
       mostrarMensaje((err && err.message) || 'No fue posible validar el usuario.', 'error');
     })
-    .validarUsuario(usuario, clave);
+    .iniciarSesionCompleta(usuario, clave);
 }
 
 /* =====================================================
