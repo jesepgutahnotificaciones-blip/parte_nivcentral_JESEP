@@ -658,10 +658,20 @@
   const CLAVE_SESION = 'jesep_sesion';
 
   (function configurarPuenteAPI() {
-    const TIMEOUT_MS = 90000;
+    const TIMEOUT_MS = 60000;
+
+    // Historial de tiempos: se consulta en la consola con __jespTimings()
+    window.__jespLog = window.__jespLog || [];
+    window.__jespTimings = function() { console.table(window.__jespLog); return window.__jespLog; };
+    function registrarTiempo_(accion, ms, estado) {
+      window.__jespLog.push({ accion: accion, ms: ms, estado: estado });
+      console.log('[JESEP] ' + accion + ' -> ' + estado + ' en ' + ms + ' ms');
+    }
+
     function llamarAPI_(accion, argumentos, alExito, alFallar) {
       const nombreCallback = '__cb_' + accion.replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
       let finalizado = false;
+      const inicio = performance.now();
 
       function limpiar() {
         delete window[nombreCallback];
@@ -673,6 +683,7 @@
         if (finalizado) return;
         finalizado = true;
         limpiar();
+        registrarTiempo_(accion, Math.round(performance.now() - inicio), 'OK');
         if (respuesta && respuesta.__jsonp_error === true) {
           if (alFallar) alFallar({ message: respuesta.mensaje || 'Se presentó un error en el servidor.' });
           return;
@@ -684,7 +695,9 @@
         if (finalizado) return;
         finalizado = true;
         limpiar();
-        if (alFallar) alFallar({ message: 'Tiempo de espera agotado contactando el servidor.' });
+        const ms = Math.round(performance.now() - inicio);
+        registrarTiempo_(accion, ms, 'TIMEOUT');
+        if (alFallar) alFallar({ message: 'Tiempo de espera agotado (' + ms + ' ms) al llamar "' + accion + '".' });
       }, TIMEOUT_MS);
 
       const parametros = new URLSearchParams();
@@ -705,7 +718,10 @@
         if (finalizado) return;
         finalizado = true;
         limpiar();
-        if (alFallar) alFallar({ message: 'No se pudo contactar el servidor.' });
+        const ms = Math.round(performance.now() - inicio);
+        registrarTiempo_(accion, ms, 'ERROR');
+        if (alFallar) alFallar({ message: 'No se pudo contactar el servidor al llamar "' + accion + '" (' + ms +
+          ' ms). Verifique la URL del backend y que el Web App esté como "Cualquier persona".' });
       };
       document.head.appendChild(elementoScript);
     }

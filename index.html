@@ -453,14 +453,27 @@
 const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwF2FntJb0M6Ct4MDf0-gw_ki-jyxZCrbACCktLH8FIq3CNaoeIWlviJE98lqUjX0v8/exec';
 
 (function configurarPuenteAPI() {
-  // Apps Script puede tardar unos segundos en arrancar en frío; 30 s es suficiente.
-  const TIMEOUT_MS = 30000;
+  // Apps Script puede tardar bastante en arrancar en frío o tras un rato sin uso.
+  const TIMEOUT_MS = 60000;
+
+  // Historial de tiempos: se puede consultar en la consola con __jespTimings()
+  window.__jespTimings = window.__jespTimings || [];
+  window.__jespTimings = function() {
+    console.table(window.__jespLog || []);
+    return window.__jespLog || [];
+  };
+  function registrarTiempo_(accion, ms, estado) {
+    window.__jespLog = window.__jespLog || [];
+    window.__jespLog.push({ accion: accion, ms: ms, estado: estado });
+    console.log('[JESEP] ' + accion + ' -> ' + estado + ' en ' + ms + ' ms');
+  }
 
   function llamarAPI_(accion, argumentos, alExito, alFallar) {
     const nombreCallback = '__cb_' + String(accion).replace(/[^a-zA-Z0-9_]/g, '') + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
     const elementoScript = document.createElement('script');
     let finalizado = false;
     let idTimeout = null;
+    const inicio = performance.now();
 
     function limpiar() {
       clearTimeout(idTimeout);
@@ -480,6 +493,7 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwF2FntJb0M
       if (finalizado) return;
       finalizado = true;
       limpiar();
+      registrarTiempo_(accion, Math.round(performance.now() - inicio), 'OK');
       if (respuesta && respuesta.__jsonp_error === true) {
         if (alFallar) alFallar({ message: respuesta.mensaje || 'Se presentó un error en el servidor.' });
         return;
@@ -488,7 +502,10 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwF2FntJb0M
     };
 
     idTimeout = setTimeout(function() {
-      fallar('Tiempo de espera agotado contactando el servidor.');
+      const ms = Math.round(performance.now() - inicio);
+      registrarTiempo_(accion, ms, 'TIMEOUT');
+      fallar('Tiempo de espera agotado (' + ms + ' ms) al llamar "' + accion + '". ' +
+        'El servidor está lento o no responde.');
     }, TIMEOUT_MS);
 
     const parametros = new URLSearchParams();
@@ -506,13 +523,19 @@ const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwF2FntJb0M
 
     // Error de red / URL inexistente
     elementoScript.onerror = function() {
-      fallar('No se pudo contactar el servidor. Verifique su conexión o la URL del backend.');
+      const ms = Math.round(performance.now() - inicio);
+      registrarTiempo_(accion, ms, 'ERROR');
+      fallar('No se pudo contactar el servidor al llamar "' + accion + '" (' + ms + ' ms). ' +
+        'Verifique la URL del backend y que el Web App esté como "Cualquier persona".');
     };
 
     // El script se descargó pero NUNCA llamó al callback: Google devolvió una página HTML
     // (permisos del Web App, inicio de sesión de Google o error) en lugar de JSONP.
     elementoScript.onload = function() {
-      fallar('El servidor respondió con un formato inválido. Verifique que el Web App esté implementado como "Cualquier persona" y con la última versión.');
+      const ms = Math.round(performance.now() - inicio);
+      registrarTiempo_(accion, ms, 'FORMATO_INVALIDO');
+      fallar('El servidor devolvió una página web en vez de datos (' + ms + ' ms) al llamar "' + accion +
+        '". Suele significar que el Web App pide iniciar sesión o no está como "Cualquier persona".');
     };
 
     document.head.appendChild(elementoScript);
