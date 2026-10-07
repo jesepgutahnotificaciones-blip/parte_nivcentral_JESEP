@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-07-r38';
+var VERSION_APP = 'JESEP-2026-10-07-r39';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -1784,8 +1784,11 @@ function cambiarEstadoUsuario(token, quienLlama, usuario, nuevoEstado) {
    6. GESTIÓN DE FUNCIONARIOS (SOLO UBL_JESEP)
    ===================================================== */
 
-function listarFuncionarios(token) {
+function listarFuncionarios(token, quienLlama) {
   try {
+    if (!esUsuarioAdmin_(quienLlama) && !esUsuarioArea_(quienLlama)) {
+      return { estado: false, mensaje: 'Su usuario no tiene permiso para ver la lista de funcionarios.' };
+    }
     var ss = abrirLibro_();
     var hoja = ss.getSheetByName('LISTADO_BASE');
     if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
@@ -1812,8 +1815,11 @@ function listarFuncionarios(token) {
 
 // Crea una fila con la MISMA longitud que los encabezados y ubica cada campo
 // en la columna que realmente existe en LISTADO_BASE.
-function agregarFuncionario(token, datos) {
+function agregarFuncionario(token, quienLlama, datos) {
   try {
+    if (!esUsuarioAdmin_(quienLlama) && !esUsuarioArea_(quienLlama)) {
+      return { estado: false, mensaje: 'Su usuario no tiene permiso para agregar funcionarios.' };
+    }
     var ss = abrirLibro_();
     var hoja = ss.getSheetByName('LISTADO_BASE');
     if (!hoja) return { estado: false, mensaje: 'No se encontro la hoja LISTADO_BASE.' };
@@ -1879,8 +1885,14 @@ function agregarFuncionario(token, datos) {
 }
 
 
-function eliminarFuncionario(token, cedula) {
+function eliminarFuncionario(token, quienLlama, cedula) {
   try {
+    // Solo UBL_JESEP (y un administrador) borra filas del LISTADO_BASE.
+    // Verificar en el servidor es indispensable: la URL del Web App es
+    // publica y ocultar el boton no protege nada.
+    if (!esUsuarioAdmin_(quienLlama) && !esUsuarioArea_(quienLlama)) {
+      return { estado: false, mensaje: 'Su usuario no tiene permiso para eliminar funcionarios.' };
+    }
     var ss = abrirLibro_();
     var hoja = ss.getSheetByName('LISTADO_BASE');
     if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja LISTADO_BASE.' };
@@ -1924,7 +1936,10 @@ function esUsuarioArea_(usuario, libroPrevio) {
 
   var areas = {
     'SGSST_JESEP': 1, 'VAC_JESEP': 1, 'PAS_JESEP': 1, 'CIT_JESEP': 1,
-    'HIS_JESEP': 1, 'PRO_JESEP': 1, 'GH_JESEP': 1
+    'HIS_JESEP': 1, 'PRO_JESEP': 1, 'GH_JESEP': 1,
+    // UBL_JESEP administra el LISTADO_BASE y tambien necesita poder
+    // corregir novedades de la hoja NOVEDADES.
+    'UBL_JESEP': 1
   };
 
   try {

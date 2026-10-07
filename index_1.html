@@ -2272,7 +2272,7 @@ function avisarPresentacionVacaciones() {
       .withFailureHandler(function() {
         contenedor.innerHTML = '<div class="alert alert-danger">Error cargando funcionarios.</div>';
       })
-      .listarFuncionarios(tokenSesion);
+      .listarFuncionarios(tokenSesion, usuarioId);
   }
 
   function agregarFuncionario() {
@@ -2312,7 +2312,7 @@ function avisarPresentacionVacaciones() {
       .withFailureHandler(function() {
         mostrarToast('Error agregando funcionario.', 'error');
       })
-      .agregarFuncionario(tokenSesion, datos);
+      .agregarFuncionario(tokenSesion, usuarioId, datos);
   }
 
   function eliminarFuncionario(cedula) {
@@ -2328,7 +2328,7 @@ function avisarPresentacionVacaciones() {
         }
       })
       .withFailureHandler(function() { mostrarToast('Error eliminando funcionario.', 'error'); })
-      .eliminarFuncionario(tokenSesion, cedula);
+      .eliminarFuncionario(tokenSesion, usuarioId, cedula);
   }
 
   function limpiarFormularioFuncionario() {

@@ -657,6 +657,7 @@
               <div class="col-md-4">
                 <label class="form-label">Estado Civil</label>
                 <select id="funcEstadoCivil" class="form-select">
+                  <option value="SOLTERO">SOLTERO</option>
                   <option value="CASADO">CASADO</option>
                   <option value="UNION LIBRE">UNION LIBRE</option>
                 </select>
@@ -915,6 +916,27 @@
     return texto;
   }
 
+  /* Usuarios autorizados a usar "Eliminar novedad" (hoja NOVEDADES).
+     Son los usuarios de areas mas UBL_JESEP, que tambien administra el
+     LISTADO_BASE y necesita poder corregir novedades ajenas. */
+  const USUARIOS_ELIMINAR_NOVEDADES_ = ['UBL_JESEP'];
+
+  function esUsuarioEliminarNovedades_(valor) {
+    if (esRolArea_(valor)) return true;
+    var compacto = String(valor === null || valor === undefined ? '' : valor)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!compacto) return false;
+    for (var i = 0; i < USUARIOS_ELIMINAR_NOVEDADES_.length; i++) {
+      if (USUARIOS_ELIMINAR_NOVEDADES_[i].replace(/[^A-Z0-9]/g, '') === compacto) return true;
+    }
+    return false;
+  }
+
+  function puedeEliminarNovedades_() {
+    return esUsuarioEliminarNovedades_(usuarioId) || esUsuarioEliminarNovedades_(usuarioSesion);
+  }
+
   // Compara nombres de usuario ignorando espacios, guiones y guiones bajos:
   // "VAC JESEP", "vac-jesep" y "VAC_JESEP" se consideran el mismo rol.
   function esRolArea_(valor) {
@@ -1128,10 +1150,10 @@
       seccionFuncionarios.classList.add('hidden');
     }
 
-    // Sección "Eliminar novedad" (hoja NOVEDADES): usuarios de áreas.
+    // Sección "Eliminar novedad" (hoja NOVEDADES): usuarios de áreas y UBL_JESEP.
     // Se comparan varias formas del nombre por si viniera con espacios,
     // guiones bajos o distinta capitalización.
-    const esArea = esRolArea_(usuarioId) || esRolArea_(usuarioSesion);
+    const esArea = puedeEliminarNovedades_();
     const menuGestionarNovedades = document.getElementById('menuGestionarNovedades');
     const seccionGestionarNovedades = document.getElementById('seccionGestionarNovedades');
 
@@ -1233,8 +1255,8 @@
     const mapa = { consulta: 'seccionConsulta', novedad: 'seccionNovedad', turnos: 'seccionTurnos', reportes: 'seccionReportes', usuarios: 'seccionUsuarios', funcionarios: 'seccionFuncionarios', gestionarNovedades: 'seccionGestionarNovedades' };
     const botones = { consulta: 'menuConsulta', novedad: 'menuNovedad', turnos: 'menuTurnos', reportes: 'menuReportes', usuarios: 'menuUsuarios', funcionarios: 'menuFuncionarios', gestionarNovedades: 'menuGestionarNovedades' };
 
-    // "Eliminar novedad" es solo para usuarios de areas.
-    if (nombre === 'gestionarNovedades' && !esRolArea_(usuarioId) && !esRolArea_(usuarioSesion)) {
+    // "Eliminar novedad" es para usuarios de areas y UBL_JESEP.
+    if (nombre === 'gestionarNovedades' && !puedeEliminarNovedades_()) {
       mostrarToast('Su usuario no tiene acceso a esta sección.', 'error');
       nombre = 'consulta';
     }
@@ -2144,7 +2166,7 @@ function avisarPresentacionVacaciones() {
         contenedor.innerHTML = html;
       })
       .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando funcionarios.</div>'; })
-      .listarFuncionarios(tokenSesion);
+      .listarFuncionarios(tokenSesion, usuarioId);
   }
 
   function agregarFuncionario() {
@@ -2185,7 +2207,7 @@ function avisarPresentacionVacaciones() {
       .withFailureHandler(function(error) {
         mostrarToast('Error agregando funcionario.', 'error');
       })
-      .agregarFuncionario(tokenSesion, datos);
+      .agregarFuncionario(tokenSesion, usuarioId, datos);
   }
 
   function eliminarFuncionario(cedula) {
@@ -2201,7 +2223,7 @@ function avisarPresentacionVacaciones() {
         }
       })
       .withFailureHandler(() => mostrarToast('Error eliminando funcionario.', 'error'))
-      .eliminarFuncionario(tokenSesion, cedula);
+      .eliminarFuncionario(tokenSesion, usuarioId, cedula);
   }
 
   function limpiarFormularioFuncionario() {
