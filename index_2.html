@@ -172,6 +172,22 @@
       font-size: 11px;
     }
 
+    /* Indice de presentacion, solo para administradores.
+       Aparece debajo de cada novedad con los dias que faltan y el dia
+       en que debe presentarse. */
+    .nov-indice {
+      display: inline-block;
+      margin: 2px 2px 2px 0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      border: 1px solid transparent;
+      vertical-align: middle;
+    }
+    .nov-indice.nd-falta    { background: #fff8e1; color: #8d6e00; border-color: #ffe082; }
+    .nov-indice.nd-hoy      { background: #fdecea; color: #b71c1c; border-color: #ef9a9a; font-weight: 700; }
+    .nov-indice.nd-vencido  { background: #eceff1; color: #546e7a; border-color: #b0bec5; text-decoration: line-through; }
+
     /* Indicador discreto de novedades en el encabezado del conteo */
     .nov-cabecera {
       font-size: 11px;
@@ -548,10 +564,10 @@
                 <label class="form-label">NIV</label>
                 <select id="funcNiv" class="form-select">
                   <option value="OF">OF</option>
-                  <option value="NIV">NIV</option>
-                  <option value="EJE">EJE</option>
+                  <option value="NIV.EJE">NIV.EJE</option>
                   <option value="PT">PT</option>
                   <option value="PP">PP</option>
+                  <option value="AXP">AXP</option>
                   <option value="NO UNI">NO UNI</option>
                 </select>
               </div>
@@ -592,66 +608,36 @@
                 </select>
               </div>
               <div class="col-md-4">
-                <label class="form-label">Turno (Obligatorio)</label>
+                <label class="form-label">Asignación Turno Temporal (Obligatorio)</label>
                 <select id="funcTurno" class="form-select">
                   <option value="A">A</option>
                   <option value="B">B</option>
                   <option value="C">C</option>
-                  <option value="No Aplica">No Aplica</option>
+                  <option value="COM GCO">COM GCO</option>
+                  <option value="ESC – GURIN">ESC – GURIN</option>
+                  <option value="NO APLICA - A">NO APLICA - A</option>
+                  <option value="NO APLICA - B">NO APLICA - B</option>
+                  <option value="NO APLICA - C">NO APLICA - C</option>
+                  <option value="SEPRI A">SEPRI A</option>
+                  <option value="SEPRI B">SEPRI B</option>
+                  <option value="SEPRI C">SEPRI C</option>
+                  <option value="SUSEP A">SUSEP A</option>
+                  <option value="SUSEP B">SUSEP B</option>
+                  <option value="SUSEP C">SUSEP C</option>
+                  <option value="NO/APLICA">NO/APLICA</option>
                 </select>
               </div>
               <div class="col-md-4">
-                <label class="form-label">Mes</label>
-                <select id="funcMes" class="form-select">
-                  <option value="ENERO">ENERO</option>
-                  <option value="FEBRERO">FEBRERO</option>
-                  <option value="MARZO">MARZO</option>
-                  <option value="ABRIL">ABRIL</option>
-                  <option value="MAYO">MAYO</option>
-                  <option value="JUNIO">JUNIO</option>
-                  <option value="JULIO">JULIO</option>
-                  <option value="AGOSTO">AGOSTO</option>
-                  <option value="SEPTIEMBRE">SEPTIEMBRE</option>
-                  <option value="OCTUBRE">OCTUBRE</option>
-                  <option value="NOVIEMBRE">NOVIEMBRE</option>
-                  <option value="DICIEMBRE">DICIEMBRE</option>
-                </select>
+                <label class="form-label">Se presento el día:</label>
+                <input type="date" id="funcFechaPresento" class="form-control">
               </div>
               <div class="col-md-4">
-                <label class="form-label">Día</label>
-                <select id="funcDia" class="form-select">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                  <option value="7">7</option>
-                  <option value="8">8</option>
-                  <option value="9">9</option>
-                  <option value="10">10</option>
-                  <option value="11">11</option>
-                  <option value="12">12</option>
-                  <option value="13">13</option>
-                  <option value="14">14</option>
-                  <option value="15">15</option>
-                  <option value="16">16</option>
-                  <option value="17">17</option>
-                  <option value="18">18</option>
-                  <option value="19">19</option>
-                  <option value="20">20</option>
-                  <option value="21">21</option>
-                  <option value="22">22</option>
-                  <option value="23">23</option>
-                  <option value="24">24</option>
-                  <option value="25">25</option>
-                  <option value="26">26</option>
-                  <option value="27">27</option>
-                  <option value="28">28</option>
-                  <option value="29">29</option>
-                  <option value="30">30</option>
-                  <option value="31">31</option>
-                </select>
+                <label class="form-label">Fecha de Ultimo Ascenso</label>
+                <input type="date" id="funcFechaAscenso" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Numero de Curso</label>
+                <input type="text" id="funcNumeroCurso" class="form-control" inputmode="numeric">
               </div>
               <div class="col-md-4">
                 <label class="form-label">Fecha Nacimiento</label>
@@ -711,7 +697,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbw6tpf9BKjJ3iec0MISUQHW12ee5LAzsPjSOQGlSD7dGZ00QrQrvmM97gYwzgFM000Q/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwivgsKVgz6Oskos6t9Mnrnl467vF38FJKj2lzj1IXP6_Y1ZU_fC_r9OSx-/exec';
   const CLAVE_SESION = 'jesep_sesion';
 
   (function configurarPuenteAPI() {
@@ -897,6 +883,36 @@
     if (esUsuarioBloqueadoAdmin_(usuarioId)) return false;
     if (esUsuarioBloqueadoAdmin_(usuarioSesion)) return false;
     return rolSesion === 'ADMINISTRADOR' || rolSesion === 'ADMIN';
+  }
+
+  /* El indice de novedades (dias que faltan y fecha de presentacion) es
+     informacion de supervision: solo la ven los administradores.
+     La lista negra NO aplica aqui: un usuario excluido de administrar
+     usuarios sigue siendo supervisor de su turno. */
+  function esAdminUsuario() {
+    return rolSesion === 'ADMINISTRADOR' || rolSesion === 'ADMIN';
+  }
+
+  /* Etiqueta de una novedad. Para administradores se anade cuanto falta y
+     en que dia debe presentarse, leyendo la fecha que ya esta calculada en
+     la columna K de la hoja NOVEDADES. */
+  function etiquetaNovedad_(nov, paraAdmin) {
+    let texto = '<span class="badge-novedad">' + esc(nov.NOVEDAD || '') + '</span>';
+    if (!paraAdmin) return texto;
+
+    const estado = nov.ESTADO_PRESENTACION;
+    if (!estado || estado === 'SIN_FECHA') return texto;
+
+    let clase = 'nd-falta';
+    let cuando = '';
+    if (estado === 'HOY') { clase = 'nd-hoy'; cuando = 'se presenta HOY'; }
+    else if (estado === 'VENCIDO') { clase = 'nd-vencido'; cuando = 'presentación vencida hace ' + Math.abs(nov.DIAS_RESTANTES) + ' día(s)'; }
+    else { cuando = 'faltan ' + nov.DIAS_RESTANTES + ' día(s)'; }
+
+    const dia = nov.DIA_SEMANA ? ' (' + esc(nov.DIA_SEMANA) + ')' : '';
+    const fecha = nov.FECHA_PRESENTACION ? ' ' + esc(nov.FECHA_PRESENTACION) : '';
+    texto += '<span class="nov-indice ' + clase + '">' + cuando + dia + ' → presentación:' + fecha + '</span>';
+    return texto;
   }
 
   // Compara nombres de usuario ignorando espacios, guiones y guiones bajos:
@@ -1665,18 +1681,17 @@ function onTipoNovedadChange() {
     html += '</div></div>';
 
     html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
-    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
+    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>FECHA ULTIMO ASCENSO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
-    // Mismo orden del reporte: sin novedades primero y jerarquia de grados.
+    // Orden por jerarquia de grados: MG, BG, CR, TC, MY, CT, TE, ST, CM,
+    // SC, IJ, IT, SI, PT, PP, AXP. Antes primaba "sin novedades primero";
+    // ahora el grado manda y dentro de cada grado se ordena por nombre.
     const JERARQUIA = ['MG','BG','CR','TC','MY','CT','TE','ST','CM','SC','IJ','IT','SI','PT','PP','AXP'];
     const rangoGrado = function(g) {
       const i = JERARQUIA.indexOf(String(g || '').trim().toUpperCase());
       return i === -1 ? JERARQUIA.length : i;
     };
     const ordenados = funcionarios.slice().sort(function(a, b) {
-      const na = (a.historialNovedades || []).length ? 1 : 0;
-      const nb = (b.historialNovedades || []).length ? 1 : 0;
-      if (na !== nb) return na - nb;
       const ia = rangoGrado(a.grado || a.GR);
       const ib = rangoGrado(b.grado || b.GR);
       if (ia !== ib) return ia - ib;
@@ -1690,8 +1705,10 @@ function onTipoNovedadChange() {
       const conNov = (f.historialNovedades || []).length > 0;
       n++;
       const novedades = f.historialNovedades || [];
-      let novedadesHtml = novedades.length ? novedades.map(n => '<span class="badge-novedad">' + esc(n.NOVEDAD || '') + '</span>').join('') : '<span class="text-muted">S/N</span>';
-      html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+      const novedadesHtml = novedades.length
+        ? novedades.map(n => etiquetaNovedad_(n, esAdminUsuario())).join('')
+        : '<span class="text-muted">S/N</span>';
+      html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + esc(formatearValor(f.fechaAscenso)) + '</td><td>' + novedadesHtml + '</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
     contenedor.innerHTML = html;
@@ -2139,8 +2156,9 @@ function avisarPresentacionVacaciones() {
       dependencia: document.getElementById('funcDependencia').value.trim(),
       pert: document.getElementById('funcPert').value,
       turno: document.getElementById('funcTurno').value,
-      mes: document.getElementById('funcMes').value,
-      dia: document.getElementById('funcDia').value,
+      fechaPresentacion: document.getElementById('funcFechaPresento').value,
+      fechaUltimoAscenso: document.getElementById('funcFechaAscenso').value,
+      numeroCurso: document.getElementById('funcNumeroCurso').value.trim(),
       fechaNacimiento: document.getElementById('funcFechaNac').value,
       correo: document.getElementById('funcCorreo').value.trim(),
       sexo: document.getElementById('funcSexo').value,
@@ -2192,6 +2210,9 @@ function avisarPresentacionVacaciones() {
     document.getElementById('funcDependencia').value = '';
     document.getElementById('funcCorreo').value = '';
     document.getElementById('funcComunicado').value = '';
+    document.getElementById('funcFechaPresento').value = '';
+    document.getElementById('funcFechaAscenso').value = '';
+    document.getElementById('funcNumeroCurso').value = '';
   }
 
   function formatearValor(valor) {

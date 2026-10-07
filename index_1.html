@@ -135,6 +135,21 @@
       font-size: 11px;
     }
 
+    /* Indice de presentacion, solo para administradores: dias que faltan
+       y dia en que debe presentarse. */
+    .nov-indice {
+      display: inline-block;
+      margin: 2px 2px 2px 0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      border: 1px solid transparent;
+      vertical-align: middle;
+    }
+    .nov-indice.nd-falta    { background: #fff8e1; color: #8d6e00; border-color: #ffe082; }
+    .nov-indice.nd-hoy      { background: #fdecea; color: #b71c1c; border-color: #ef9a9a; font-weight: 700; }
+    .nov-indice.nd-vencido  { background: #eceff1; color: #546e7a; border-color: #b0bec5; text-decoration: line-through; }
+
     /* Novedad sin TIPO informado en la hoja: se muestra marcada, no como vacio */
     .badge-sin-tipo {
       background: #f0f2f1;
@@ -914,7 +929,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbw6tpf9BKjJ3iec0MISUQHW12ee5LAzsPjSOQGlSD7dGZ00QrQrvmM97gYwzgFM000Q/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwivgsKVgz6Oskos6t9Mnrnl467vF38FJKj2lzj1IXP6_Y1ZU_fC_r9OSx-/exec';
   const CLAVE_SESION = 'jesep_sesion';
   
 
@@ -1237,6 +1252,35 @@
     if (esUsuarioBloqueadoAdmin_(usuarioId)) return false;
     if (esUsuarioBloqueadoAdmin_(usuarioSesion)) return false;
     return rolSesion === 'ADMINISTRADOR' || rolSesion === 'ADMIN';
+  }
+
+  /* El indice de novedades es informacion de supervision: solo para admins.
+     La lista negra NO aplica: un usuario excluido de administrar usuarios
+     sigue siendo supervisor de su turno. */
+  function esAdminUsuario() {
+    return rolSesion === 'ADMINISTRADOR' || rolSesion === 'ADMIN';
+  }
+
+  /* Anade a la etiqueta de novedad los dias que faltan y el dia en que debe
+     presentarse. La fecha se lee de la columna K de NOVEDADES, que el
+     backend ya devolvio calculada. */
+  function etiquetaNovedad_(nov, paraAdmin) {
+    let texto = '<span class="badge-novedad">' + esc(nov.NOVEDAD || '') + '</span>';
+    if (!paraAdmin) return texto;
+
+    const estado = nov.ESTADO_PRESENTACION;
+    if (!estado || estado === 'SIN_FECHA') return texto;
+
+    let clase = 'nd-falta';
+    let cuando = '';
+    if (estado === 'HOY') { clase = 'nd-hoy'; cuando = 'se presenta HOY'; }
+    else if (estado === 'VENCIDO') { clase = 'nd-vencido'; cuando = 'presentación vencida hace ' + Math.abs(nov.DIAS_RESTANTES) + ' día(s)'; }
+    else { cuando = 'faltan ' + nov.DIAS_RESTANTES + ' día(s)'; }
+
+    const dia = nov.DIA_SEMANA ? ' (' + esc(nov.DIA_SEMANA) + ')' : '';
+    const fecha = nov.FECHA_PRESENTACION ? ' ' + esc(nov.FECHA_PRESENTACION) : '';
+    texto += '<span class="nov-indice ' + clase + '">' + cuando + dia + ' → presentación:' + fecha + '</span>';
+    return texto;
   }
 
   function mostrarToast(mensaje, tipo = 'success') {
@@ -1960,9 +2004,8 @@
       return i === -1 ? JERARQUIA.length : i;
     };
     const ordenados = funcionarios.slice().sort(function(a, b) {
-      const na = (a.historialNovedades || []).length ? 1 : 0;
-      const nb = (b.historialNovedades || []).length ? 1 : 0;
-      if (na !== nb) return na - nb;
+      // Orden por jerarquia de grados: el grado manda y, dentro de cada
+      // grado, se ordena por nombre.
       const ia = rangoGrado(a.grado || a.GR);
       const ib = rangoGrado(b.grado || b.GR);
       if (ia !== ib) return ia - ib;
@@ -1987,7 +2030,7 @@
             return '<span class="badge-novedad' + (soloTipo ? '' : ' badge-sin-tipo') + '">' +
               esc(soloTipo || 'SIN TIPO') + '</span>';
           }
-          return '<span class="badge-novedad">' + esc(x.NOVEDAD || '') + '</span>';
+          return etiquetaNovedad_(x, esAdminUsuario());
         }).join('');
       } else {
         novedadesHtml = '<span class="text-muted">S/N</span>';

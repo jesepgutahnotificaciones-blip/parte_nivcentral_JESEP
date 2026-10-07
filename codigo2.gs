@@ -14,7 +14,7 @@ var DEBUG_LOGIN = true;
 // Al abrir  <URL del Web App>/exec?accion=version  debe responder con este texto.
 // Si responde otra cosa (o "Acción no válida"), el despliegue está desactualizado:
 // hay que pegar este código y hacer "Implementar > Nueva versión".
-var VERSION_APP = 'JESEP-2026-10-06-r37';
+var VERSION_APP = 'JESEP-2026-10-07-r38';
 
 // Separador entre el Tipo (columna E) y el nombre del funcionario (columna F).
 // Cámbialo si prefieres otro formato, por ejemplo ' | ' o ' - '.
@@ -653,6 +653,50 @@ function normalizarUsuario_(v) {
     .toUpperCase();
 }
 
+/* =====================================================
+   FECHAS UTILES PARA EL INDICE DE NOVEDADES
+   La fecha de presentacion YA esta calculada en la hoja NOVEDADES
+   (columna K). Aqui solo se cuenta cuanto falta desde hoy.
+   ===================================================== */
+
+var DIAS_SEMANA_ = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
+/* Devuelve una fecha legible dd/mm/aaaa, o cadena vacia si no hay fecha. */
+function fechaComoTexto_(v) {
+  var p = partesFecha_(v, ZONA_);
+  if (!p || !p.anio) return '';
+  function dos(n) { return (n < 10 ? '0' : '') + n; }
+  return dos(p.dia) + '/' + dos(p.mes) + '/' + p.anio;
+}
+
+/* Dias de calendario entre hoy y una fecha, y el nombre del dia.
+   Devuelve estado VENCE cuando ya paso, HOY cuando es el mismo dia. */
+function diasRestantesHasta_(v) {
+  var p = partesFecha_(v, ZONA_);
+  if (!p || !p.anio) {
+    return { fecha: '', restantes: '', diaSemana: '', estado: 'SIN_FECHA' };
+  }
+
+  var hoy = partesFecha_(new Date(), ZONA_);
+
+  // Medianoche de ambas fechas: evita que las horas del turno resten dias.
+  var utcHoy = Date.UTC(hoy.anio, hoy.mes - 1, hoy.dia);
+  var utcDestino = Date.UTC(p.anio, p.mes - 1, p.dia);
+  var restantes = Math.round((utcDestino - utcHoy) / 86400000);
+
+  var estado = restantes < 0 ? 'VENCIDO' : (restantes === 0 ? 'HOY' : 'PENDIENTE');
+
+  // getUTCDay(): la fecha ya esta desplazada a UTC en la cuenta anterior.
+  var diaSemana = DIAS_SEMANA_[(new Date(utcDestino).getUTCDay() + 7) % 7];
+
+  return {
+    fecha: fechaComoTexto_(v),
+    restantes: restantes,
+    diaSemana: diaSemana,
+    estado: estado
+  };
+}
+
 /* Usuarios que NO pueden administrar usuarios aunque su ROL en la hoja
    USUARIOS sea ADMINISTRADOR. Es una lista negra explicita para que el
    bloqueo no dependa de editar la hoja y no se pierda en una carga. */
@@ -1066,6 +1110,11 @@ function consultarPorTurno(token, filtro) {
     var iGrado   = idxColumnaBase_(cabNormBase, [/^GR$/, /^GRADO$/], -1);
     var iNombre  = idxColumnaBase_(cabNormBase, [/^FUNCIONARIO$/, /^APELLIDOS Y NOMBRES$/, /^NOMBRE$/, /^NOMBRES$/], -1);
     var iDepend  = idxColumnaBase_(cabNormBase, [/^DEPENDENCIA$/], -1);
+    // Fecha del ultimo ascenso. El encabezado exacto no es uniforme entre
+    // copias de la hoja, asi que se aceptan las variantes conocidas.
+    var iAscenso = idxColumnaBase_(cabNormBase,
+      [/^FECHA ULTIMO ASCENSO$/, /^FECHA DE ULTIMO ASCENSO$/, /^ULTIMO ASCENSO$/,
+       /^FECHA ASCENSO$/, /^FECHA DE ASCENSO$/, /^FECHA_ASCENSO$/], -1);
 
     function valCampo_(fila, idx) {
       if (idx === -1 || idx === undefined || idx >= fila.length) return '';
@@ -1118,6 +1167,10 @@ function consultarPorTurno(token, filtro) {
           var idxTipoNov = idxColumnaBase_(cabNormNov, [/^TIPO$/], 6);
           var idxNovedadNov = idxColumnaBase_(cabNormNov, [/^NOVEDAD$/], 7);
           var idxDiasNov = idxColumnaBase_(cabNormNov, [/^DIAS$/], 8);
+          // J = Fecha INICIAL | K = Fecha PRESENTACION. La presentacion ya
+          // esta calculada en la hoja: no se vuelve a derivar de los dias.
+          var idxFInicNov = idxColumnaBase_(cabNormNov, [/^FECHA INICIAL$/], 9);
+          var idxFPresNov = idxColumnaBase_(cabNormNov, [/^FECHA PRESENTACION$/], 10);
 
           for (var n = 1; n < datosNovedades.length; n++) {
             var filaNov = datosNovedades[n];
@@ -1147,7 +1200,21 @@ function consultarPorTurno(token, filtro) {
             if (concatenado) {
               // NOVEDAD = texto concatenado (TIPO - detalle - dias)
               // TIPO = solo el tipo, para las vistas simplificadas
-              novedadesCruzadas.push({ NOVEDAD: concatenado, TIPO: tipoNov });
+              // El resto lo consume el indice de novedades, que solo se
+              // muestra a administradores.
+              var presInfo = diasRestantesHasta_(filaNov[idxFPresNov]);
+              var inicialInfo = filaNov[idxFInicNov];
+
+              novedadesCruzadas.push({
+                NOVEDAD: concatenado,
+                TIPO: tipoNov,
+                DIAS: diasNov,
+                FECHA_INICIAL: fechaComoTexto_(inicialInfo),
+                FECHA_PRESENTACION: presInfo.fecha,
+                DIAS_RESTANTES: presInfo.restantes,
+                DIA_SEMANA: presInfo.diaSemana,
+                ESTADO_PRESENTACION: presInfo.estado
+              });
             }
           }
         }
@@ -1157,6 +1224,7 @@ function consultarPorTurno(token, filtro) {
         obj.turno = filaBase.turno;
         obj.grado = filaBase.grado;
         obj.funcionario = filaBase.funcionario;
+        obj.fechaAscenso = fechaComoTexto_(iAscenso === -1 ? '' : datosBase[i][iAscenso]);
         obj.dependencia = filaBase.dependencia;
         funcionarios.push(obj);
       }
@@ -1776,14 +1844,17 @@ function agregarFuncionario(token, datos) {
       { valor: datos.dependencia,       patrones: [/^DEPENDENCIA$/] },
       { valor: datos.pert,              patrones: [/^PERT$/] },
       { valor: datos.turno,             patrones: [/^TURNO$/] },
-      { valor: datos.mes,               patrones: [/^MES$/, /^MES ANO$/, /^MESES ANO$/] },
-      { valor: datos.dia,               patrones: [/^DIA$/] },
+      // La columna MES pasa a guardar la fecha completa de presentacion.
+      // El campo DIA se elimino del formulario y ya no se escribe.
+      { valor: datos.fechaPresentacion, patrones: [/^MES$/, /^MES ANO$/, /^MESES ANO$/, /^FECHA PRESENTACION$/] },
       { valor: datos.fechaNacimiento,   patrones: [/^FECHA NACIMIENTO$/, /^FECHA DE NACIMIENTO$/, /^FNAC$/] },
       { valor: datos.correo,            patrones: [/^CORREO ELECTRONICO$/, /^CORREO$/, /^EMAIL$/] },
       { valor: datos.sexo,              patrones: [/^SEXO$/] },
       { valor: datos.estadoCivil,       patrones: [/^ESTADO CIVIL$/] },
       { valor: datos.situacionLaboral,  patrones: [/^SITUACION LABORAL$/] },
-      { valor: datos.comunicado,        patrones: [/^COMUNICADO OFICIAL$/, /^COMUNICADO$/] }
+      { valor: datos.comunicado,        patrones: [/^COMUNICADO OFICIAL$/, /^COMUNICADO$/] },
+      { valor: datos.fechaUltimoAscenso, patrones: [/^FECHA ULTIMO ASCENSO$/, /^FECHA DE ULTIMO ASCENSO$/, /^ULTIMO ASCENSO$/, /^FECHA ASCENSO$/, /^FECHA DE ASCENSO$/, /^FECHA_ASCENSO$/] },
+      { valor: datos.numeroCurso,        patrones: [/^N CURSO$/, /^NUMERO DE CURSO$/, /^NUM CURSO$/, /^NCURSO$/, /^CURSO$/] }
     ];
 
     var sinColumna = [];
