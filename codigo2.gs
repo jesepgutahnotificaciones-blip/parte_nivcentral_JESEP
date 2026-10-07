@@ -653,6 +653,29 @@ function normalizarUsuario_(v) {
     .toUpperCase();
 }
 
+/* Usuarios que NO pueden administrar usuarios aunque su ROL en la hoja
+   USUARIOS sea ADMINISTRADOR. Es una lista negra explicita para que el
+   bloqueo no dependa de editar la hoja y no se pierda en una carga. */
+var USUARIOS_SIN_ADMIN_USUARIOS_ = ['OFSEMANA'];
+
+function esUsuarioBloqueadoAdmin_(usuario) {
+  var id = normalizarUsuario_(usuario);
+  // Sin identidad no se concede nada: es lo seguro ante un parametro vacio.
+  if (!id) return true;
+  return USUARIOS_SIN_ADMIN_USUARIOS_.some(function(u) {
+    return normalizarUsuario_(u) === id;
+  });
+}
+
+/* Unico punto de decision para administrar usuarios: rol real ADMINISTRADOR
+   leido de la hoja USUARIOS y ausencia en la lista negra.
+   Las funciones de la seccion Usuarios lo usan para validar en el servidor:
+   ocultar el boton en el cliente no es proteccion, porque la URL es publica. */
+function puedeAdministrarUsuarios_(usuario) {
+  if (esUsuarioBloqueadoAdmin_(usuario)) return false;
+  return esUsuarioAdmin_(usuario);
+}
+
 // Consulta el ROL real del usuario directamente en la hoja USUARIOS,
 // para no confiar en el rol que envía el cliente.
 function esUsuarioAdmin_(usuario) {
@@ -1547,8 +1570,11 @@ function diagnosticarUsuarios() {
   }
 }
 
-function listarUsuarios(token) {
+function listarUsuarios(token, quienLlama) {
   try {
+    if (!puedeAdministrarUsuarios_(quienLlama)) {
+      return { estado: false, mensaje: 'Su usuario no tiene permiso para administrar usuarios.' };
+    }
     var ss = abrirLibro_();
     var hoja = ss.getSheetByName('USUARIOS');
     if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja USUARIOS.' };
@@ -1592,8 +1618,11 @@ function listarUsuarios(token) {
   }
 }
 
-function crearUsuario(token, usuario, clave, rol, dependencia) {
+function crearUsuario(token, quienLlama, usuario, clave, rol, dependencia) {
   try {
+    if (!puedeAdministrarUsuarios_(quienLlama)) {
+      return { estado: false, mensaje: 'Su usuario no tiene permiso para crear usuarios.' };
+    }
     var ss = abrirLibro_();
     var hoja = ss.getSheetByName('USUARIOS');
     if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja USUARIOS.' };
@@ -1640,8 +1669,11 @@ function crearUsuario(token, usuario, clave, rol, dependencia) {
   }
 }
 
-function cambiarEstadoUsuario(token, usuario, nuevoEstado) {
+function cambiarEstadoUsuario(token, quienLlama, usuario, nuevoEstado) {
   try {
+    if (!puedeAdministrarUsuarios_(quienLlama)) {
+      return { estado: false, mensaje: 'Su usuario no tiene permiso para cambiar el estado de usuarios.' };
+    }
     var ss = abrirLibro_();
     var hoja = ss.getSheetByName('USUARIOS');
     if (!hoja) return { estado: false, mensaje: 'No se encontró la hoja USUARIOS.' };

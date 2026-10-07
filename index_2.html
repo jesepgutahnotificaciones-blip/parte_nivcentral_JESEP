@@ -711,7 +711,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwkDy3THWg3xhGkw-BFpR5CC1H4DMxR6jlQWoy2o4GeIvyKpM-Gyz9cD4YhEPZe9td1/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwivgsKVgz6Oskos6t9Mnrnl467vF38FJKj2lzj1IXP6_Y1ZU_fC_r9OSx-/exec';
   const CLAVE_SESION = 'jesep_sesion';
 
   (function configurarPuenteAPI() {
@@ -872,6 +872,32 @@
   // Usuarios que pueden consultar y eliminar filas de la hoja NOVEDADES.
   const USUARIOS_AREAS_ = ['SGSST_JESEP', 'VAC_JESEP', 'PAS_JESEP', 'CIT_JESEP',
                            'HIS_JESEP', 'PRO_JESEP', 'GH_JESEP'];
+
+  /* Usuarios que NO pueden administrar usuarios aunque su ROL sea
+     ADMINISTRADOR. El backend aplica la MISMA lista, de modo que ocultar
+     el boton aqui no es la unica proteccion. */
+  const USUARIOS_SIN_ADMIN_USUARIOS_ = ['OFSEMANA'];
+
+  /* Compara el identificador con la lista negra ignorando espacios, guiones y
+     guiones bajos: "ofsemanа", "OF-SEMANA" y "OFSEMANA" cuentan igual.
+     Sin valor devuelve true: ante una identidad vacia no se concede nada. */
+  function esUsuarioBloqueadoAdmin_(valor) {
+    var compacto = String(valor === null || valor === undefined ? '' : valor)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!compacto) return true;
+    for (var i = 0; i < USUARIOS_SIN_ADMIN_USUARIOS_.length; i++) {
+      if (USUARIOS_SIN_ADMIN_USUARIOS_[i].replace(/[^A-Z0-9]/g, '') === compacto) return true;
+    }
+    return false;
+  }
+
+  /* Unico punto de decision en el cliente. El servidor vuelve a comprobarlo. */
+  function puedeAdministrarUsuarios_() {
+    if (esUsuarioBloqueadoAdmin_(usuarioId)) return false;
+    if (esUsuarioBloqueadoAdmin_(usuarioSesion)) return false;
+    return rolSesion === 'ADMINISTRADOR' || rolSesion === 'ADMIN';
+  }
 
   // Compara nombres de usuario ignorando espacios, guiones y guiones bajos:
   // "VAC JESEP", "vac-jesep" y "VAC_JESEP" se consideran el mismo rol.
@@ -1058,8 +1084,8 @@
   }
 
   function configurarPermisos() {
-    // Sección Usuarios: solo ADMIN
-    const esAdmin = rolSesion === 'ADMINISTRADOR';
+    // Sección Usuarios: solo ADMIN y fuera de la lista negra (p. ej. OFSEMANA)
+    const esAdmin = puedeAdministrarUsuarios_();
     const menuUsuarios = document.getElementById('menuUsuarios');
     const seccionUsuarios = document.getElementById('seccionUsuarios');
 
@@ -1069,6 +1095,8 @@
     } else {
       menuUsuarios.classList.add('hidden');
       seccionUsuarios.classList.add('hidden');
+      // Por si la sección quedó activa de una visita anterior.
+      if (seccionUsuarios) seccionUsuarios.classList.remove('active');
     }
 
     // Sección Funcionarios (agregar/eliminar de LISTADO_BASE): solo UBL_JESEP
@@ -1192,6 +1220,14 @@
     // "Eliminar novedad" es solo para usuarios de areas.
     if (nombre === 'gestionarNovedades' && !esRolArea_(usuarioId) && !esRolArea_(usuarioSesion)) {
       mostrarToast('Su usuario no tiene acceso a esta sección.', 'error');
+      nombre = 'consulta';
+    }
+
+    // "Usuarios" exige rol ADMIN y que no esté en la lista negra.
+    // El botón ya viene oculto para quien no puede, pero esta comprobación
+    // evita que la sección quede visible por un estado anterior.
+    if (nombre === 'usuarios' && !puedeAdministrarUsuarios_()) {
+      mostrarToast('Su usuario no tiene acceso a la administración de usuarios.', 'error');
       nombre = 'consulta';
     }
 
@@ -1812,6 +1848,7 @@ function avisarPresentacionVacaciones() {
   }
 
   function cargarUsuarios() {
+    if (!puedeAdministrarUsuarios_()) { mostrarToast('Su usuario no tiene acceso a esta sección.', 'error'); return; }
     const contenedor = document.getElementById('listaUsuarios');
     google.script.run
       .withSuccessHandler(function(respuesta) {
@@ -1825,10 +1862,11 @@ function avisarPresentacionVacaciones() {
         contenedor.innerHTML = html;
       })
       .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando usuarios.</div>'; })
-      .listarUsuarios(tokenSesion);
+      .listarUsuarios(tokenSesion, usuarioId);
   }
 
   function crearUsuario() {
+    if (!puedeAdministrarUsuarios_()) { mostrarToast('Su usuario no tiene permiso para crear usuarios.', 'error'); return; }
     const usuario = document.getElementById('nuevoUsuario').value.trim();
     const clave = document.getElementById('nuevaClave').value;
     const rol = document.getElementById('nuevoRol').value;
@@ -1841,14 +1879,15 @@ function avisarPresentacionVacaciones() {
         cargarUsuarios();
       })
       .withFailureHandler(() => mostrarToast('Error creando usuario.', 'error'))
-      .crearUsuario(tokenSesion, usuario, clave, rol, dependencia);
+      .crearUsuario(tokenSesion, usuarioId, usuario, clave, rol, dependencia);
   }
 
   function cambiarEstadoUsuario(usuario, nuevoEstado) {
+    if (!puedeAdministrarUsuarios_()) { mostrarToast('Su usuario no tiene permiso para cambiar estados.', 'error'); return; }
     google.script.run
       .withSuccessHandler(() => { mostrarToast('Estado actualizado.'); cargarUsuarios(); })
       .withFailureHandler(() => mostrarToast('Error.', 'error'))
-      .cambiarEstadoUsuario(tokenSesion, usuario, nuevoEstado);
+      .cambiarEstadoUsuario(tokenSesion, usuarioId, usuario, nuevoEstado);
   }
 
   // ========== GESTION DE LA HOJA NOVEDADES (USUARIOS DE AREAS) ==========

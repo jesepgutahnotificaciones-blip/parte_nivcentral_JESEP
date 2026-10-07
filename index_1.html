@@ -914,7 +914,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbwkDy3THWg3xhGkw-BFpR5CC1H4DMxR6jlQWoy2o4GeIvyKpM-Gyz9cD4YhEPZe9td1/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwivgsKVgz6Oskos6t9Mnrnl467vF38FJKj2lzj1IXP6_Y1ZU_fC_r9OSx-/exec';
   const CLAVE_SESION = 'jesep_sesion';
   
 
@@ -1051,6 +1051,7 @@
   let tokenSesion = null;
   let usuarioSesion = null;
   let rolSesion = null;
+  let usuarioId = '';
   let dependenciaSesion = '';
   let turnoPermitido = '';
   let funcionarioSeleccionado = null;
@@ -1084,6 +1085,12 @@
       esUsuarioUBL = String(
         (sesionGuardada.usuario ? (sesionGuardada.usuario.usuarioId || sesionGuardada.usuario.usuario) : '')
       ).trim().toUpperCase() === 'UBL_JESEP';
+
+      // Identificador normalizado, usado para decidir permisos de la
+      // administración de usuarios (ver puedeAdministrarUsuarios_).
+      usuarioId = String(
+        sesionGuardada.usuario ? (sesionGuardada.usuario.usuarioId || sesionGuardada.usuario.usuario || '') : ''
+      ).trim().toUpperCase();
 
       if (!usuarioSesion) {
         // Redirigir al login si no hay sesión válida
@@ -1211,6 +1218,27 @@
     return String(valor).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
+  /* Usuarios que NO pueden administrar usuarios aunque su ROL sea
+     ADMINISTRADOR. El backend aplica la MISMA lista. */
+  const USUARIOS_SIN_ADMIN_USUARIOS_ = ['OFSEMANA'];
+
+  function esUsuarioBloqueadoAdmin_(valor) {
+    var compacto = String(valor === null || valor === undefined ? '' : valor)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!compacto) return true;
+    for (var i = 0; i < USUARIOS_SIN_ADMIN_USUARIOS_.length; i++) {
+      if (USUARIOS_SIN_ADMIN_USUARIOS_[i].replace(/[^A-Z0-9]/g, '') === compacto) return true;
+    }
+    return false;
+  }
+
+  function puedeAdministrarUsuarios_() {
+    if (esUsuarioBloqueadoAdmin_(usuarioId)) return false;
+    if (esUsuarioBloqueadoAdmin_(usuarioSesion)) return false;
+    return rolSesion === 'ADMINISTRADOR' || rolSesion === 'ADMIN';
+  }
+
   function mostrarToast(mensaje, tipo = 'success') {
     const toast = document.getElementById('toastApp');
     toast.textContent = mensaje || '';
@@ -1220,8 +1248,8 @@
   }
 
   function configurarPermisos() {
-    // Sección Usuarios: solo ADMIN
-    const esAdmin = rolSesion === 'ADMINISTRADOR';
+    // Sección Usuarios: solo ADMIN y fuera de la lista negra (p. ej. OFSEMANA)
+    const esAdmin = puedeAdministrarUsuarios_();
     const menuUsuarios = document.getElementById('menuUsuarios');
     const seccionUsuarios = document.getElementById('seccionUsuarios');
 
@@ -1231,6 +1259,7 @@
     } else {
       menuUsuarios.classList.add('hidden');
       seccionUsuarios.classList.add('hidden');
+      if (seccionUsuarios) seccionUsuarios.classList.remove('active');
     }
 
     // Usuarios DISPONIBLE_A / _B / _C: sin "Registrar novedad" ni "Reportes".
@@ -1311,6 +1340,12 @@
     // Funcionarios es solo de UBL_JESEP. No registra novedades.
     if (nombre === 'funcionarios' && !esUsuarioUBL) {
       mostrarToast('Su usuario no tiene acceso a esta sección.', 'error');
+      nombre = 'turnos';
+    }
+
+    // "Usuarios" exige rol ADMIN y que no esté en la lista negra (OFSEMANA).
+    if (nombre === 'usuarios' && !puedeAdministrarUsuarios_()) {
+      mostrarToast('Su usuario no tiene acceso a la administración de usuarios.', 'error');
       nombre = 'turnos';
     }
     if (esUsuarioUBL && nombre === 'novedad') {
@@ -2131,10 +2166,11 @@ function avisarPresentacionVacaciones() {
         contenedor.innerHTML = html;
       })
       .withFailureHandler(() => { contenedor.innerHTML = '<div class="alert alert-danger">Error cargando usuarios.</div>'; })
-      .listarUsuarios(tokenSesion);
+      .listarUsuarios(tokenSesion, usuarioId);
   }
 
   function crearUsuario() {
+    if (!puedeAdministrarUsuarios_()) { mostrarToast('Su usuario no tiene permiso para crear usuarios.', 'error'); return; }
     const usuario = document.getElementById('nuevoUsuario').value.trim();
     const clave = document.getElementById('nuevaClave').value;
     const rol = document.getElementById('nuevoRol').value;
@@ -2147,14 +2183,15 @@ function avisarPresentacionVacaciones() {
         cargarUsuarios();
       })
       .withFailureHandler(() => mostrarToast('Error creando usuario.', 'error'))
-      .crearUsuario(tokenSesion, usuario, clave, rol, dependencia);
+      .crearUsuario(tokenSesion, usuarioId, usuario, clave, rol, dependencia);
   }
 
   function cambiarEstadoUsuario(usuario, nuevoEstado) {
+    if (!puedeAdministrarUsuarios_()) { mostrarToast('Su usuario no tiene permiso para cambiar estados.', 'error'); return; }
     google.script.run
       .withSuccessHandler(() => { mostrarToast('Estado actualizado.'); cargarUsuarios(); })
       .withFailureHandler(() => mostrarToast('Error.', 'error'))
-      .cambiarEstadoUsuario(tokenSesion, usuario, nuevoEstado);
+      .cambiarEstadoUsuario(tokenSesion, usuarioId, usuario, nuevoEstado);
   }
 
   // ========== FUNCIONES PARA UBL_JESEP ==========
