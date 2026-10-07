@@ -450,7 +450,7 @@
   </div>
 
 <script>
-const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyx2pUir4BHSO-TVm6Ee5h7XcxlypgpN4V8S15fFYlR6IyNnfTmWrxdQr2COlmP63SG/exec';
+const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzSmeUpVWwivgsKVgz6Oskos6t9Mnrnl467vF38FJKj2lzj1IXP6_Y1ZU_fC_r9OSx-/exec';
 
 (function configurarPuenteAPI() {
   // Apps Script puede tardar bastante en arrancar en frío o tras un rato sin uso.
@@ -765,6 +765,20 @@ function cerrarModalCumpleanosYCerrar() {
   cerrarModalCumpleanos_();
   if (typeof continuar === 'function') continuar();
 }
+
+/* Los handlers se registran UNA vez al cargar la pagina.
+   Antes se asignaban dentro de iniciarSesion(); si esa funcion terminaba
+   antes (por ejemplo cuando la clave es incorrecta) el modal quedaba
+   visible sin forma de cerrarlo y la pagina se trababa. */
+document.addEventListener('DOMContentLoaded', function() {
+  const overlay = document.getElementById('modalCumpleanos');
+  const btnCerrar = document.getElementById('btnCerrarCumpleanos');
+
+  if (btnCerrar) btnCerrar.onclick = cerrarModalCumpleanosYCerrar;
+  if (overlay) overlay.onclick = function(ev) {
+    if (ev.target === overlay) cerrarModalCumpleanosYCerrar();
+  };
+});
 
 document.addEventListener('keydown', function(ev) {
   const overlay = document.getElementById('modalCumpleanos');

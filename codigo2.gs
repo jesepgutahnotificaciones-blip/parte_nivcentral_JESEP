@@ -223,6 +223,9 @@ function doGet(e) {
       case 'iniciarSesionCompleta':
         resultado = iniciarSesionCompleta(args[0], args[1]);
         break;
+      case 'diagnosticarCumpleanos':
+        resultado = diagnosticarCumpleanos();
+        break;
       case 'verificarSesion':
         resultado = verificarSesion(args[0]);
         break;
@@ -2158,13 +2161,38 @@ function partesFecha_(v, zona) {
     return { anio: Number(p[0]), mes: Number(p[1]), dia: Number(p[2]) };
   }
 
+  // Numero de serie de Sheets. getValues() devuelve Date en celdas con
+  // formato de fecha, pero si la columna esta formateada como texto plano
+  // puede llegar el numero crudo.
+  if (typeof v === 'number' && isFinite(v)) {
+    if (v < 1 || v > 80000) return null;
+    var fs = Utilities.formatDate(new Date(v * 86400000), zona || ZONA_, 'yyyy-MM-dd');
+    var q = fs.split('-');
+    return { anio: Number(q[0]), mes: Number(q[1]), dia: Number(q[2]) };
+  }
+
   var s = String(v).trim();
   var m = s.match(/^(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})/);
   if (!m) return null;
 
   var a = Number(m[1]);
-  if (a < 100) a += 2000;            // "85" -> 1985
-  return { anio: a, mes: Number(m[2]), dia: Number(m[3]) };
+  var b = Number(m[2]);
+  var c = Number(m[3]);
+
+  // yyyy-mm-dd: el anio va primero y es el unico grupo de 4 digitos.
+  if (a > 31) return { anio: a, mes: b, dia: c };
+
+  // dd-mm-aaaa: el anio va al final (formato que usa la institucion).
+  if (c > 31) {
+    if (c < 100) c += 2000;
+    return { anio: c, mes: b, dia: a };
+  }
+
+  // Ambos grupos son de 1-2 digitos (dd-mm-yy): "15-08-90" es ambiguo,
+  // puede ser 1990 o 2090. Se asume el siglo pasado, que es lo esperable
+  // para una fecha de nacimiento.
+  if (c < 100) c += 1900;
+  return { anio: c, mes: b, dia: a };
 }
 
 function quitarAcentos_(s) {
@@ -2241,6 +2269,82 @@ function iniciarSesionCompleta(usuarioIngresado, claveIngresada) {
     r.cumpleanos = { fecha: '', datos: [] };   // el login nunca debe fallar por esto
   }
   return r;
+}
+
+/* Diagnostico de la columna FECHA_NACIMIENTO (M de LISTADO_BASE).
+   Reporta como viene cada celda realmente: fecha nativa, texto o numero.
+   Sin esto no hay forma de saber por que los cumpleaños no aparecen. */
+function diagnosticarCumpleanos() {
+  var add = [];
+  try {
+    var ss = abrirLibro_();
+    var hoja = ss.getSheetByName('LISTADO_BASE');
+    if (!hoja) return { estado: false, mensaje: 'No existe la hoja LISTADO_BASE.' };
+
+    var datos = hoja.getDataRange().getValues();
+    var cabeceras = datos[0] || [];
+
+    add.push('Libro: ' + ss.getName());
+    add.push('LISTADO_BASE: ' + datos.length + ' filas x ' + cabeceras.length + ' columnas');
+
+    var cab = cabeceras.map(normalizarCabColumna_);
+    var iNac = idxColumnaBase_(cab, [/^FECHA NACIMIENTO$/, /^FECHA DE NACIMIENTO$/, /^FNAC$/], -1);
+
+    add.push('Columna FECHA_NACIMIENTO: indice ' + iNac +
+      (iNac >= 0 ? ' -> ' + letraColumna_(iNac + 1) + '  titulo="' + cabeceras[iNac] + '"' : '  NO ENCONTRADA'));
+    add.push('Indice fijo de la columna M: 12 (0-based)');
+
+    var hoy = partesFecha_(new Date(), ZONA_);
+    add.push('Fecha de hoy: ' + hoy.dia + '/' + hoy.mes + '/' + hoy.anio);
+
+    if (iNac < 0) {
+      add.push('');
+      add.push('Encabezados reales de la hoja:');
+      for (var c = 0; c < cabeceras.length; c++) {
+        add.push('  ' + letraColumna_(c + 1) + ') "' + cabeceras[c] + '"');
+      }
+      return { estado: true, detalle: add.join('\n') };
+    }
+
+    var tipos = {}, ok = 0, vacias = 0, muestras = [];
+    for (var i = 1; i < datos.length; i++) {
+      var v = datos[i][iNac];
+      if (v === null || v === undefined || String(v).trim() === '') { vacias++; continue; }
+      var t = Object.prototype.toString.call(v);
+      tipos[t] = (tipos[t] || 0) + 1;
+      if (partesFecha_(v, ZONA_)) ok++;
+      if (muestras.length < 10) {
+        muestras.push('  fila ' + (i + 1) + ': ' + t.replace('[object ', '').replace(']', '') +
+          '  crudo="' + String(v) + '"  ->  ' + JSON.stringify(partesFecha_(v, ZONA_)));
+      }
+    }
+
+    add.push('');
+    add.push('Tipos de valor encontrados:');
+    for (var k in tipos) {
+      if (Object.prototype.hasOwnProperty.call(tipos, k)) {
+        add.push('  ' + k.replace('[object ', '').replace(']', '') + ': ' + tipos[k] + ' celdas');
+      }
+    }
+    add.push('Celdas vacias: ' + vacias);
+    add.push('Celdas que se pudieron interpretar como fecha: ' + ok);
+
+    add.push('');
+    add.push('Primeras 10 celdas con su interpretacion:');
+    if (!muestras.length) add.push('  (no hay ninguna celda con dato)');
+    muestras.forEach(function(m) { add.push(m); });
+
+    var r = cumpleanerosEnLibro_(ss);
+    add.push('');
+    add.push('CUMPLEANEROS DETECTADOS HOY: ' + r.lista.length);
+    r.lista.slice(0, 15).forEach(function(p) {
+      add.push('  ' + p.funcionario + ' - ' + p.anios + ' anios');
+    });
+
+    return { estado: true, detalle: add.join('\n') };
+  } catch (err) {
+    return { estado: false, mensaje: err.message, detalle: add.join('\n') };
+  }
 }
 
 // Funcionarios que deben presentarse HOY de vacaciones o permiso.
