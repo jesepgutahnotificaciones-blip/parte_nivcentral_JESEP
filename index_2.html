@@ -1705,21 +1705,44 @@ function onTipoNovedadChange() {
     html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
     html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>FECHA ULTIMO ASCENSO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
-    // Orden por jerarquia de grados: MG, BG, CR, TC, MY, CT, TE, ST, CM,
-    // SC, IJ, IT, SI, PT, PP, AXP. Antes primaba "sin novedades primero";
-    // ahora el grado manda y dentro de cada grado se ordena por nombre.
-    const JERARQUIA = ['MG','BG','CR','TC','MY','CT','TE','ST','CM','SC','IJ','IT','SI','PT','PP','AXP'];
+    // Orden de la tabla de reportes:
+    //   1) GRADO (columna C) segun la jerarquia institucional
+    //      MG, BG, CR, TC, MY, CT, TE, ST, CM, SC, IJ, IT, SI, PT, PP, AXP,
+    //      ASE02, ASE19, TES20, ADS17, APA17
+    //   2) FECHA ULTIMO ASCENSO (columna U): la mas antigua primero,
+    //      sin fecha al final del grupo
+    //   3) PUESTO (columna X)
+    //   4) Los que NO tienen novedad van primero y los que SI al final
+    //   5) Nombre como desempate final
+    const JERARQUIA = ['MG','BG','CR','TC','MY','CT','TE','ST','CM','SC','IJ','IT','SI','PT','PP','AXP','ASE02','ASE19','TES20','ADS17','APA17'];
     const rangoGrado = function(g) {
       const i = JERARQUIA.indexOf(String(g || '').trim().toUpperCase());
       return i === -1 ? JERARQUIA.length : i;
     };
+    const tsDe = function(f) {
+      return (f && f.fechaAscensoTs !== null && f.fechaAscensoTs !== undefined)
+        ? f.fechaAscensoTs
+        : Infinity;
+    };
     const ordenados = funcionarios.slice().sort(function(a, b) {
-      const ia = rangoGrado(a.grado || a.GR);
-      const ib = rangoGrado(b.grado || b.GR);
-      if (ia !== ib) return ia - ib;
+      let d = rangoGrado(a.grado || a.GR) - rangoGrado(b.grado || b.GR);
+      if (d !== 0) return d;
+
+      const ta = tsDe(a), tb = tsDe(b);
+      if (ta !== tb) return ta < tb ? -1 : 1;
+
+      const pa = String((a && a.puesto) || '').trim().toUpperCase();
+      const pb = String((b && b.puesto) || '').trim().toUpperCase();
+      if (pa !== pb) return pa < pb ? -1 : 1;
+
+      const na = (a.historialNovedades && a.historialNovedades.length) ? 1 : 0;
+      const nb = (b.historialNovedades && b.historialNovedades.length) ? 1 : 0;
+      if (na !== nb) return na - nb;   // sin novedades primero, con novedades al final
+
       const xa = String(a.funcionario || a.FUNCIONARIO || '').trim().toUpperCase();
       const xb = String(b.funcionario || b.FUNCIONARIO || '').trim().toUpperCase();
-      return xa < xb ? -1 : (xa > xb ? 1 : 0);
+      if (xa !== xb) return xa < xb ? -1 : 1;
+      return 0;
     });
 
     let n = 0;
