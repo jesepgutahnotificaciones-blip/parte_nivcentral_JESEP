@@ -7,6 +7,9 @@
   <title>Sistema de Gestión de Novedades - JESEP</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.31/dist/jspdf.plugin.autotable.min.js"></script>
+
   <style>
     :root {
       --verde: #01592F;
@@ -929,7 +932,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyXJvzwBorfCyH41KrYFGH-MXx_s51e3wuGJOVhl0VHMvIcdjoKjwslscrNzVZIP7nN/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbzfCKHIN-_1-wAT3J9tkkQcsvSV7u8w2T5PN5v1K2GSuqWh7x725kKg6yBfr4PpgyC3/exec';
   const CLAVE_SESION = 'jesep_sesion';
   
 
@@ -1073,6 +1076,7 @@
   let ultimoTurnoConsultado = null;
   let ultimoResultadoturno = null;
   let ultimoReporteArchivos = null;
+  let ultimoListadoOrdenado = null;   // { filtro, lista } tal como se ve en la tabla
   // Usuario DISPONIBLE_A / _B / _C: solo consulta su turno, sin registrar
   // novedades ni generar reportes.
   let esUsuarioDisponible = false;
@@ -1225,7 +1229,7 @@
         mostrarToast('Error: ' + ((error && error.message) || 'fallo de red'), 'error');
         mostrarEnlaceDescarga_(formato, filtro);
       })
-      .generarReporteTurno(tokenSesion, filtro);
+      .generarReporteTurno(tokenSesion, filtro, formato);
   }
 
   function esc(valor) {
@@ -1288,7 +1292,7 @@
     toast.textContent = mensaje || '';
     toast.style.background = tipo === 'error' ? '#b71c1c' : '#263238';
     toast.classList.add('show');
-    setTimeout(function() { toast.classList.remove('show'); }, 3500);
+    setTimeout(function() { toast.classList.remove('show'); }, tipo === 'error' ? 10000 : 3500);
   }
 
   function configurarPermisos() {
@@ -1990,29 +1994,50 @@
     html += '</div></div>';
 
     // El botón de reporte se oculta para los usuarios DISPONIBLE_*
-    const botonesTabla = '<button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button>' +
+    const botonesTabla = '<button type="button" class="btn btn-sm btn-secondary me-1" onclick="imprimirTurnoPDF()">🖨 Imprimir</button>' +
       (esUsuarioDisponible ? '' : '<button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button>') +
       '<button type="button" class="btn btn-sm btn-presentacion me-1" onclick="abrirModalPresentacion()">🗓 Presentar hoy</button>';
 
     html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div>' + botonesTabla + '</div></div></div><div class="card-body">';
-    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>NOVEDADES</th></tr></thead><tbody>';
+    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>FECHA ULTIMO ASCENSO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
-    // Mismo orden del reporte: sin novedades primero y jerarquia de grados.
-    const JERARQUIA = ['MG','BG','CR','TC','MY','CT','TE','ST','CM','SC','IJ','IT','SI','PT','PP','AXP'];
+    // Orden de la tabla (igual que UBL_JESEP):
+    //   1) GRADO (columna C) segun la jerarquia institucional
+    //   2) FECHA ULTIMO ASCENSO (columna U): la mas antigua primero, sin fecha al final
+    //   3) PUESTO (columna X)
+    //   4) NOVEDADES: sin novedad primero, con novedad al final
+    //   5) nombre como desempate
+    const JERARQUIA = ['MG','BG','CR','TC','MY','CT','TE','ST','CM','SC','IJ','IT','SI','PT','PP','AXP','NO','ASE02','ASE19','TES20','ADS17','APA17'];
     const rangoGrado = function(g) {
       const i = JERARQUIA.indexOf(String(g || '').trim().toUpperCase());
       return i === -1 ? JERARQUIA.length : i;
     };
+    const tsDe = function(f) {
+      return (f && f.fechaAscensoTs !== null && f.fechaAscensoTs !== undefined)
+        ? f.fechaAscensoTs
+        : Infinity;
+    };
     const ordenados = funcionarios.slice().sort(function(a, b) {
-      // Orden por jerarquia de grados: el grado manda y, dentro de cada
-      // grado, se ordena por nombre.
-      const ia = rangoGrado(a.grado || a.GR);
-      const ib = rangoGrado(b.grado || b.GR);
-      if (ia !== ib) return ia - ib;
+      let d = rangoGrado(a.grado || a.GR) - rangoGrado(b.grado || b.GR);
+      if (d !== 0) return d;
+
+      const ta = tsDe(a), tb = tsDe(b);
+      if (ta !== tb) return ta < tb ? -1 : 1;
+
+      const pa = String((a && a.puesto) || '').trim().toUpperCase();
+      const pb = String((b && b.puesto) || '').trim().toUpperCase();
+      if (pa !== pb) return pa < pb ? -1 : 1;
+
+      const na = (a.historialNovedades && a.historialNovedades.length) ? 1 : 0;
+      const nb = (b.historialNovedades && b.historialNovedades.length) ? 1 : 0;
+      if (na !== nb) return na - nb;
+
       const xa = String(a.funcionario || a.FUNCIONARIO || '').trim().toUpperCase();
       const xb = String(b.funcionario || b.FUNCIONARIO || '').trim().toUpperCase();
       return xa < xb ? -1 : (xa > xb ? 1 : 0);
     });
+
+    ultimoListadoOrdenado = { filtro: filtro, lista: ordenados };
 
     let n = 0;
     ordenados.forEach(function(f) {
@@ -2039,7 +2064,7 @@
       // El desplegable solo aparece en las filas SIN novedades (las no sombreadas).
       // En las filas sombreadas la novedad ya esta registrada.
       if (!novedades.length) novedadesHtml += selectorNovedadRapida_(f.cedula || f.CEDULA || '');
-      html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + novedadesHtml + '</td></tr>';
+      html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + esc(formatearValor(f.fechaAscenso)) + '</td><td>' + novedadesHtml + '</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
     contenedor.innerHTML = html;
@@ -2070,6 +2095,100 @@
     if (!frame) { mostrarToast('Primero genere la previsualización.', 'error'); return; }
     frame.contentWindow.focus();
     frame.contentWindow.print();
+  }
+
+  // Botón "Imprimir" de Detalle Funcionarios: crea y descarga el PDF en el
+  // navegador con EXACTAMENTE las filas y el orden que se ven en la tabla.
+  // No depende del servidor; si la librería no cargó, usa el PDF del servidor.
+  function textoPDF_(v) {
+    return String(v === null || v === undefined ? '' : v)
+      .replace(/[\u2013\u2014]/g, '-')
+      .replace(/[^\x20-\x7E\u00A0-\u00FF\n]/g, '');
+  }
+
+  function imprimirTurnoPDF() {
+    const datos = ultimoListadoOrdenado;
+    if (!datos || !datos.lista || !datos.lista.length) {
+      mostrarToast('Primero consulte un turno.', 'error');
+      return;
+    }
+
+    const lib = window.jspdf;
+    if (!lib || !lib.jsPDF) {
+      mostrarToast('No cargó la librería de PDF; se usará el servidor.', 'error');
+      descargarReporte_('pdf', datos.filtro);
+      return;
+    }
+
+    try {
+      const doc = new lib.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      if (typeof doc.autoTable !== 'function') throw new Error('falta el complemento de tablas');
+
+      const lista = datos.lista;
+      const conNov = lista.map(function(f) { return (f.historialNovedades || []).length > 0; });
+      const nConNov = conNov.filter(Boolean).length;
+      const ahora = new Date();
+      const dos = function(x) { return String(x).padStart(2, '0'); };
+      const fechaTxt = dos(ahora.getDate()) + '/' + dos(ahora.getMonth() + 1) + '/' + ahora.getFullYear() +
+                       ' ' + dos(ahora.getHours()) + ':' + dos(ahora.getMinutes());
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(1, 89, 47);
+      doc.text(textoPDF_('Listado por turno - ' + datos.filtro), 40, 38);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(80);
+      doc.text(textoPDF_('Generado: ' + fechaTxt + '   |   Fuerza efectiva: ' + lista.length +
+        '   |   Disponible: ' + (lista.length - nConNov) + '   |   Con novedad: ' + nConNov), 40, 54);
+
+      const cuerpo = lista.map(function(f, i) {
+        const nov = (f.historialNovedades || []).map(function(x) { return esUsuarioDisponible ? (String(x.TIPO || '').trim() || 'SIN TIPO') : x.NOVEDAD; }).join('\n');
+        return [
+          i + 1,
+          textoPDF_(f.cedula || f.CEDULA || ''),
+          textoPDF_(f.grado || f.GR || ''),
+          textoPDF_(f.funcionario || f.FUNCIONARIO || ''),
+          textoPDF_(f.dependencia || f.DEPENDENCIA || ''),
+          textoPDF_(f.turno || f.TURNO || ''),
+          textoPDF_(formatearValor(f.fechaAscenso)),
+          textoPDF_(nov || 'S/N')
+        ];
+      });
+
+      doc.autoTable({
+        startY: 66,
+        head: [['#', 'CEDULA', 'GRADO', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', 'ULTIMO ASCENSO', 'NOVEDADES']],
+        body: cuerpo,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+        headStyles: { fillColor: [1, 89, 47], textColor: 255 },
+        columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 70 }, 2: { cellWidth: 40 }, 5: { cellWidth: 45 }, 6: { cellWidth: 70 } },
+        margin: { left: 40, right: 40, bottom: 34 },
+        didParseCell: function(d) {
+          if (d.section === 'body' && conNov[d.row.index]) d.cell.styles.fillColor = [255, 243, 205];
+        }
+      });
+
+      const paginas = doc.internal.getNumberOfPages();
+      const alto = doc.internal.pageSize.getHeight();
+      const ancho = doc.internal.pageSize.getWidth();
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      for (let pg = 1; pg <= paginas; pg++) {
+        doc.setPage(pg);
+        doc.text('Pagina ' + pg + ' de ' + paginas, ancho - 40, alto - 18, { align: 'right' });
+      }
+
+      const nombre = 'Listado_Turno_' + String(datos.filtro).replace(/[^A-Za-z0-9]+/g, '_') + '_' +
+        ahora.getFullYear() + dos(ahora.getMonth() + 1) + dos(ahora.getDate()) + '-' +
+        dos(ahora.getHours()) + dos(ahora.getMinutes()) + '.pdf';
+      doc.save(nombre);
+      mostrarToast('PDF descargado: ' + nombre);
+    } catch (e) {
+      mostrarToast('No se pudo crear el PDF aquí (' + (e && e.message) + '). Se intenta por el servidor...', 'error');
+      descargarReporte_('pdf', datos.filtro);
+    }
   }
 
   function generarReporteDesdeTurno() {
