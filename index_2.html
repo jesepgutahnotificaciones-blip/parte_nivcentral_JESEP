@@ -698,7 +698,7 @@
 
   <!-- JAVASCRIPT -->
   <script>
-  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxyrw_004jeU-cQFV8KLUVPWSjH7jNSE8gxt5cLQTANQ9YE8XdmE-mlHwxG-tPNuQU0/exec';
+  const APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbyXJvzwBorfCyH41KrYFGH-MXx_s51e3wuGJOVhl0VHMvIcdjoKjwslscrNzVZIP7nN/exec';
   const CLAVE_SESION = 'jesep_sesion';
 
   (function configurarPuenteAPI() {
@@ -1118,7 +1118,7 @@
     toast.textContent = mensaje || '';
     toast.style.background = tipo === 'error' ? '#b71c1c' : '#263238';
     toast.classList.add('show');
-    setTimeout(function() { toast.classList.remove('show'); }, 3500);
+    setTimeout(function() { toast.classList.remove('show'); }, tipo === 'error' ? 10000 : 3500);
   }
 
   function configurarPermisos() {
@@ -1702,7 +1702,7 @@ function onTipoNovedadChange() {
 
     html += '</div></div>';
 
-    html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="window.print()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
+    html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div><button type="button" class="btn btn-sm btn-secondary me-1" onclick="imprimirTurnoPDF()">🖨 Imprimir</button><button type="button" class="btn btn-sm btn-pol" onclick="generarReporteDesdeTurno()">📄 Reporte</button></div></div></div><div class="card-body">';
     html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>FECHA ULTIMO ASCENSO</th><th>NOVEDADES</th></tr></thead><tbody>';
 
     // Orden de la tabla de reportes:
@@ -1784,6 +1784,13 @@ function onTipoNovedadChange() {
     if (!frame) { mostrarToast('Primero genere la previsualización.', 'error'); return; }
     frame.contentWindow.focus();
     frame.contentWindow.print();
+  }
+
+  // Botón "Imprimir" de Detalle Funcionarios: descarga directamente el PDF
+  // del turno que se está mostrando (sin diálogo de impresión).
+  function imprimirTurnoPDF() {
+    if (!ultimoTurnoConsultado) { mostrarToast('Primero consulte un turno.', 'error'); return; }
+    descargarReporte_('pdf', ultimoTurnoConsultado);
   }
 
   function generarReporteDesdeTurno() {
@@ -2275,3 +2282,4 @@ function avisarPresentacionVacaciones() {
 
 </body>
 </html>
+
