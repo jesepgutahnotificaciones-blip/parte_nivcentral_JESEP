@@ -1623,11 +1623,10 @@
   let _contSelectorNov = 0;
 
   /* =====================================================
-     CONTEO NUMERICO DE NOVEDADES POR TIPO
+     CONTEO NUMERICO DE NOVEDADES POR TIPO (Columna G: TIPO)
      Cada funcionario se clasifica una sola vez, en la
-     primera categoria que coincida con alguna de sus
-     novedades. El texto viene del backend como
-     "TIPO - novedad (N dias)".
+     primera categoria que coincida con el TIPO registrado
+     en la columna G de la hoja NOVEDADES.
      ===================================================== */
   const CATEGORIAS_NOVEDAD_ = [
     { clave: 'RETARDADOS',      etiqueta: 'Retardados',          patron: /RETARD/ },
@@ -1635,7 +1634,8 @@
     { clave: 'LICENCIA',        etiqueta: 'De licencia',          patron: /LICENCIA/ },
     { clave: 'PERMISO',         etiqueta: 'De permiso',           patron: /PERMISO/ },
     { clave: 'COMISION',        etiqueta: 'En comision',          patron: /COMISION/ },
-    { clave: 'CURSO_ASCENSO',   etiqueta: 'En curso de ascenso',  patron: /ASCENSO/ }
+    { clave: 'CURSO_ASCENSO',   etiqueta: 'En curso de ascenso',  patron: /ASCENSO/ },
+    { clave: 'CITA_MEDICA',     etiqueta: 'Cita médica',          patron: /CITA MEDICA|MEDICA/ } // Opcional si deseas incluirlo
   ];
 
   function contarNovedadesPorTipo(funcionarios) {
@@ -1646,14 +1646,14 @@
       const lista = f.historialNovedades || [];
       if (!lista.length) return;
 
-      // Se unen todas sus novedades para buscar la primera categoria.
-      const texto = lista.map(x => String(x.NOVEDAD || '')).join(' ')
+      // Se evalúa estrictamente la columna G (TIPO) de la hoja NOVEDADES (x.TIPO)
+      const textoTipos = lista.map(x => String(x.TIPO || '')).join(' ')
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 
       for (let i = 0; i < CATEGORIAS_NOVEDAD_.length; i++) {
-        if (CATEGORIAS_NOVEDAD_[i].patron.test(texto)) {
+        if (CATEGORIAS_NOVEDAD_[i].patron.test(textoTipos)) {
           conteo[CATEGORIAS_NOVEDAD_[i].clave]++;
-          break;
+          break; // Clasifica al funcionario en la primera coincidencia
         }
       }
     });
