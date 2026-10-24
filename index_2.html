@@ -302,6 +302,7 @@
         <button type="button" id="menuUsuarios" class="soloAdministrador hidden" onclick="mostrarSeccion('usuarios')">👤 Usuarios</button>
         <button type="button" id="menuFuncionarios" class="soloUBL hidden" onclick="mostrarSeccion('funcionarios')">👥 Funcionarios</button>
         <button type="button" id="menuGestionarNovedades" class="soloArea hidden" onclick="mostrarSeccion('gestionarNovedades')">🗂️ Eliminar novedad</button>
+        <button type="button" id="menuActualizarNovedades" class="hidden" title="Pasa a NOVEDADES_FINALIZADAS las novedades con Fecha PRESENTACION vencida" onclick="actualizarNovedadesVencidas()">🔄 Actualizar novedades</button>
       </nav>
 
       <!-- Aviso de diagnostico: se muestra si el usuario NO tiene la seccion
@@ -1183,6 +1184,13 @@
       }
     }
 
+    // Botón "Actualizar novedades": solo administrador y UBL_JESEP
+    const menuActualizarNovedades = document.getElementById('menuActualizarNovedades');
+    if (menuActualizarNovedades) {
+      if (puedeActualizarNovedades_()) menuActualizarNovedades.classList.remove('hidden');
+      else menuActualizarNovedades.classList.add('hidden');
+    }
+
     // UBL_JESEP no registra novedades: se oculta la sección de novedad
     const menuNovedad = document.getElementById('menuNovedad');
     const seccionNovedad = document.getElementById('seccionNovedad');
@@ -1253,6 +1261,59 @@
         camposHorarioFlexible.classList.add('hidden');
       }
     });
+  }
+
+  /* "Actualizar novedades": mueve a NOVEDADES_FINALIZADAS las novedades cuya
+     Fecha PRESENTACION (columna K) ya venció. Solo administrador y UBL_JESEP;
+     el servidor vuelve a comprobarlo. */
+  function puedeActualizarNovedades_() {
+    return usuarioId === 'UBL_JESEP' || puedeAdministrarUsuarios_();
+  }
+
+  let _actualizandoNovedades = false;
+
+  function actualizarNovedadesVencidas() {
+    if (!puedeActualizarNovedades_()) {
+      mostrarToast('Su usuario no puede actualizar novedades.', 'error');
+      return;
+    }
+    if (_actualizandoNovedades) return;
+
+    if (!confirm('Se pasarán a la hoja NOVEDADES_FINALIZADAS todas las novedades cuya ' +
+                 'Fecha PRESENTACION (columna K) ya está vencida, y se quitarán de NOVEDADES.\n\n' +
+                 'Quedará registrado el usuario y la fecha. ¿Desea continuar?')) {
+      return;
+    }
+
+    const boton = document.getElementById('menuActualizarNovedades');
+    const textoOriginal = boton ? boton.textContent : '';
+    _actualizandoNovedades = true;
+    if (boton) { boton.disabled = true; boton.textContent = '⏳ Actualizando...'; }
+    const terminar = function() {
+      _actualizandoNovedades = false;
+      if (boton) { boton.disabled = false; boton.textContent = textoOriginal; }
+    };
+
+    google.script.run
+      .withSuccessHandler(function(r) {
+        terminar();
+        if (!r || r.estado !== true) {
+          mostrarToast((r && r.mensaje) || 'No se pudieron actualizar las novedades.', 'error');
+          return;
+        }
+        mostrarToast(r.mensaje);
+        if (r.movidas > 0) {
+          // Refresca lo que esté en pantalla
+          if (ultimoTurnoConsultado) cargarTurno(ultimoTurnoConsultado);
+          const sec = document.getElementById('seccionGestionarNovedades');
+          if (sec && sec.classList.contains('active')) cargarNovedadesHoja();
+        }
+      })
+      .withFailureHandler(function(e) {
+        terminar();
+        mostrarToast('Error actualizando novedades: ' + ((e && e.message) || 'fallo de red'), 'error');
+      })
+      .actualizarNovedadesVencidas(tokenSesion, usuarioId);
   }
 
   function mostrarSeccion(nombre) {
