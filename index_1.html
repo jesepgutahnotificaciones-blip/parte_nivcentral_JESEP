@@ -1879,6 +1879,38 @@
     if (ev.key === 'Escape' && ov && !ov.classList.contains('oculto')) cerrarModalPresentacion();
   });
 
+  // Casilla S/N (sin novedad = en servicio) de los usuarios DISPONIBLE_*.
+  // Se recuerda por usuario, turno y día en este navegador.
+  function claveSN_(filtro) {
+    const d = new Date();
+    const dos = function(x) { return String(x).padStart(2, '0'); };
+    return 'snTurno:' + usuarioId + ':' + filtro + ':' + d.getFullYear() + '-' + dos(d.getMonth() + 1) + '-' + dos(d.getDate());
+  }
+
+  function leerSN_(filtro) {
+    try { return JSON.parse(localStorage.getItem(claveSN_(filtro)) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+
+  function guardarSN_(filtro, mapa) {
+    try { localStorage.setItem(claveSN_(filtro), JSON.stringify(mapa)); } catch (e) {}
+  }
+
+  function marcarSN(el) {
+    const filtro = ultimoListadoOrdenado && ultimoListadoOrdenado.filtro;
+    if (!filtro) return;
+    const mapa = leerSN_(filtro);
+    const ced = el.getAttribute('data-cedula');
+    if (el.checked) mapa[ced] = 1; else delete mapa[ced];
+    guardarSN_(filtro, mapa);
+    actualizarContadorServicio_();
+  }
+
+  function actualizarContadorServicio_() {
+    const salida = document.getElementById('contadorEnServicio');
+    if (salida) salida.textContent = document.querySelectorAll('.chk-sn:checked').length;
+  }
+
   function renderTurno(respuesta) {
     const contenedor = document.getElementById('resultadoTurno');
     const datos = respuesta.datos || {};
@@ -1901,6 +1933,10 @@
       fuerzaDisponible[cat] = 0;
       fuerzaEfectiva[cat] = 0;
     });
+
+    // DISPONIBLE_*: los no uniformados se muestran en la tabla pero NO se cuentan.
+    const noUniformados = {};
+    const contadosTurno = [];
 
     funcionarios.forEach(f => {
       let nivelRaw = String(f.nivel || f.NIV || f.categoria || f.CATEGORIA || '').trim().toUpperCase();
@@ -1925,6 +1961,12 @@
         }
       }
 
+      if (esUsuarioDisponible && catAsignada === 'NO UNI') {
+        noUniformados[String(f.cedula || f.CEDULA || '')] = true;
+        return;
+      }
+      contadosTurno.push(f);
+
       // fEfectiva = total de funcionarios del turno
       fuerzaEfectiva[catAsignada]++;
       totalEfectiva++;
@@ -1940,7 +1982,7 @@
     let html = '<div class="card mb-3"><div class="card-header bg-white">📊 <strong>CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + esc(filtro) + '</strong></div><div class="card-body">';
     html += '<div class="row g-2 mb-3">';
     
-    categorias.forEach(function(cat) {
+    (esUsuarioDisponible ? categorias.filter(function(c) { return c !== 'NO UNI'; }) : categorias).forEach(function(cat) {
       const total = fuerzaEfectiva[cat];
       const disp = fuerzaDisponible[cat];
       // Cambiar etiqueta EJE por "Nivel EJEC"
@@ -1957,7 +1999,7 @@
 
     html += '<div class="col-6 col-md-3 col-lg">';
     html += '<div class="stat-card stat-card-total">';
-    html += '<div class="stat-label">En formacion</div>';
+    html += '<div class="stat-label">' + (esUsuarioDisponible ? 'FUERZA DISPONIBLE' : 'En formacion') + '</div>';
     html += '<div class="stat-number">' + totalDisponible + ' <span class="stat-slash">/ ' + totalEfectiva + '</span>' +
       ' <span class="stat-paren">(Efectiva)</span></div>';
     html += '<div class="stat-mini">Disponible / Total</div>';
@@ -1967,7 +2009,7 @@
     html += '</div></div>';
 
     // Conteo numerico de novedades por tipo
-    const conteoNov = contarNovedadesPorTipo(funcionarios);
+    const conteoNov = contarNovedadesPorTipo(esUsuarioDisponible ? contadosTurno : funcionarios);
 
     html += '<div class="card mb-3"><div class="card-header bg-white">📌 <strong>NOVEDADES DEL TURNO</strong></div><div class="card-body">';
     html += '<div class="row g-2">';
@@ -1980,6 +2022,15 @@
       ' <span class="stat-paren">(Efectiva)</span></div>';
     html += '<div class="stat-mini">Disponible / Total</div>';
     html += '</div></div>';
+
+    if (esUsuarioDisponible) {
+      html += '<div class="col-6 col-md-4 col-lg-2">';
+      html += '<div class="nov-tipo-card nov-tipo-total">';
+      html += '<div class="nov-tipo-label">En servicio</div>';
+      html += '<div class="stat-number"><span id="contadorEnServicio">0</span> <span class="stat-slash">/ ' + totalDisponible + '</span></div>';
+      html += '<div class="stat-mini">Marcados S/N</div>';
+      html += '</div></div>';
+    }
 
     CATEGORIAS_NOVEDAD_.forEach(function(cat) {
       const n = conteoNov[cat.clave] || 0;
@@ -1999,7 +2050,7 @@
       '<button type="button" class="btn btn-sm btn-presentacion me-1" onclick="abrirModalPresentacion()">🗓 Presentar hoy</button>';
 
     html += '<div class="card"><div class="card-header"><div class="d-flex justify-content-between align-items-center"><span>📋 Detalle Funcionarios ' + esc(filtro) + '</span><div>' + botonesTabla + '</div></div></div><div class="card-body">';
-    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th><th>FECHA ULTIMO ASCENSO</th><th>NOVEDADES</th></tr></thead><tbody>';
+    html += '<div class="table-wrapper"><table class="table table-bordered table-hover"><thead><tr><th>#</th><th>CÉDULA</th><th>GRADO</th><th>FUNCIONARIO</th><th>DEPENDENCIA</th><th>TURNO</th>' + (esUsuarioDisponible ? '<th style="width:60px;text-align:center">S/N</th>' : '<th>FECHA ULTIMO ASCENSO</th>') + '<th>NOVEDADES</th></tr></thead><tbody>';
 
     // Orden de la tabla (igual que UBL_JESEP):
     //   1) GRADO (columna C) segun la jerarquia institucional
@@ -2037,7 +2088,25 @@
       return xa < xb ? -1 : (xa > xb ? 1 : 0);
     });
 
-    ultimoListadoOrdenado = { filtro: filtro, lista: ordenados };
+    ultimoListadoOrdenado = {
+      filtro: filtro, lista: ordenados,
+      totalDisponible: totalDisponible, totalEfectiva: totalEfectiva,
+      noUniformados: noUniformados
+    };
+
+    // Casilla S/N guardada para hoy (solo DISPONIBLE_*)
+    const snGuardado = esUsuarioDisponible ? leerSN_(filtro) : {};
+    const celdaExtra = function(f, novedades) {
+      if (!esUsuarioDisponible) return '<td>' + esc(formatearValor(f.fechaAscenso)) + '</td>';
+      const ced = String(f.cedula || f.CEDULA || '');
+      if (novedades.length || noUniformados[ced]) {
+        return '<td style="text-align:center" class="text-muted">&mdash;</td>';
+      }
+      return '<td style="text-align:center"><input type="checkbox" class="chk-sn" ' +
+        'style="width:18px;height:18px;cursor:pointer" title="Marcar si esta S/N" ' +
+        'data-cedula="' + esc(ced) + '"' + (snGuardado[ced] ? ' checked' : '') +
+        ' onchange="marcarSN(this)"></td>';
+    };
 
     let n = 0;
     ordenados.forEach(function(f) {
@@ -2064,10 +2133,11 @@
       // El desplegable solo aparece en las filas SIN novedades (las no sombreadas).
       // En las filas sombreadas la novedad ya esta registrada.
       if (!novedades.length) novedadesHtml += selectorNovedadRapida_(f.cedula || f.CEDULA || '');
-      html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td><td>' + esc(formatearValor(f.fechaAscenso)) + '</td><td>' + novedadesHtml + '</td></tr>';
+      html += '<tr' + (conNov ? ' class="table-warning"' : '') + '><td>' + n + '</td><td>' + esc(f.cedula || f.CEDULA || '') + '</td><td>' + esc(f.grado || f.GR || '') + '</td><td><strong>' + esc(f.funcionario || f.FUNCIONARIO || '') + '</strong></td><td>' + esc(f.dependencia || f.DEPENDENCIA || '') + '</td><td>' + esc(f.turno || f.TURNO || '') + '</td>' + celdaExtra(f, novedades) + '<td>' + novedadesHtml + '</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
     contenedor.innerHTML = html;
+    actualizarContadorServicio_();
   }
 
   function previsualizarReporte() {
@@ -2127,6 +2197,12 @@
       const lista = datos.lista;
       const conNov = lista.map(function(f) { return (f.historialNovedades || []).length > 0; });
       const nConNov = conNov.filter(Boolean).length;
+      const snMarcados = esUsuarioDisponible ? leerSN_(datos.filtro) : {};
+      const marcadoSN = function(f, i) {
+        const ced = String(f.cedula || f.CEDULA || '');
+        return !!(snMarcados[ced] && !conNov[i] && !(datos.noUniformados && datos.noUniformados[ced]));
+      };
+      const nServicio = esUsuarioDisponible ? lista.filter(function(f, i) { return marcadoSN(f, i); }).length : 0;
       const ahora = new Date();
       const dos = function(x) { return String(x).padStart(2, '0'); };
       const fechaTxt = dos(ahora.getDate()) + '/' + dos(ahora.getMonth() + 1) + '/' + ahora.getFullYear() +
@@ -2139,8 +2215,11 @@
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(80);
-      doc.text(textoPDF_('Generado: ' + fechaTxt + '   |   Fuerza efectiva: ' + lista.length +
-        '   |   Disponible: ' + (lista.length - nConNov) + '   |   Con novedad: ' + nConNov), 40, 54);
+      doc.text(textoPDF_(esUsuarioDisponible
+        ? 'Generado: ' + fechaTxt + '   |   Fuerza efectiva: ' + datos.totalEfectiva +
+          '   |   Fuerza disponible: ' + datos.totalDisponible + '   |   En servicio (S/N): ' + nServicio
+        : 'Generado: ' + fechaTxt + '   |   Fuerza efectiva: ' + lista.length +
+          '   |   Disponible: ' + (lista.length - nConNov) + '   |   Con novedad: ' + nConNov), 40, 54);
 
       const cuerpo = lista.map(function(f, i) {
         const nov = (f.historialNovedades || []).map(function(x) { return esUsuarioDisponible ? (String(x.TIPO || '').trim() || 'SIN TIPO') : x.NOVEDAD; }).join('\n');
@@ -2151,19 +2230,19 @@
           textoPDF_(f.funcionario || f.FUNCIONARIO || ''),
           textoPDF_(f.dependencia || f.DEPENDENCIA || ''),
           textoPDF_(f.turno || f.TURNO || ''),
-          textoPDF_(formatearValor(f.fechaAscenso)),
+          esUsuarioDisponible ? (marcadoSN(f, i) ? 'X' : '') : textoPDF_(formatearValor(f.fechaAscenso)),
           textoPDF_(nov || 'S/N')
         ];
       });
 
       doc.autoTable({
         startY: 66,
-        head: [['#', 'CEDULA', 'GRADO', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', 'ULTIMO ASCENSO', 'NOVEDADES']],
+        head: [['#', 'CEDULA', 'GRADO', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', (esUsuarioDisponible ? 'S/N' : 'ULTIMO ASCENSO'), 'NOVEDADES']],
         body: cuerpo,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
         headStyles: { fillColor: [1, 89, 47], textColor: 255 },
-        columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 70 }, 2: { cellWidth: 40 }, 5: { cellWidth: 45 }, 6: { cellWidth: 70 } },
+        columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 70 }, 2: { cellWidth: 40 }, 5: { cellWidth: 45 }, 6: { cellWidth: esUsuarioDisponible ? 36 : 70, halign: esUsuarioDisponible ? 'center' : 'left' } },
         margin: { left: 40, right: 40, bottom: 34 },
         didParseCell: function(d) {
           if (d.section === 'body' && conNov[d.row.index]) d.cell.styles.fillColor = [255, 243, 205];
