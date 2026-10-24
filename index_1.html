@@ -1879,7 +1879,20 @@
     if (ev.key === 'Escape' && ov && !ov.classList.contains('oculto')) cerrarModalPresentacion();
   });
 
-  // Casilla S/N (sin novedad = en servicio) de los usuarios DISPONIBLE_*.
+  // Cuenta los funcionarios que tienen la novedad SERVICIO. Solo cuenta el tipo
+  // exacto: "EXCUSADO DEL SERVICIO" y "COMISION DEL SERVICIO" NO son SERVICIO.
+  function tipoNovedadNorm_(x) {
+    const bruto = String((x && x.TIPO) || String((x && x.NOVEDAD) || '').split(' - ')[0] || '');
+    return bruto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+  }
+
+  function contarEnServicio_(funcionarios) {
+    return (funcionarios || []).filter(function(f) {
+      return (f.historialNovedades || []).some(function(x) { return tipoNovedadNorm_(x) === 'SERVICIO'; });
+    }).length;
+  }
+
+  // Casilla S/N (sin novedad) de los usuarios DISPONIBLE_*.
   // Se recuerda por usuario, turno y día en este navegador.
   function claveSN_(filtro) {
     const d = new Date();
@@ -2025,12 +2038,13 @@
     html += '<div class="stat-mini">Disponible / Total</div>';
     html += '</div></div>';
 
+    // DISPONIBLE_*: cuantos funcionarios tienen registrada la novedad SERVICIO
+    const enServicio = esUsuarioDisponible ? contarEnServicio_(contadosTurno) : 0;
     if (esUsuarioDisponible) {
       html += '<div class="col-6 col-md-4 col-lg-2">';
-      html += '<div class="nov-tipo-card nov-tipo-total">';
+      html += '<div class="nov-tipo-card">';
       html += '<div class="nov-tipo-label">En servicio</div>';
-      html += '<div class="stat-number"><span id="contadorEnServicio">0</span> <span class="stat-slash">/ ' + totalDisponible + '</span></div>';
-      html += '<div class="stat-mini">Marcados S/N</div>';
+      html += '<div class="nov-tipo-num' + (enServicio ? '' : ' cero') + '">' + enServicio + '</div>';
       html += '</div></div>';
     }
 
@@ -2101,6 +2115,7 @@
       filtro: filtro, lista: ordenados,
       totalDisponible: totalDisponible, totalEfectiva: totalEfectiva,
       noUniformados: noUniformados,
+      enServicio: enServicio,
       conteo: tarjetasConteo,
       etiquetaTotal: esUsuarioDisponible ? 'FUERZA DISPONIBLE' : 'En formacion',
       novedades: CATEGORIAS_NOVEDAD_.map(function(c) {
@@ -2218,7 +2233,6 @@
         const ced = String(f.cedula || f.CEDULA || '');
         return !!(snMarcados[ced] && !conNov[i] && !(datos.noUniformados && datos.noUniformados[ced]));
       };
-      const nServicio = esUsuarioDisponible ? lista.filter(function(f, i) { return marcadoSN(f, i); }).length : 0;
       const ahora = new Date();
       const dos = function(x) { return String(x).padStart(2, '0'); };
       const fechaTxt = dos(ahora.getDate()) + '/' + dos(ahora.getMonth() + 1) + '/' + ahora.getFullYear() +
@@ -2265,7 +2279,7 @@
 
       // Cuadro 2: NOVEDADES DEL TURNO
       const nov = [{ etiqueta: datos.etiquetaTotal || 'Total', valor: datos.totalDisponible + ' / ' + datos.totalEfectiva }];
-      if (esUsuarioDisponible) nov.push({ etiqueta: 'En servicio', valor: nServicio + ' / ' + datos.totalDisponible });
+      if (esUsuarioDisponible) nov.push({ etiqueta: 'En servicio', valor: String(datos.enServicio || 0) });
       (datos.novedades || []).forEach(function(c) { nov.push({ etiqueta: c.etiqueta, valor: String(c.n) }); });
       titulo('NOVEDADES DEL TURNO', nota1 + 17);
       doc.autoTable(Object.assign({}, estiloCuadro, {
