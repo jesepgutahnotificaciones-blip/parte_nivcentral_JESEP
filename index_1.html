@@ -1979,6 +1979,7 @@
       }
     });
 
+    const tarjetasConteo = [];   // datos del cuadro CONTEO DE FUERZA Y EFECTIVA (para el PDF)
     let html = '<div class="card mb-3"><div class="card-header bg-white">📊 <strong>CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + esc(filtro) + '</strong></div><div class="card-body">';
     html += '<div class="row g-2 mb-3">';
     
@@ -1987,6 +1988,7 @@
       const disp = fuerzaDisponible[cat];
       // Cambiar etiqueta EJE por "Nivel EJEC"
       const etiqueta = cat === 'EJE' ? 'Nivel EJEC' : cat;
+      tarjetasConteo.push({ etiqueta: etiqueta, disp: disp, total: total });
 
       html += '<div class="col-6 col-md-3 col-lg">';
       html += '<div class="stat-card">';
@@ -2069,6 +2071,13 @@
         : Infinity;
     };
     const ordenados = funcionarios.slice().sort(function(a, b) {
+      // DISPONIBLE_*: todos los que tienen novedad van al final de la tabla;
+      // dentro de cada grupo se conserva el mismo orden (grado, ascenso, puesto, nombre).
+      if (esUsuarioDisponible) {
+        const ha = (a.historialNovedades && a.historialNovedades.length) ? 1 : 0;
+        const hb = (b.historialNovedades && b.historialNovedades.length) ? 1 : 0;
+        if (ha !== hb) return ha - hb;
+      }
       let d = rangoGrado(a.grado || a.GR) - rangoGrado(b.grado || b.GR);
       if (d !== 0) return d;
 
@@ -2091,7 +2100,12 @@
     ultimoListadoOrdenado = {
       filtro: filtro, lista: ordenados,
       totalDisponible: totalDisponible, totalEfectiva: totalEfectiva,
-      noUniformados: noUniformados
+      noUniformados: noUniformados,
+      conteo: tarjetasConteo,
+      etiquetaTotal: esUsuarioDisponible ? 'FUERZA DISPONIBLE' : 'En formacion',
+      novedades: CATEGORIAS_NOVEDAD_.map(function(c) {
+        return { etiqueta: c.etiqueta, n: conteoNov[c.clave] || 0 };
+      })
     };
 
     // Casilla S/N guardada para hoy (solo DISPONIBLE_*)
@@ -2168,8 +2182,9 @@
   }
 
   // Botón "Imprimir" de Detalle Funcionarios: crea y descarga el PDF en el
-  // navegador con EXACTAMENTE las filas y el orden que se ven en la tabla.
-  // No depende del servidor; si la librería no cargó, usa el PDF del servidor.
+  // navegador (hoja CARTA, VERTICAL) con los cuadros CONTEO DE FUERZA Y EFECTIVA
+  // y NOVEDADES DEL TURNO, y la tabla con el mismo orden de la pantalla.
+  // Si la librería no cargó, usa el PDF del servidor.
   function textoPDF_(v) {
     return String(v === null || v === undefined ? '' : v)
       .replace(/[\u2013\u2014]/g, '-')
@@ -2191,9 +2206,10 @@
     }
 
     try {
-      const doc = new lib.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const doc = new lib.jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
       if (typeof doc.autoTable !== 'function') throw new Error('falta el complemento de tablas');
 
+      const MARGEN = 36;
       const lista = datos.lista;
       const conNov = lista.map(function(f) { return (f.historialNovedades || []).length > 0; });
       const nConNov = conNov.filter(Boolean).length;
@@ -2208,21 +2224,61 @@
       const fechaTxt = dos(ahora.getDate()) + '/' + dos(ahora.getMonth() + 1) + '/' + ahora.getFullYear() +
                        ' ' + dos(ahora.getHours()) + ':' + dos(ahora.getMinutes());
 
+      // Encabezado
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
+      doc.setFontSize(13);
       doc.setTextColor(1, 89, 47);
-      doc.text(textoPDF_('Listado por turno - ' + datos.filtro), 40, 38);
+      doc.text(textoPDF_('Listado por turno - ' + datos.filtro), MARGEN, 40);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(80);
-      doc.text(textoPDF_(esUsuarioDisponible
-        ? 'Generado: ' + fechaTxt + '   |   Fuerza efectiva: ' + datos.totalEfectiva +
-          '   |   Fuerza disponible: ' + datos.totalDisponible + '   |   En servicio (S/N): ' + nServicio
-        : 'Generado: ' + fechaTxt + '   |   Fuerza efectiva: ' + lista.length +
-          '   |   Disponible: ' + (lista.length - nConNov) + '   |   Con novedad: ' + nConNov), 40, 54);
+      doc.setFontSize(8);
+      doc.setTextColor(90);
+      doc.text(textoPDF_('Generado: ' + fechaTxt), MARGEN, 53);
 
+      const estiloCuadro = {
+        theme: 'grid',
+        margin: { left: MARGEN, right: MARGEN, bottom: 34 },
+        styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle' },
+        headStyles: { fillColor: [1, 89, 47], textColor: 255, fontSize: 7 },
+        bodyStyles: { fontStyle: 'bold', fontSize: 10 }
+      };
+      const titulo = function(texto, y) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(1, 89, 47);
+        doc.text(textoPDF_(texto), MARGEN, y);
+      };
+
+      // Cuadro 1: CONTEO DE FUERZA Y EFECTIVA - TURNO
+      const conteo = (datos.conteo || []).slice();
+      conteo.push({ etiqueta: datos.etiquetaTotal || 'Total', disp: datos.totalDisponible, total: datos.totalEfectiva });
+      titulo('CONTEO DE FUERZA Y EFECTIVA - TURNO: ' + datos.filtro, 70);
+      doc.autoTable(Object.assign({}, estiloCuadro, {
+        startY: 75,
+        head: [conteo.map(function(c) { return textoPDF_(c.etiqueta); })],
+        body: [conteo.map(function(c) { return c.disp + ' / ' + c.total; })]
+      }));
+      const nota1 = doc.lastAutoTable.finalY + 9;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(110);
+      doc.text('Disponible / Total (Efectiva)', MARGEN, nota1);
+
+      // Cuadro 2: NOVEDADES DEL TURNO
+      const nov = [{ etiqueta: datos.etiquetaTotal || 'Total', valor: datos.totalDisponible + ' / ' + datos.totalEfectiva }];
+      if (esUsuarioDisponible) nov.push({ etiqueta: 'En servicio', valor: nServicio + ' / ' + datos.totalDisponible });
+      (datos.novedades || []).forEach(function(c) { nov.push({ etiqueta: c.etiqueta, valor: String(c.n) }); });
+      titulo('NOVEDADES DEL TURNO', nota1 + 17);
+      doc.autoTable(Object.assign({}, estiloCuadro, {
+        startY: nota1 + 22,
+        head: [nov.map(function(c) { return textoPDF_(c.etiqueta); })],
+        body: [nov.map(function(c) { return c.valor; })]
+      }));
+
+      // Tabla de funcionarios
       const cuerpo = lista.map(function(f, i) {
-        const nov = (f.historialNovedades || []).map(function(x) { return esUsuarioDisponible ? (String(x.TIPO || '').trim() || 'SIN TIPO') : x.NOVEDAD; }).join('\n');
+        const novs = (f.historialNovedades || []).map(function(x) {
+          return esUsuarioDisponible ? (String(x.TIPO || '').trim() || 'SIN TIPO') : x.NOVEDAD;
+        }).join('\n');
         return [
           i + 1,
           textoPDF_(f.cedula || f.CEDULA || ''),
@@ -2231,19 +2287,22 @@
           textoPDF_(f.dependencia || f.DEPENDENCIA || ''),
           textoPDF_(f.turno || f.TURNO || ''),
           esUsuarioDisponible ? (marcadoSN(f, i) ? 'X' : '') : textoPDF_(formatearValor(f.fechaAscenso)),
-          textoPDF_(nov || 'S/N')
+          textoPDF_(novs || 'S/N')
         ];
       });
 
       doc.autoTable({
-        startY: 66,
-        head: [['#', 'CEDULA', 'GRADO', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', (esUsuarioDisponible ? 'S/N' : 'ULTIMO ASCENSO'), 'NOVEDADES']],
+        startY: doc.lastAutoTable.finalY + 16,
+        head: [['#', 'CEDULA', 'GRADO', 'FUNCIONARIO', 'DEPENDENCIA', 'TURNO', (esUsuarioDisponible ? 'S/N' : 'ULTIMO ASC.'), 'NOVEDADES']],
         body: cuerpo,
         theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+        styles: { fontSize: 7, cellPadding: 2.5, overflow: 'linebreak' },
         headStyles: { fillColor: [1, 89, 47], textColor: 255 },
-        columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 70 }, 2: { cellWidth: 40 }, 5: { cellWidth: 45 }, 6: { cellWidth: esUsuarioDisponible ? 36 : 70, halign: esUsuarioDisponible ? 'center' : 'left' } },
-        margin: { left: 40, right: 40, bottom: 34 },
+        columnStyles: {
+          0: { cellWidth: 20 }, 1: { cellWidth: 55 }, 2: { cellWidth: 30 }, 5: { cellWidth: 34 },
+          6: { cellWidth: esUsuarioDisponible ? 26 : 50, halign: esUsuarioDisponible ? 'center' : 'left' }
+        },
+        margin: { left: MARGEN, right: MARGEN, bottom: 34 },
         didParseCell: function(d) {
           if (d.section === 'body' && conNov[d.row.index]) d.cell.styles.fillColor = [255, 243, 205];
         }
@@ -2252,11 +2311,12 @@
       const paginas = doc.internal.getNumberOfPages();
       const alto = doc.internal.pageSize.getHeight();
       const ancho = doc.internal.pageSize.getWidth();
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(120);
       for (let pg = 1; pg <= paginas; pg++) {
         doc.setPage(pg);
-        doc.text('Pagina ' + pg + ' de ' + paginas, ancho - 40, alto - 18, { align: 'right' });
+        doc.text('Pagina ' + pg + ' de ' + paginas, ancho - MARGEN, alto - 18, { align: 'right' });
       }
 
       const nombre = 'Listado_Turno_' + String(datos.filtro).replace(/[^A-Za-z0-9]+/g, '_') + '_' +
