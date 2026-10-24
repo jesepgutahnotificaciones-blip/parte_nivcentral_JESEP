@@ -1879,6 +1879,36 @@
     if (ev.key === 'Escape' && ov && !ov.classList.contains('oculto')) cerrarModalPresentacion();
   });
 
+  // DISPONIBLE_*: agrupa los funcionarios con novedad por TIPO de novedad.
+  // Orden de los grupos = orden del desplegable de novedad rapida; dentro de cada
+  // grupo se conserva el orden (grado, ascenso, puesto, nombre).
+  function normTipoNov_(s) {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/@/g, 'A').trim().toUpperCase();
+  }
+
+  function grupoNovedadDe_(f) {
+    const x = (f.historialNovedades || [])[0] || {};
+    const bruto = String(x.TIPO || String(x.NOVEDAD || '').split(' - ')[0] || '').trim();
+    const clave = normTipoNov_(bruto) || 'SIN TIPO';
+    const orden = NOVEDADES_RAPIDAS_.map(normTipoNov_);
+    let rango = orden.indexOf(clave);
+    if (rango === -1) rango = orden.findIndex(function(n) { return n.endsWith(' ' + clave); });
+    return { clave: clave, etiqueta: (bruto || 'SIN TIPO').toUpperCase(), rango: rango === -1 ? 999 : rango };
+  }
+
+  function agruparNovedades_(lista) {
+    const sin = lista.filter(function(f) { return !(f.historialNovedades && f.historialNovedades.length); });
+    const con = lista.filter(function(f) { return f.historialNovedades && f.historialNovedades.length; })
+      .map(function(f) { return { f: f, g: grupoNovedadDe_(f) }; });
+    // El sort es estable: dentro de un mismo grupo se mantiene el orden previo.
+    con.sort(function(a, b) {
+      if (a.g.rango !== b.g.rango) return a.g.rango - b.g.rango;
+      return a.g.clave < b.g.clave ? -1 : (a.g.clave > b.g.clave ? 1 : 0);
+    });
+    return sin.concat(con.map(function(x) { return x.f; }));
+  }
+
   // Cuenta los funcionarios que tienen la novedad SERVICIO. Solo cuenta el tipo
   // exacto: "EXCUSADO DEL SERVICIO" y "COMISION DEL SERVICIO" NO son SERVICIO.
   function tipoNovedadNorm_(x) {
@@ -2084,7 +2114,7 @@
         ? f.fechaAscensoTs
         : Infinity;
     };
-    const ordenados = funcionarios.slice().sort(function(a, b) {
+    const ordenadosBase = funcionarios.slice().sort(function(a, b) {
       // DISPONIBLE_*: todos los que tienen novedad van al final de la tabla;
       // dentro de cada grupo se conserva el mismo orden (grado, ascenso, puesto, nombre).
       if (esUsuarioDisponible) {
@@ -2110,6 +2140,7 @@
       const xb = String(b.funcionario || b.FUNCIONARIO || '').trim().toUpperCase();
       return xa < xb ? -1 : (xa > xb ? 1 : 0);
     });
+    const ordenados = esUsuarioDisponible ? agruparNovedades_(ordenadosBase) : ordenadosBase;
 
     ultimoListadoOrdenado = {
       filtro: filtro, lista: ordenados,
@@ -2137,9 +2168,27 @@
         ' onchange="marcarSN(this)"></td>';
     };
 
+    const cuentaGrupos = {};
+    if (esUsuarioDisponible) {
+      ordenados.forEach(function(f) {
+        if ((f.historialNovedades || []).length) {
+          const k = grupoNovedadDe_(f).clave;
+          cuentaGrupos[k] = (cuentaGrupos[k] || 0) + 1;
+        }
+      });
+    }
+    let grupoPrevio = null;
+
     let n = 0;
     ordenados.forEach(function(f) {
       const conNov = (f.historialNovedades || []).length > 0;
+      if (esUsuarioDisponible && conNov) {
+        const g = grupoNovedadDe_(f);
+        if (g.clave !== grupoPrevio) {
+          grupoPrevio = g.clave;
+          html += '<tr class="table-secondary"><td colspan="8"><strong>' + esc(g.etiqueta) + ' (' + cuentaGrupos[g.clave] + ')</strong></td></tr>';
+        }
+      }
       n++;
       const novedades = f.historialNovedades || [];
 
@@ -2289,11 +2338,32 @@
       }));
 
       // Tabla de funcionarios
-      const cuerpo = lista.map(function(f, i) {
+      const cuerpo = [];
+      const marcasFila = [];   // 'nov' | 'grupo' | ''  (una por fila del cuerpo)
+      const cuentaGrupos = {};
+      if (esUsuarioDisponible) {
+        lista.forEach(function(f, i) {
+          if (conNov[i]) { const k = grupoNovedadDe_(f).clave; cuentaGrupos[k] = (cuentaGrupos[k] || 0) + 1; }
+        });
+      }
+      let grupoPrevio = null;
+      lista.forEach(function(f, i) {
+        if (esUsuarioDisponible && conNov[i]) {
+          const g = grupoNovedadDe_(f);
+          if (g.clave !== grupoPrevio) {
+            grupoPrevio = g.clave;
+            cuerpo.push([{
+              content: textoPDF_(g.etiqueta + ' (' + cuentaGrupos[g.clave] + ')'),
+              colSpan: 8,
+              styles: { fontStyle: 'bold', fillColor: [226, 227, 229], textColor: 40, halign: 'left' }
+            }]);
+            marcasFila.push('grupo');
+          }
+        }
         const novs = (f.historialNovedades || []).map(function(x) {
           return esUsuarioDisponible ? (String(x.TIPO || '').trim() || 'SIN TIPO') : x.NOVEDAD;
         }).join('\n');
-        return [
+        cuerpo.push([
           i + 1,
           textoPDF_(f.cedula || f.CEDULA || ''),
           textoPDF_(f.grado || f.GR || ''),
@@ -2302,7 +2372,8 @@
           textoPDF_(f.turno || f.TURNO || ''),
           esUsuarioDisponible ? (marcadoSN(f, i) ? 'X' : '') : textoPDF_(formatearValor(f.fechaAscenso)),
           textoPDF_(novs || 'S/N')
-        ];
+        ]);
+        marcasFila.push(conNov[i] ? 'nov' : '');
       });
 
       doc.autoTable({
@@ -2318,7 +2389,7 @@
         },
         margin: { left: MARGEN, right: MARGEN, bottom: 34 },
         didParseCell: function(d) {
-          if (d.section === 'body' && conNov[d.row.index]) d.cell.styles.fillColor = [255, 243, 205];
+          if (d.section === 'body' && marcasFila[d.row.index] === 'nov') d.cell.styles.fillColor = [255, 243, 205];
         }
       });
 
